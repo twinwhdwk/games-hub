@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🎮 미니게임 허브</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    min-height: 100vh;
+    background: #0a0a1a;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', sans-serif;
+    overflow-x: hidden;
+  }
+
+  /* 별 배경 */
+  #stars-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 40px 20px 60px;
+  }
+
+  header {
+    text-align: center;
+    margin-bottom: 60px;
+  }
+
+  .logo {
+    font-size: 3rem;
+    font-weight: 900;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #00d4ff, #a855f7, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-shadow: none;
+    filter: drop-shadow(0 0 30px rgba(0, 212, 255, 0.4));
+  }
+
+  .subtitle {
+    color: #8892a4;
+    font-size: 1rem;
+    margin-top: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* 게임 그리드 */
+  .games-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+    gap: 28px;
+  }
+
+  @media (max-width: 540px) {
+    .games-grid { grid-template-columns: 1fr; }
+    .logo { font-size: 2rem; }
+  }
+
+  /* 게임 카드 */
+  .game-card {
+    position: relative;
+    border-radius: 20px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-decoration: none;
+  }
+
+  .game-card:hover {
+    transform: translateY(-8px) scale(1.01);
+  }
+
+  .card-bg {
+    position: absolute;
+    inset: 0;
+    opacity: 0.18;
+    transition: opacity 0.3s;
+  }
+
+  .game-card:hover .card-bg { opacity: 0.28; }
+
+  .card-border {
+    position: absolute;
+    inset: 0;
+    border-radius: 20px;
+    border: 1.5px solid transparent;
+    transition: border-color 0.3s, box-shadow 0.3s;
+  }
+
+  .game-card:hover .card-border {
+    box-shadow: 0 0 30px var(--glow);
+    border-color: var(--accent);
+  }
+
+  .card-inner {
+    position: relative;
+    z-index: 1;
+    padding: 32px 28px;
+    display: flex;
+    gap: 22px;
+    align-items: flex-start;
+    background: rgba(255,255,255,0.03);
+    backdrop-filter: blur(12px);
+    border-radius: 20px;
+  }
+
+  .card-icon {
+    font-size: 3.2rem;
+    line-height: 1;
+    flex-shrink: 0;
+    filter: drop-shadow(0 0 12px var(--glow));
+  }
+
+  .card-content { flex: 1; }
+
+  .card-tag {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(255,255,255,0.07);
+    border: 1px solid var(--accent);
+    border-radius: 100px;
+    padding: 3px 10px;
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #f0f4ff;
+    margin-bottom: 8px;
+    line-height: 1.3;
+  }
+
+  .card-desc {
+    font-size: 0.88rem;
+    color: #8892a4;
+    line-height: 1.7;
+    margin-bottom: 18px;
+  }
+
+  .card-features {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .feature-chip {
+    font-size: 0.75rem;
+    color: #c4cde0;
+    background: rgba(255,255,255,0.06);
+    border-radius: 6px;
+    padding: 3px 9px;
+  }
+
+  .card-play-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    margin-top: 18px;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 0.5px;
+    transition: gap 0.2s;
+  }
+
+  .game-card:hover .card-play-btn { gap: 12px; }
+
+  /* 각 카드 테마 */
+  .card-english {
+    --accent: #f59e0b;
+    --glow: rgba(245,158,11,0.4);
+  }
+  .card-english .card-bg {
+    background: radial-gradient(ellipse at top left, #78350f, transparent 70%),
+                radial-gradient(ellipse at bottom right, #7c2d12, transparent 70%);
+  }
+
+  .card-fraction {
+    --accent: #a855f7;
+    --glow: rgba(168,85,247,0.4);
+  }
+  .card-fraction .card-bg {
+    background: radial-gradient(ellipse at top left, #4c1d95, transparent 70%),
+                radial-gradient(ellipse at bottom right, #1e1b4b, transparent 70%);
+  }
+
+  .card-bullet {
+    --accent: #00d4ff;
+    --glow: rgba(0,212,255,0.4);
+  }
+  .card-bullet .card-bg {
+    background: radial-gradient(ellipse at top left, #0c4a6e, transparent 70%),
+                radial-gradient(ellipse at bottom right, #083344, transparent 70%);
+  }
+
+  .card-math {
+    --accent: #22d3ee;
+    --glow: rgba(34,211,238,0.35);
+  }
+  .card-math .card-bg {
+    background: radial-gradient(ellipse at top left, #164e63, transparent 70%),
+                radial-gradient(ellipse at bottom right, #0f172a, transparent 70%);
+  }
+
+  /* 하단 */
+  footer {
+    text-align: center;
+    margin-top: 60px;
+    color: #3a4255;
+    font-size: 0.82rem;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+
+<canvas id="stars-canvas"></canvas>
+
+<div class="container">
+  <header>
+    <div class="logo">🎮 미니게임 허브</div>
+    <div class="subtitle">학습 + 재미를 한 곳에서</div>
+  </header>
+
+  <div class="games-grid">
+
+    <!-- 영어 게임 -->
+    <a class="game-card card-english" href="영어단어게임.html">
+      <div class="card-bg"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">⚔️</div>
+        <div class="card-content">
+          <div class="card-tag">영어 · 역사</div>
+          <div class="card-title">수양대군의 영어 정벌</div>
+          <div class="card-desc">영어 단어를 맞춰 적군을 물리치세요! 시간 내에 정확한 뜻을 골라 성을 지키는 타워디펜스 학습 게임.</div>
+          <div class="card-features">
+            <span class="feature-chip">🏆 10단계</span>
+            <span class="feature-chip">⏱ 제한시간</span>
+            <span class="feature-chip">💡 힌트</span>
+            <span class="feature-chip">🔥 콤보</span>
+          </div>
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>
+    </a>
+
+    <!-- 분수 게임 -->
+    <a class="game-card card-fraction" href="분수계단게임.html">
+      <div class="card-bg"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">🧙</div>
+        <div class="card-content">
+          <div class="card-tag">수학 · 분수</div>
+          <div class="card-title">분수 계단 탈출</div>
+          <div class="card-desc">마법사 아리아와 함께 어두운 지하 감옥을 탈출하세요! 분수 문제를 풀어 계단을 올라가는 판타지 어드벤처.</div>
+          <div class="card-features">
+            <span class="feature-chip">🗺 5스테이지</span>
+            <span class="feature-chip">❤️ 3목숨</span>
+            <span class="feature-chip">⭐ 별점</span>
+            <span class="feature-chip">🎯 난이도 3종</span>
+          </div>
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>
+    </a>
+
+    <!-- 총알피하기 -->
+    <a class="game-card card-bullet" href="총알피하기.html">
+      <div class="card-bg"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">🚀</div>
+        <div class="card-content">
+          <div class="card-tag">아케이드 · 퀴즈</div>
+          <div class="card-title">총알 피하기</div>
+          <div class="card-desc">쏟아지는 총알을 피하면서 퀴즈를 맞히세요! 틀리면 총알이 더 쏟아집니다. 과학, 역사, 수학, 상식 100문항.</div>
+          <div class="card-features">
+            <span class="feature-chip">💫 파워업</span>
+            <span class="feature-chip">📱 모바일 지원</span>
+            <span class="feature-chip">🌊 웨이브</span>
+            <span class="feature-chip">🏅 리더보드</span>
+          </div>
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>
+    </a>
+
+    <!-- 구구단 -->
+    <a class="game-card card-math" href="구구단게임.html">
+      <div class="card-bg"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">🤖</div>
+        <div class="card-content">
+          <div class="card-tag">수학 · 구구단</div>
+          <div class="card-title">트랜스포머 구구단 대작전</div>
+          <div class="card-desc">구구단을 맞힐수록 강력한 로봇이 소환됩니다! 30문제를 풀고 최종 보스와 대결하는 우주 배틀.</div>
+          <div class="card-features">
+            <span class="feature-chip">🤖 로봇 소환</span>
+            <span class="feature-chip">💥 최종 보스</span>
+            <span class="feature-chip">⭐ 5성 등급</span>
+            <span class="feature-chip">🎯 난이도 3종</span>
+          </div>
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>
+    </a>
+
+  </div>
+
+  <footer>© 2025 미니게임 허브 · twinwhdwk</footer>
+</div>
+
+<script>
+// 별 배경 애니메이션
+const canvas = document.getElementById('stars-canvas');
+const ctx = canvas.getContext('2d');
+let stars = [];
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 200; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.5 + 0.3,
+      alpha: Math.random() * 0.7 + 0.2,
+      speed: Math.random() * 0.15 + 0.03,
+      twinkle: Math.random() * Math.PI * 2
+    });
+  }
+}
+
+function drawStars(t) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  stars.forEach(s => {
+    s.twinkle += 0.02;
+    const a = s.alpha * (0.6 + 0.4 * Math.sin(s.twinkle));
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(200,220,255,${a})`;
+    ctx.fill();
+    s.y += s.speed;
+    if (s.y > canvas.height) {
+      s.y = 0;
+      s.x = Math.random() * canvas.width;
+    }
+  });
+  requestAnimationFrame(drawStars);
+}
+
+window.addEventListener('resize', () => { resize(); initStars(); });
+resize();
+initStars();
+requestAnimationFrame(drawStars);
+</script>
+</body>
+</html>

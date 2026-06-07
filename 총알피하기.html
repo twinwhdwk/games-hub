@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>총알 피하기</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { background:#000; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
+canvas { display:block; max-width:100vw; max-height:100vh; }
+
+/* 모바일 가상 조이스틱 */
+#vjoy-zone {
+  display:none; position:fixed; bottom:24px; left:24px;
+  width:110px; height:110px; z-index:200; touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+}
+#vjoy-base {
+  position:absolute; inset:0; border-radius:50%;
+  background:rgba(255,255,255,0.06); border:2px solid rgba(0,200,255,0.28);
+}
+#vjoy-stick {
+  position:absolute; width:44px; height:44px; border-radius:50%;
+  background:rgba(0,180,255,0.42); border:2px solid rgba(0,220,255,0.82);
+  top:33px; left:33px; pointer-events:none;
+  box-shadow:0 0 12px rgba(0,200,255,0.5);
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="vjoy-zone">
+  <div id="vjoy-base"></div>
+  <div id="vjoy-stick"></div>
+</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = canvas.width = 800;
+const H = canvas.height = 600;
+
+// === QUIZ DATA ===
+// Categories: 과학, 역사, 수학, 지리, 국어/사회
+const quizData = [
+  // === 과학 ===
+  {q:"지구는 태양 주위를 돈다",a:true,cat:"과학"},
+  {q:"달에는 공기가 없다",a:true,cat:"과학"},
+  {q:"빛의 속도는 소리보다 빠르다",a:true,cat:"과학"},
+  {q:"산소는 불을 끄는 역할을 한다",a:false,cat:"과학"},
+  {q:"식물은 광합성으로 이산화탄소를 흡수한다",a:true,cat:"과학"},
+  {q:"심장은 오른쪽 가슴에 있다",a:false,cat:"과학"},
+  {q:"물은 100도에서 끓는다",a:true,cat:"과학"},
+  {q:"번개가 친 후 천둥이 들린다",a:true,cat:"과학"},
+  {q:"태양계에서 가장 큰 행성은 목성이다",a:true,cat:"과학"},
+  {q:"개미는 자기 몸무게의 50배를 들 수 있다",a:true,cat:"과학"},
+  {q:"인체에서 가장 큰 기관은 피부이다",a:true,cat:"과학"},
+  {q:"소금물은 순수한 물보다 높은 온도에서 끓는다",a:true,cat:"과학"},
+  {q:"지구의 자전 주기는 약 24시간이다",a:true,cat:"과학"},
+  {q:"태양은 행성이다",a:false,cat:"과학"},
+  {q:"달은 스스로 빛을 낸다",a:false,cat:"과학"},
+  {q:"화성은 붉은색이다",a:true,cat:"과학"},
+  {q:"인간의 뼈는 모두 206개이다",a:true,cat:"과학"},
+  {q:"흰색 빛은 여러 색의 빛이 합쳐진 것이다",a:true,cat:"과학"},
+  {q:"전자기파는 진공에서도 전달된다",a:true,cat:"과학"},
+  {q:"대기압은 고도가 높아질수록 낮아진다",a:true,cat:"과학"},
+  {q:"산은 pH가 7보다 낮다",a:true,cat:"과학"},
+  {q:"수소는 가장 가벼운 원소다",a:true,cat:"과학"},
+  {q:"지구의 자전 방향은 서에서 동이다",a:true,cat:"과학"},
+  {q:"공기 중에서 가장 많은 기체는 질소다",a:true,cat:"과학"},
+  {q:"새는 온혈동물이다",a:true,cat:"과학"},
+  {q:"식물의 뿌리는 물과 양분을 흡수한다",a:true,cat:"과학"},
+  {q:"지구 내부의 핵은 매우 뜨겁다",a:true,cat:"과학"},
+  {q:"빙하가 녹으면 해수면이 올라간다",a:true,cat:"과학"},
+  {q:"소금은 나트륨과 염소로 이루어져 있다",a:true,cat:"과학"},
+  {q:"바이러스는 스스로 증식할 수 없다",a:true,cat:"과학"},
+  {q:"금성은 태양계에서 가장 뜨거운 행성이다",a:true,cat:"과학"},
+  {q:"토성에는 고리가 있다",a:true,cat:"과학"},
+  {q:"혜성은 태양 가까이 오면 꼬리가 생긴다",a:true,cat:"과학"},
+  {q:"블랙홀은 빛도 빠져나오지 못한다",a:true,cat:"과학"},
+  {q:"북극성은 항상 북쪽 하늘에 있다",a:true,cat:"과학"},
+  {q:"사막에는 비가 전혀 오지 않는다",a:false,cat:"과학"},
+  {q:"바닷물은 민물보다 무겁다",a:true,cat:"과학"},
+  {q:"다이아몬드는 탄소로 이루어져 있다",a:true,cat:"과학"},
+  {q:"광합성의 결과로 산소가 발생한다",a:true,cat:"과학"},
+  {q:"식물의 잎에 엽록소가 있다",a:true,cat:"과학"},
+  {q:"곰팡이는 식물이다",a:false,cat:"과학"},
+  {q:"혈액은 산소를 운반한다",a:true,cat:"과학"},
+  {q:"지구의 위성은 달 하나뿐이다",a:true,cat:"과학"},
+  {q:"태양계 행성 수는 8개다",a:true,cat:"과학"},
+  {q:"무지개는 7가지 색깔이다",a:true,cat:"과학"},
+  {q:"번개는 높은 곳에 잘 떨어진다",a:true,cat:"과학"},
+  {q:"물의 화학식은 H2O다",a:true,cat:"과학"},
+  {q:"금속은 전기를 잘 통한다",a:true,cat:"과학"},
+  {q:"자석은 같은 극끼리 밀어낸다",a:true,cat:"과학"},
+  {q:"광합성은 빛 에너지를 이용한다",a:true,cat:"과학"},
+  {q:"소리는 진공에서 전달되지 않는다",a:true,cat:"과학"},
+  {q:"빛은 물보다 공기 중에서 더 빠르다",a:true,cat:"과학"},
+  {q:"태양은 가스로 이루어져 있다",a:true,cat:"과학"},
+  {q:"지구온난화는 온실가스가 원인이다",a:true,cat:"과학"},
+  {q:"오존층은 자외선을 차단한다",a:true,cat:"과학"},
+  {q:"혈액형은 A, B, O, AB 외에도 더 있다",a:true,cat:"과학"},
+  {q:"산호초는 동물이다",a:true,cat:"과학"},
+  {q:"지렁이는 피부로 호흡한다",a:true,cat:"과학"},
+  {q:"고래는 포유류다",a:true,cat:"과학"},
+  {q:"문어는 다리가 8개다",a:true,cat:"과학"},
+  {q:"나비는 애벌레에서 변태한다",a:true,cat:"과학"},
+  {q:"개구리는 양서류다",a:true,cat:"과학"},
+  {q:"박쥐는 포유류다",a:true,cat:"과학"},
+  {q:"상어는 포유류다",a:false,cat:"과학"},
+  {q:"거미는 곤충이 아니다",a:true,cat:"과학"},
+  {q:"태양에서 지구까지 빛이 약 8분 걸린다",a:true,cat:"과학"},
+  {q:"진자의 주기는 진폭에 관계없이 일정하다",a:true,cat:"과학"},
+  {q:"펭귄은 날지 못한다",a:true,cat:"과학"},
+  {q:"눈 결정은 모두 모양이 다르다",a:true,cat:"과학"},
+
+  // === 역사 ===
+  {q:"세종대왕은 조선의 왕이다",a:true,cat:"역사"},
+  {q:"한글은 세종대왕이 만들었다",a:true,cat:"역사"},
+  {q:"거북선은 이순신 장군이 만들었다",a:true,cat:"역사"},
+  {q:"3·1 운동은 1919년에 일어났다",a:true,cat:"역사"},
+  {q:"고조선의 첫 왕은 단군이다",a:true,cat:"역사"},
+  {q:"임진왜란은 일본이 침략한 전쟁이다",a:true,cat:"역사"},
+  {q:"조선을 세운 사람은 이성계이다",a:true,cat:"역사"},
+  {q:"광복절은 8월 15일이다",a:true,cat:"역사"},
+  {q:"신라는 삼국 중 가장 먼저 멸망했다",a:false,cat:"역사"},
+  {q:"고려의 수도는 개성이다",a:true,cat:"역사"},
+  {q:"훈민정음은 28자로 만들어졌다",a:true,cat:"역사"},
+  {q:"조선의 마지막 왕은 순종이다",a:true,cat:"역사"},
+  {q:"6·25 전쟁은 1950년에 시작되었다",a:true,cat:"역사"},
+  {q:"장영실은 측우기를 발명했다",a:true,cat:"역사"},
+  {q:"백제의 수도는 한성(서울)이었다",a:true,cat:"역사"},
+  {q:"고구려는 한반도 북쪽에 있었다",a:true,cat:"역사"},
+  {q:"신사임당은 5만원권 지폐에 있다",a:true,cat:"역사"},
+  {q:"이순신 장군은 한산도 대첩에서 승리했다",a:true,cat:"역사"},
+  {q:"대한민국 초대 대통령은 이승만이다",a:true,cat:"역사"},
+  {q:"삼국시대에는 고구려, 백제, 신라가 있었다",a:true,cat:"역사"},
+  {q:"고려를 세운 사람은 왕건이다",a:true,cat:"역사"},
+  {q:"조선의 수도는 한양이었다",a:true,cat:"역사"},
+  {q:"이순신 장군의 시호는 충무공이다",a:true,cat:"역사"},
+  {q:"을지문덕은 살수대첩에서 승리했다",a:true,cat:"역사"},
+  {q:"원효대사는 신라 시대 승려다",a:true,cat:"역사"},
+  {q:"강화도 조약은 1876년에 체결됐다",a:true,cat:"역사"},
+  {q:"훈민정음을 반포한 왕은 세종대왕이다",a:true,cat:"역사"},
+  {q:"삼국유사를 쓴 사람은 일연이다",a:true,cat:"역사"},
+  {q:"조선 시대에 과거 시험이 있었다",a:true,cat:"역사"},
+  {q:"고려청자는 세계적으로 유명하다",a:true,cat:"역사"},
+  {q:"단오는 음력 5월 5일이다",a:true,cat:"역사"},
+  {q:"추석은 음력 8월 15일이다",a:true,cat:"역사"},
+  {q:"설날은 음력 1월 1일이다",a:true,cat:"역사"},
+  {q:"안중근 의사는 이토 히로부미를 저격했다",a:true,cat:"역사"},
+  {q:"동학 농민 운동은 19세기에 일어났다",a:true,cat:"역사"},
+  {q:"임진왜란 때 수군을 이끈 장군은 이순신이다",a:true,cat:"역사"},
+  {q:"대한민국은 1948년에 정부를 수립했다",a:true,cat:"역사"},
+  {q:"세종대왕은 훈민정음 외에도 많은 발명을 했다",a:true,cat:"역사"},
+  {q:"병자호란은 청나라가 침략한 전쟁이다",a:true,cat:"역사"},
+  {q:"신라는 삼국 통일을 이루었다",a:true,cat:"역사"},
+
+  // === 수학 ===
+  {q:"소수(Prime)는 1과 자기 자신으로만 나눠진다",a:true,cat:"수학"},
+  {q:"1은 소수가 아니다",a:true,cat:"수학"},
+  {q:"원주율 π는 약 3.14다",a:true,cat:"수학"},
+  {q:"정사각형의 네 각은 모두 90도다",a:true,cat:"수학"},
+  {q:"삼각형의 세 각의 합은 항상 180도다",a:true,cat:"수학"},
+  {q:"음수와 음수를 곱하면 양수가 된다",a:true,cat:"수학"},
+  {q:"분수 1/2과 2/4는 같은 값이다",a:true,cat:"수학"},
+  {q:"가장 작은 소수는 2다",a:true,cat:"수학"},
+  {q:"직육면체의 꼭짓점은 8개다",a:true,cat:"수학"},
+  {q:"원의 지름은 반지름의 2배다",a:true,cat:"수학"},
+  {q:"0은 짝수다",a:true,cat:"수학"},
+  {q:"정육면체의 면은 6개다",a:true,cat:"수학"},
+  {q:"사각형의 내각의 합은 360도다",a:true,cat:"수학"},
+  {q:"2의 10제곱은 1024다",a:true,cat:"수학"},
+  {q:"평행한 두 선은 만나지 않는다",a:true,cat:"수학"},
+  {q:"직각은 90도다",a:true,cat:"수학"},
+  {q:"정삼각형의 세 각은 모두 60도다",a:true,cat:"수학"},
+  {q:"이등변삼각형은 두 변의 길이가 같다",a:true,cat:"수학"},
+  {q:"마름모의 네 변의 길이는 모두 같다",a:true,cat:"수학"},
+  {q:"원의 넓이는 반지름×반지름×π다",a:true,cat:"수학"},
+  {q:"1시간은 3600초다",a:true,cat:"수학"},
+  {q:"1km는 1000m다",a:true,cat:"수학"},
+  {q:"넓이의 단위는 제곱미터(m²)다",a:true,cat:"수학"},
+  {q:"30의 약수 중 가장 큰 수는 30이다",a:true,cat:"수학"},
+  {q:"5의 배수는 항상 0 또는 5로 끝난다",a:true,cat:"수학"},
+  {q:"원기둥의 두 밑면은 서로 평행하다",a:true,cat:"수학"},
+  {q:"정오각형의 한 내각은 108도다",a:true,cat:"수학"},
+  {q:"두 수의 최대공약수는 두 수보다 클 수 없다",a:true,cat:"수학"},
+  {q:"분수에서 분모는 아래에 있다",a:true,cat:"수학"},
+  {q:"구구단에서 5×5=25다",a:true,cat:"수학"},
+  {q:"구구단에서 3×7=21다",a:true,cat:"수학"},
+  {q:"구구단에서 4×8=32다",a:true,cat:"수학"},
+  {q:"구구단에서 6×6=36다",a:true,cat:"수학"},
+  {q:"구구단에서 9×9=81다",a:true,cat:"수학"},
+  {q:"삼각형은 꼭짓점이 3개다",a:true,cat:"수학"},
+  {q:"원에는 꼭짓점이 없다",a:true,cat:"수학"},
+  {q:"100의 약수는 총 9개다",a:true,cat:"수학"},
+  {q:"시속 60km는 1분에 1km 이동한다",a:true,cat:"수학"},
+  {q:"소수점 0.5는 분수로 1/2이다",a:true,cat:"수학"},
+  {q:"정삼각형의 세 변의 길이는 모두 같다",a:true,cat:"수학"},
+
+  // === 지리 ===
+  {q:"한국의 수도는 서울이다",a:true,cat:"지리"},
+  {q:"일본은 섬나라다",a:true,cat:"지리"},
+  {q:"나일강은 세계에서 가장 긴 강이다",a:true,cat:"지리"},
+  {q:"에베레스트산은 아시아에 있다",a:true,cat:"지리"},
+  {q:"아마존강은 남아메리카에 있다",a:true,cat:"지리"},
+  {q:"오스트레일리아는 남반구에 있다",a:true,cat:"지리"},
+  {q:"사하라 사막은 아프리카에 있다",a:true,cat:"지리"},
+  {q:"캐나다는 미국 북쪽에 있다",a:true,cat:"지리"},
+  {q:"한반도는 삼면이 바다로 둘러싸여 있다",a:true,cat:"지리"},
+  {q:"태평양은 세계에서 가장 큰 바다다",a:true,cat:"지리"},
+  {q:"북극에는 북극곰이 살고 남극에는 펭귄이 산다",a:true,cat:"지리"},
+  {q:"제주도는 화산섬이다",a:true,cat:"지리"},
+  {q:"독도는 대한민국 영토이다",a:true,cat:"지리"},
+  {q:"러시아는 세계에서 가장 넓은 나라다",a:true,cat:"지리"},
+  {q:"지구의 약 70%는 물로 덮여있다",a:true,cat:"지리"},
+  {q:"피라미드는 이집트에 있다",a:true,cat:"지리"},
+  {q:"한국과 일본 사이에는 대한해협이 있다",a:true,cat:"지리"},
+  {q:"지중해는 유럽과 아프리카 사이에 있다",a:true,cat:"지리"},
+  {q:"북반구에서 여름은 6~8월이다",a:true,cat:"지리"},
+  {q:"한강은 서울을 가로지른다",a:true,cat:"지리"},
+  {q:"백두산은 북한과 중국 국경에 있다",a:true,cat:"지리"},
+  {q:"한라산은 제주도에 있다",a:true,cat:"지리"},
+  {q:"경복궁은 서울에 있다",a:true,cat:"지리"},
+  {q:"아프리카 대륙에는 적도가 지나간다",a:true,cat:"지리"},
+  {q:"세계에서 인구가 가장 많은 나라는 인도다",a:true,cat:"지리"},
+  {q:"알프스 산맥은 유럽에 있다",a:true,cat:"지리"},
+  {q:"지중해 기후는 여름에 건조하다",a:true,cat:"지리"},
+  {q:"남극 대륙은 세계에서 가장 추운 곳이다",a:true,cat:"지리"},
+  {q:"대서양은 아메리카와 유럽 사이에 있다",a:true,cat:"지리"},
+  {q:"히말라야 산맥은 아시아에 있다",a:true,cat:"지리"},
+
+  // === 국어·사회 ===
+  {q:"'아름답다'는 형용사다",a:true,cat:"국어"},
+  {q:"'빠르게'는 부사다",a:true,cat:"국어"},
+  {q:"감탄사는 감정을 나타내는 말이다",a:true,cat:"국어"},
+  {q:"의성어는 소리를 흉내 낸 말이다",a:true,cat:"국어"},
+  {q:"한글 자음은 14개다",a:true,cat:"국어"},
+  {q:"한글 모음은 10개다",a:true,cat:"국어"},
+  {q:"반의어란 뜻이 반대인 두 단어다",a:true,cat:"국어"},
+  {q:"민주주의에서는 국민이 주권을 가진다",a:true,cat:"국어"},
+  {q:"유엔(UN)은 세계 평화를 위한 국제기구다",a:true,cat:"국어"},
+  {q:"어린이날은 5월 5일이다",a:true,cat:"국어"},
+  {q:"대한민국의 국기는 태극기다",a:true,cat:"국어"},
+  {q:"올림픽은 4년마다 열린다",a:true,cat:"국어"},
+  {q:"월드컵 축구는 4년마다 열린다",a:true,cat:"국어"},
+  {q:"국회의원의 임기는 4년이다",a:true,cat:"국어"},
+  {q:"대통령 임기는 5년이다",a:true,cat:"국어"},
+  {q:"한국의 국화는 무궁화다",a:true,cat:"국어"},
+  {q:"태권도는 한국의 전통 무예다",a:true,cat:"국어"},
+  {q:"한국의 화폐는 '원'이다",a:true,cat:"국어"},
+  {q:"'빠르다'의 반의어는 '느리다'다",a:true,cat:"국어"},
+  {q:"받침이 없는 글자를 열린음절이라 한다",a:true,cat:"국어"},
+  {q:"한국의 국가는 '애국가'다",a:true,cat:"국어"},
+  {q:"한국어 문장은 보통 서술어로 끝난다",a:true,cat:"국어"},
+  {q:"'하늘'은 명사다",a:true,cat:"국어"},
+  {q:"의태어는 모양을 흉내 낸 말이다",a:true,cat:"국어"},
+  {q:"동화에서 주인공은 항상 착한 사람이다",a:false,cat:"국어"},
+  {q:"일기는 하루 있었던 일을 적는 글이다",a:true,cat:"국어"},
+  {q:"편지에는 받는 사람의 이름을 쓴다",a:true,cat:"국어"},
+  {q:"'크다'의 반의어는 '작다'다",a:true,cat:"국어"},
+  {q:"도서관에서는 조용히 해야 한다",a:true,cat:"국어"},
+  {q:"환경오염은 생태계를 파괴한다",a:true,cat:"국어"},
+];
+
+// === AUDIO ===
+const AC = new (window.AudioContext || window.webkitAudioContext)();
+const masterGain = AC.createGain();
+masterGain.gain.value = 0.7;
+masterGain.connect(AC.destination);
+function resumeAC() { if (AC.state === 'suspended') AC.resume(); }
+document.addEventListener('keydown', resumeAC);
+document.addEventListener('click', resumeAC);
+
+// Reverb
+let reverbNode = null;
+(function buildReverb() {
+  const len = AC.sampleRate * 1.5;
+  const buf = AC.createBuffer(2, len, AC.sampleRate);
+  for (let c = 0; c < 2; c++) {
+    const d = buf.getChannelData(c);
+    for (let i = 0; i < len; i++) d[i] = (Math.random()*2-1) * Math.pow(1 - i/len, 2);
+  }
+  reverbNode = AC.createConvolver();
+  reverbNode.buffer = buf;
+  const rv = AC.createGain(); rv.gain.value = 0.25;
+  reverbNode.connect(rv); rv.connect(masterGain);
+})();
+
+function playTone(freq, type, dur, vol=0.3, startFreq=null, reverb=false) {
+  const o = AC.createOscillator();
+  const g = AC.createGain();
+  o.connect(g);
+  g.connect(masterGain);
+  if (reverb && reverbNode) g.connect(reverbNode);
+  o.type = type;
+  if (startFreq) { o.frequency.setValueAtTime(startFreq, AC.currentTime); o.frequency.exponentialRampToValueAtTime(freq, AC.currentTime + dur*0.4); }
+  else o.frequency.setValueAtTime(freq, AC.currentTime);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  o.start(); o.stop(AC.currentTime + dur + 0.05);
+}
+function playNoise(dur, vol=0.15, filterFreq=2000) {
+  const buf = AC.createBuffer(1, AC.sampleRate * dur, AC.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random()*2-1;
+  const src = AC.createBufferSource();
+  const flt = AC.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = filterFreq;
+  const g = AC.createGain();
+  src.buffer = buf; src.connect(flt); flt.connect(g); g.connect(masterGain);
+  g.gain.setValueAtTime(vol, AC.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.001, AC.currentTime + dur);
+  src.start();
+}
+
+const snd = {
+  shoot() {
+    playTone(200, 'sawtooth', 0.07, 0.06, 500);
+    playTone(150, 'square', 0.05, 0.03, 300);
+  },
+  hit() {
+    playNoise(0.25, 0.35, 800);
+    playTone(100, 'square', 0.2, 0.25);
+    playTone(80, 'sawtooth', 0.3, 0.15);
+  },
+  correct() {
+    [523,659,784,1047].forEach((f,i) => setTimeout(()=>playTone(f,'sine',0.2,0.25,null,true), i*80));
+  },
+  wrong() {
+    playTone(220,'sawtooth',0.2,0.3);
+    setTimeout(()=>playTone(150,'sawtooth',0.25,0.3), 120);
+    setTimeout(()=>playNoise(0.3,0.2,600), 80);
+  },
+  countdown(n) { playTone(n===1?1047:523,'sine',0.15,0.3,null,true); },
+  penalty() {
+    for (let i=0;i<8;i++) setTimeout(()=>{
+      playTone(400+Math.random()*200,'sawtooth',0.08,0.12,800);
+    }, i*50);
+  },
+  gameOver() {
+    [392,330,262,196].forEach((f,i) => setTimeout(()=>playTone(f,'sawtooth',0.4,0.2,null,true), i*200));
+  },
+  newRecord() {
+    [523,659,784,880,1047,1319].forEach((f,i) => setTimeout(()=>playTone(f,'sine',0.3,0.25,null,true), i*100));
+  },
+  bomb() {
+    playNoise(0.35, 0.4, 1800);
+    [300,200,130].forEach((f,i) => setTimeout(()=>playTone(f,'sawtooth',0.3,0.28), i*90));
+    setTimeout(()=>playTone(523,'sine',0.4,0.22,null,true), 220);
+  },
+  shield() {
+    [440,550,660,880].forEach((f,i) => setTimeout(()=>playTone(f,'sine',0.18,0.22,null,true), i*60));
+  },
+  lifeUp() {
+    [523,659,784,1047].forEach((f,i) => setTimeout(()=>playTone(f,'sine',0.22,0.28,null,true), i*70));
+  },
+  diffUp() {
+    playTone(880,'square',0.1,0.15,440);
+    setTimeout(()=>playTone(1100,'square',0.12,0.12), 120);
+  },
+};
+
+// BGM
+let bgmNodes = [];
+function startBGM() {
+  stopBGM();
+  const chords = [[130.8,164.8,196],[138.6,174.6,207.7],[116.5,146.8,174.6],[123.5,155.6,185]];
+  let ci = 0;
+  // Bass drone
+  const bass = AC.createOscillator(); const bg = AC.createGain();
+  bass.type = 'sine'; bass.frequency.value = 65.4;
+  bg.gain.value = 0.08; bass.connect(bg); bg.connect(masterGain);
+  bass.start(); bgmNodes.push(bass, bg);
+  // Pad chords
+  function playChord() {
+    const chord = chords[ci++ % chords.length];
+    chord.forEach(f => {
+      const o = AC.createOscillator(); const g = AC.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0, AC.currentTime);
+      g.gain.linearRampToValueAtTime(0.04, AC.currentTime+1.5);
+      g.gain.linearRampToValueAtTime(0.04, AC.currentTime+3);
+      g.gain.linearRampToValueAtTime(0, AC.currentTime+4.5);
+      o.connect(g); g.connect(reverbNode || masterGain);
+      o.start(); o.stop(AC.currentTime+5);
+      bgmNodes.push(o, g);
+    });
+  }
+  playChord();
+  const iv = setInterval(playChord, 4000);
+  bgmNodes.push({ stop: ()=>clearInterval(iv) });
+}
+function stopBGM() {
+  bgmNodes.forEach(n => { try { if(n.stop) n.stop(); } catch(e){} });
+  bgmNodes = [];
+}
+
+// === KEYBOARD STATE ===
+const keys = {};
+document.addEventListener('keydown', e => { keys[e.key] = true; });
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+const SHIP_SPEED = 220;
+
+// === DIFFICULTY SELECTION ===
+let selectedDifficulty = 'normal';
+let diffButtons = [];
+
+function drawDiffButtons(cx, cy) {
+  diffButtons = [];
+  const labels = ['🌱 쉬움', '⚔️ 보통', '🔥 어려움'];
+  const diffs = ['easy', 'normal', 'hard'];
+  const bw = 90, bh = 34, gap = 14;
+  const totalW = labels.length * bw + (labels.length-1) * gap;
+  let bx = cx - totalW/2;
+  labels.forEach((label, i) => {
+    const selected = selectedDifficulty === diffs[i];
+    ctx.save();
+    ctx.fillStyle = selected ? 'rgba(255,180,0,0.25)' : 'rgba(255,255,255,0.08)';
+    ctx.strokeStyle = selected ? '#ffcc00' : '#444488';
+    ctx.lineWidth = selected ? 2 : 1;
+    ctx.shadowBlur = selected ? 15 : 0;
+    ctx.shadowColor = '#ffcc00';
+    ctx.beginPath(); ctx.roundRect(bx, cy, bw, bh, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = selected ? '#ffdd00' : '#88aacc';
+    ctx.font = `${selected ? 'bold ' : ''}13px "맑은 고딕", sans-serif`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 0;
+    ctx.fillText(label, bx + bw/2, cy + bh/2);
+    ctx.restore();
+    diffButtons.push({ x: bx, y: cy, w: bw, h: bh, diff: diffs[i] });
+    bx += bw + gap;
+  });
+}
+
+function applyDifficulty() {
+  if (selectedDifficulty === 'easy') { bulletSpeed = 50; bulletSpawnRate = 0.02; }
+  else if (selectedDifficulty === 'hard') { bulletSpeed = 95; bulletSpawnRate = 0.05; }
+  else { bulletSpeed = 70; bulletSpawnRate = 0.03; }
+}
+
+// === GAME STATE ===
+let state = 'start';
+let ship = { x: W/2, y: H/2, vx:0, vy:0 };
+let bullets = [];
+let particles = [];
+let stars = [];
+let nebulaParticles = [];
+let time = 0;
+let bestTime = parseFloat(localStorage.getItem('bulletBest') || '0');
+function getDiffBest(d){return parseFloat(localStorage.getItem('bulletBest_'+d)||'0');}
+function setDiffBest(d,t){if(t>getDiffBest(d))localStorage.setItem('bulletBest_'+d,String(t));}
+let lives = 3;
+let quizQuestion = null;
+let quizCountdown = 10;
+let quizAnswered = false;
+let totalQuizAnswered = 0;  // 총 답변한 퀴즈 수
+let totalQuizCorrect = 0;   // 총 정답 수
+let lastQuizTime = 0;
+let lastTime = 0;
+let penaltyPending = false;
+let resultCorrect = false;
+let resultTimer = 0;
+let countdownTimer = 0;
+let hitFlash = 0;
+let screenShake = 0;
+let thrusterParts = [];
+let titleAnim = 0;
+let isNewRecord = false;
+let invincible = 0;
+let paused = false;
+let streak = 0;
+let streakMsg = '';
+let streakAlpha = 0;
+let lifeAnimTimer = 0;   // for life-loss heart animation
+let lifeAnimLost = -1;   // which heart was just lost
+let doubleScore = false;
+let doubleScoreTimer = 0;
+
+// === DIFFICULTY CURVE ===
+let gameTimeSec = 0;          // integer seconds elapsed
+let bulletSpeed = 70;         // px/s base speed (increases over time)
+let bulletSpawnRate = 0.03;   // per-frame spawn probability
+let difficultyLevel = 1;      // 1-10
+let diffAnnounce = 0;         // countdown for difficulty-up banner
+let diffAnnounceMsg = '';
+
+function updateDifficultyEverySecond() {
+  gameTimeSec++;
+  // Every 30 seconds increase difficulty
+  if (gameTimeSec > 0 && gameTimeSec % 30 === 0) {
+    const newLevel = Math.min(10, difficultyLevel + 1);
+    if (newLevel > difficultyLevel) {
+      difficultyLevel = newLevel;
+      const baseSpeed = selectedDifficulty === 'easy' ? 50 : (selectedDifficulty === 'hard' ? 95 : 70);
+      const baseRate  = selectedDifficulty === 'easy' ? 0.02 : (selectedDifficulty === 'hard' ? 0.05 : 0.03);
+      bulletSpeed = Math.min(160, baseSpeed + (difficultyLevel - 1) * 10);
+      bulletSpawnRate = Math.min(0.12, baseRate + (difficultyLevel - 1) * 0.01);
+      diffAnnounce = 2.5;
+      diffAnnounceMsg = `★ 난이도 ${difficultyLevel}단계! 속도 UP!`;
+      snd.diffUp();
+    }
+  }
+}
+
+// Bullet pattern types: 'straight', 'sine', 'spiral'
+let spiralAngle = 0;
+let sinePhase = 0;
+
+// === MILESTONE SYSTEM ===
+const MILESTONES = [
+  { time: 30, msg: '30초 생존!', color: '#00ffaa' },
+  { time: 60, msg: '1분 생존! 대단해요!', color: '#ffdd00' },
+  { time: 120, msg: '2분 돌파! 영웅!', color: '#ff8800' },
+  { time: 180, msg: '3분 생존! 전설!', color: '#ff00ff' },
+  { time: 300, msg: '5분! 무적 비행사!', color: '#ffffff' },
+];
+const reachedMilestones = new Set();
+let milestoneText = '';
+let milestoneColor = '#fff';
+let milestoneAlpha = 0;
+
+function showMilestone(msg, color) {
+  milestoneText = msg;
+  milestoneColor = color;
+  milestoneAlpha = 3.0;
+}
+let muted = false;
+let leaderboard = JSON.parse(localStorage.getItem('bulletLeaderboard') || '[]');
+
+// === RECENT GAME HISTORY ===
+let bulletHistory = JSON.parse(localStorage.getItem('bulletHistory') || '[]');
+
+// === NEW RECORD BADGE ===
+let prevBest = 0;         // 게임 시작 전 저장된 최고기록
+let newRecordDiff = 0;    // 신기록과 이전 기록의 차이 (초)
+let newRecordBadgeTimer = 0; // 신기록 배지 표시 타이머 (3초)
+let newRecordStars = [];  // 신기록 배지 별 파티클
+
+// === QUIZ HUD FLASH ===
+let quizHudFlashTimer = 0;  // 퀴즈 정답/오답 HUD flash 타이머
+let quizHudFlashCorrect = true; // 정답이면 true, 오답이면 false
+let powerups = [];
+let lastPowerupTime = -20;
+let lastWave = 1;
+let waveAnnounce = 0;
+
+// Track last second for per-second updates
+let lastSecondTimestamp = 0;
+
+// Parallax star layers
+function initStars() {
+  stars = [];
+  for (let i = 0; i < 60; i++)  stars.push({x:Math.random()*W, y:Math.random()*H, r:0.4, spd:8,  b:Math.random()});
+  for (let i = 0; i < 60; i++)  stars.push({x:Math.random()*W, y:Math.random()*H, r:0.8, spd:20, b:Math.random()});
+  for (let i = 0; i < 40; i++)  stars.push({x:Math.random()*W, y:Math.random()*H, r:1.4, spd:40, b:Math.random()});
+}
+initStars();
+
+// Nebula background blobs (static)
+for (let i = 0; i < 6; i++) {
+  nebulaParticles.push({
+    x: Math.random()*W, y: Math.random()*H,
+    r: 80 + Math.random()*120,
+    color: ['#0a002a','#001a0a','#1a000a','#00101a'][i%4],
+  });
+}
+
+// === DRAW HELPERS ===
+function drawBG() {
+  ctx.fillStyle = '#000008';
+  ctx.fillRect(0, 0, W, H);
+  nebulaParticles.forEach(n => {
+    const grd = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+    grd.addColorStop(0, n.color); grd.addColorStop(1, 'transparent');
+    ctx.fillStyle = grd; ctx.fillRect(0,0,W,H);
+  });
+}
+
+function drawStars(dt) {
+  const now = Date.now()/1000;
+  stars.forEach(s => {
+    s.y += s.spd * dt;
+    if (s.y > H+2) { s.y = -2; s.x = Math.random()*W; }
+    const twinkle = 0.5 + 0.5 * Math.sin(now * 3 + s.b * 10);
+    ctx.fillStyle = `rgba(255,255,255,${0.3 + s.b * 0.5 * twinkle})`;
+    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI*2); ctx.fill();
+  });
+}
+
+function drawShip(x, y) {
+  ctx.save();
+  ctx.translate(x, y);
+  if (hitFlash > 0) ctx.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(hitFlash * 0.8));
+
+  // Shield effect when invincible
+  if (invincible > 0) {
+    const shieldPulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.01);
+    ctx.save();
+    ctx.globalAlpha = 0.35 + 0.25 * shieldPulse;
+    const shieldGrd = ctx.createRadialGradient(0, 0, 10, 0, 0, 28 + shieldPulse * 6);
+    shieldGrd.addColorStop(0, 'rgba(0,220,255,0.0)');
+    shieldGrd.addColorStop(0.7, 'rgba(0,200,255,0.5)');
+    shieldGrd.addColorStop(1, 'rgba(0,255,255,0.9)');
+    ctx.fillStyle = shieldGrd;
+    ctx.beginPath(); ctx.arc(0, 0, 28 + shieldPulse * 6, 0, Math.PI*2); ctx.fill();
+    ctx.strokeStyle = `rgba(0,255,255,${0.6 + 0.4*shieldPulse})`;
+    ctx.lineWidth = 2;
+    ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 15;
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Glow
+  ctx.save();
+  ctx.shadowColor = '#00ccff'; ctx.shadowBlur = 18;
+  ctx.fillStyle = '#88ccff';
+  ctx.beginPath(); ctx.moveTo(0,-22); ctx.lineTo(14,11); ctx.lineTo(0,6); ctx.lineTo(-14,11); ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+
+  // Cockpit glow
+  ctx.save(); ctx.shadowColor = '#00ffff'; ctx.shadowBlur = 10;
+  ctx.fillStyle = '#00eeff';
+  ctx.beginPath(); ctx.ellipse(0,-6,5,9,0,0,Math.PI*2); ctx.fill();
+  ctx.restore();
+
+  // Wing engines
+  [[-14,11],[ 14,11]].forEach(([ex,ey]) => {
+    ctx.save(); ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ff8833';
+    ctx.beginPath();
+    ctx.moveTo(ex, ey); ctx.lineTo(ex + Math.sign(ex)*6, ey+4); ctx.lineTo(ex - Math.sign(ex)*2, ey+4);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  });
+  ctx.restore();
+}
+
+function emitThruster(x, y, vx, vy, moving) {
+  const count = moving ? 3 : 1;
+  for (let i = 0; i < count; i++) {
+    const angle = Math.PI/2 + (Math.random()-0.5)*0.5;
+    const spd = moving ? (2+Math.random()*3) : (0.5+Math.random());
+    thrusterParts.push({
+      x: x + (Math.random()-0.5)*8,
+      y: y + 14,
+      vx: Math.cos(angle)*spd + vx*0.1,
+      vy: Math.sin(angle)*spd + vy*0.1,
+      life: 12 + Math.floor(Math.random()*10),
+      maxLife: 22,
+      r: moving ? (1.5+Math.random()*2) : 0.8,
+      hue: 30 + Math.random()*30,
+    });
+  }
+}
+
+function drawThruster() {
+  thrusterParts = thrusterParts.filter(p => p.life > 0);
+  thrusterParts.forEach(p => {
+    const a = p.life / p.maxLife;
+    ctx.save();
+    ctx.globalAlpha = a * 0.9;
+    ctx.fillStyle = `hsl(${p.hue},100%,${40+a*40}%)`;
+    ctx.shadowColor = `hsl(${p.hue},100%,60%)`;
+    ctx.shadowBlur = 4;
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    p.x += p.vx; p.y += p.vy; p.vy += 0.15; p.life--;
+  });
+}
+
+function drawBullet(b) {
+  // Sine-wave bullets have a slightly different color
+  const isSine = b.pattern === 'sine';
+  const isSpiral = b.pattern === 'spiral';
+  let baseColor = b.penalty ? '#ff2222' : (isSine ? '#ff88ff' : (isSpiral ? '#88ffff' : '#ffe040'));
+  let glowColor = b.penalty ? '#ff0000' : (isSine ? '#ff00ff' : (isSpiral ? '#00ffff' : '#ffcc00'));
+
+  // Trail
+  if (b.trail && b.trail.length > 1) {
+    for (let i = 1; i < b.trail.length; i++) {
+      const a = i / b.trail.length * 0.5;
+      ctx.strokeStyle = b.penalty ? `rgba(255,50,50,${a})` : `rgba(255,220,0,${a})`;
+      ctx.lineWidth = b.penalty ? 3 : 2;
+      ctx.beginPath();
+      ctx.moveTo(b.trail[i-1].x, b.trail[i-1].y);
+      ctx.lineTo(b.trail[i].x, b.trail[i].y);
+      ctx.stroke();
+    }
+  }
+  // Bullet glow ring
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = glowColor;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, b.penalty ? 9 : 7, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // Bullet core
+  ctx.save();
+  ctx.fillStyle = baseColor;
+  ctx.shadowColor = glowColor;
+  ctx.shadowBlur = b.penalty ? 14 : 10;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, b.penalty ? 5.5 : 4, 0, Math.PI*2);
+  ctx.fill();
+  // Inner bright dot
+  ctx.fillStyle = '#ffffff';
+  ctx.shadowBlur = 0;
+  ctx.beginPath();
+  ctx.arc(b.x, b.y, b.penalty ? 2.2 : 1.5, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawHUD() {
+  const now = Date.now()/1000;
+  // Semi-transparent top bar
+  ctx.fillStyle = 'rgba(0,0,20,0.5)';
+  ctx.fillRect(0, 0, W, 50);
+
+  // Timer
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 26px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(`${time.toFixed(1)}s`, W/2, 34);
+
+  // Lives (pulsing hearts with animation on loss)
+  ctx.font = '22px monospace';
+  ctx.textAlign = 'left';
+  for (let i = 0; i < 3; i++) {
+    const alive = i < lives;
+    const isLost = (i === lifeAnimLost && lifeAnimTimer > 0);
+    const lostScale = isLost ? (1 + Math.sin(lifeAnimTimer * 20) * 0.4 * lifeAnimTimer) : 1;
+    const pulse = alive ? (1 + 0.1 * Math.sin(now*4 + i)) : 1;
+    ctx.save();
+    ctx.translate(14 + i*28, 26);
+    ctx.scale(pulse * lostScale, pulse * lostScale);
+    ctx.fillStyle = alive ? '#ff4466' : (isLost ? '#ff8800' : '#333');
+    ctx.shadowColor = alive ? '#ff0044' : (isLost ? '#ff8800' : 'transparent');
+    ctx.shadowBlur = alive ? 8 : (isLost ? 12 : 0);
+    ctx.globalAlpha = isLost ? (0.5 + 0.5 * Math.abs(Math.sin(lifeAnimTimer * 15))) : 1;
+    ctx.fillText('♥', 0, 0);
+    ctx.restore();
+  }
+
+  // Best
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#ffcc00';
+  ctx.font = '14px monospace';
+  ctx.fillText(`최고: ${bestTime.toFixed(1)}s`, W-10, 32);
+
+  // Difficulty level indicator
+  ctx.textAlign = 'left';
+  ctx.fillStyle = difficultyLevel >= 7 ? '#ff4400' : (difficultyLevel >= 4 ? '#ffaa00' : '#88ff88');
+  ctx.font = 'bold 13px monospace';
+  ctx.fillText(`LV.${difficultyLevel}`, 100, 34);
+
+  // Quiz countdown bar (bottom)
+  const ratio = Math.max(0, (15 - (time - lastQuizTime)) / 15);
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.fillRect(0, H-8, W, 8);
+  const grd = ctx.createLinearGradient(0, 0, W*ratio, 0);
+  grd.addColorStop(0, '#00ff88'); grd.addColorStop(1, ratio < 0.3 ? '#ff2200' : '#ffee00');
+  ctx.fillStyle = grd;
+  ctx.fillRect(0, H-8, W*ratio, 8);
+  // Glow on bar tip
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillRect(W*ratio - 2, H-8, 3, 8);
+
+  // Wave indicator
+  const wave = 1 + Math.floor(time/15);
+  ctx.fillStyle = 'rgba(150,180,255,0.7)';
+  ctx.font = '13px monospace';
+  ctx.textAlign = 'left';
+  ctx.fillText(`WAVE ${wave}`, 10, H-14);
+
+  // Streak display
+  if (streak >= 2) {
+    ctx.fillStyle = '#ffaa00';
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 13px monospace';
+    ctx.fillText(`${streak}연속`, W-10, H-14);
+  }
+
+  // Double score indicator
+  if (doubleScore) {
+    ctx.fillStyle = '#ff44ff';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(`2배! ${doubleScoreTimer.toFixed(1)}s`, 100, H-28);
+  }
+
+  // Mute indicator
+  ctx.textAlign = 'right';
+  ctx.font = '16px monospace';
+  ctx.fillStyle = muted ? '#ff6666' : '#88ccff';
+  ctx.fillText(muted ? '[음소거]' : '[소리]', W-10, H-28);
+
+  // Quiz accuracy HUD
+  if (totalQuizAnswered > 0) {
+    const pct = Math.round(totalQuizCorrect / totalQuizAnswered * 100);
+    let hudColor = '#aaddff';
+    if (quizHudFlashTimer > 0) {
+      // flash: 정답=녹색, 오답=빨간색
+      const flashIntensity = Math.min(1, quizHudFlashTimer / 0.4);
+      hudColor = quizHudFlashCorrect
+        ? `rgba(0,${Math.floor(180 + 75 * flashIntensity)},${Math.floor(100 * flashIntensity)},1)`
+        : `rgba(${Math.floor(200 + 55 * flashIntensity)},${Math.floor(50 * (1 - flashIntensity))},${Math.floor(50 * (1 - flashIntensity))},1)`;
+    }
+    ctx.save();
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 13px "맑은 고딕", monospace';
+    ctx.fillStyle = hudColor;
+    if (quizHudFlashTimer > 0) {
+      ctx.shadowColor = quizHudFlashCorrect ? '#00ff88' : '#ff3333';
+      ctx.shadowBlur = 10 * Math.min(1, quizHudFlashTimer / 0.3);
+    }
+    ctx.fillText(`📝 퀴즈: ${totalQuizCorrect}/${totalQuizAnswered} (${pct}%)`, 10, H - 44);
+    ctx.restore();
+  }
+
+  // Quiz incoming warning
+  if (ratio < 0.2) {
+    ctx.save();
+    ctx.globalAlpha = 0.4 + 0.4*Math.sin(now*8);
+    ctx.fillStyle = '#ff4444';
+    ctx.font = 'bold 14px "맑은 고딕", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('문제 출제 임박!', W/2, H-14);
+    ctx.restore();
+  }
+}
+
+function drawParticles() {
+  particles = particles.filter(p => p.life > 0);
+  particles.forEach(p => {
+    ctx.save();
+    const a = p.life / p.maxLife;
+    ctx.globalAlpha = a;
+    ctx.fillStyle = p.color;
+    if (p.glow) { ctx.shadowColor = p.color; ctx.shadowBlur = 6; }
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r * a, 0, Math.PI*2); ctx.fill();
+    ctx.restore();
+    p.x += p.vx; p.y += p.vy; p.vy += 0.05; p.life--;
+  });
+}
+
+function spawnExplosion(x, y, color, count=22) {
+  for (let i = 0; i < count; i++) {
+    const a = (Math.PI*2/count)*i + (Math.random()-0.5)*0.3;
+    const spd = Math.random()*4+1;
+    particles.push({ x, y, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd, r:Math.random()*3+1, life:35+Math.floor(Math.random()*15), maxLife:50, color, glow:true });
+  }
+  // Sparkle ring
+  for (let i = 0; i < 8; i++) {
+    const a = Math.random()*Math.PI*2;
+    particles.push({ x, y, vx:Math.cos(a)*(6+Math.random()*4), vy:Math.sin(a)*(6+Math.random()*4), r:1.5, life:20, maxLife:20, color:'#ffffff', glow:true });
+  }
+}
+
+function updateLeaderboard(t) {
+  leaderboard.push(parseFloat(t.toFixed(1)));
+  leaderboard.sort((a,b)=>b-a);
+  leaderboard = leaderboard.slice(0,5);
+  localStorage.setItem('bulletLeaderboard', JSON.stringify(leaderboard));
+}
+
+function drawLeaderboard(cx, cy) {
+  if (leaderboard.length === 0) return;
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,30,0.7)';
+  ctx.strokeStyle = '#3344aa';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(cx-110, cy-10, 220, 20+leaderboard.length*22+10, 8); ctx.fill(); ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.font = 'bold 13px monospace';
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillText('TOP 5', cx, cy+8);
+  const medals = ['1위','2위','3위','4위','5위'];
+  leaderboard.forEach((t,i) => {
+    ctx.font = i===0 ? 'bold 13px monospace' : '12px monospace';
+    ctx.fillStyle = i===0 ? '#ffee44' : '#aabbff';
+    ctx.fillText(`${medals[i]} ${t.toFixed(1)}초`, cx, cy+28+i*22);
+  });
+  ctx.restore();
+}
+
+function spawnConfetti(cx, cy) {
+  const colors = ['#ff0','#f80','#0f8','#08f','#f0f','#fff'];
+  for (let i = 0; i < 60; i++) {
+    const a = Math.random()*Math.PI*2, spd = Math.random()*6+2;
+    particles.push({ x:cx+(Math.random()-0.5)*40, y:cy+(Math.random()-0.5)*40, vx:Math.cos(a)*spd, vy:Math.sin(a)*spd-3, r:3+Math.random()*3, life:60+Math.floor(Math.random()*30), maxLife:90, color:colors[Math.floor(Math.random()*colors.length)], glow:false });
+  }
+}
+
+// === POWERUP SYSTEM ===
+function spawnPowerup() {
+  const type = Math.random() < 0.28 ? 'bomb' : Math.random() < 0.4 ? 'double' : 'shield';
+  powerups.push({ x:80+Math.random()*(W-160), y:80+Math.random()*(H-160), type, timer:9, pulse:0 });
+}
+
+function drawPowerups(dt) {
+  powerups = powerups.filter(p => p.timer > 0);
+  powerups.forEach(p => {
+    p.timer -= dt;
+    p.pulse += dt * 4;
+    const a = Math.min(1, p.timer * 0.6);
+    const isBomb = p.type === 'bomb';
+    const isDouble = p.type === 'double';
+    const col = isBomb ? '#ffee00' : (isDouble ? '#ff44ff' : '#00ffff');
+    const bgCol = isBomb ? 'rgba(255,220,0,0.2)' : (isDouble ? 'rgba(255,50,255,0.2)' : 'rgba(0,200,255,0.25)');
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.strokeStyle = col; ctx.lineWidth = 2;
+    ctx.shadowColor = col;
+    ctx.shadowBlur = 10 + 5*Math.sin(p.pulse);
+    ctx.beginPath(); ctx.arc(p.x, p.y, 14+3*Math.sin(p.pulse), 0, Math.PI*2); ctx.stroke();
+    ctx.fillStyle = bgCol;
+    ctx.beginPath(); ctx.arc(p.x, p.y, 12, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle = col;
+    ctx.font = 'bold 13px monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowBlur = 8;
+    ctx.fillText(isBomb ? '폭탄' : (isDouble ? '2배!' : '방패'), p.x, p.y);
+    ctx.restore();
+  });
+}
+
+function checkPowerupCollect() {
+  for (let i = powerups.length-1; i >= 0; i--) {
+    const p = powerups[i];
+    const dx = p.x-ship.x, dy = p.y-ship.y;
+    if (dx*dx+dy*dy < 22*22) {
+      powerups.splice(i, 1);
+      if (p.type === 'bomb') {
+        const cnt = bullets.length;
+        bullets.forEach(b => spawnExplosion(b.x, b.y, b.penalty?'#ff4444':'#ffaa00', 6));
+        bullets = [];
+        snd.bomb();
+        spawnExplosion(ship.x, ship.y, '#ffee00', 28);
+        screenShake = 16;
+        streakMsg = `폭탄! ${cnt}개 제거!`; streakAlpha = 2.5;
+      } else if (p.type === 'double') {
+        doubleScore = true;
+        doubleScoreTimer = 8;
+        snd.lifeUp();
+        spawnExplosion(ship.x, ship.y, '#ff44ff', 16);
+        streakMsg = '2배 점수! 8초간!'; streakAlpha = 2.2;
+      } else {
+        invincible = 3;
+        snd.shield();
+        spawnExplosion(ship.x, ship.y, '#00ffff', 16);
+        streakMsg = '방패 획득! 3초 무적!'; streakAlpha = 2.2;
+      }
+    }
+  }
+}
+
+// === BULLET SYSTEM ===
+function spawnBullet(penalty, pattern) {
+  const pat = pattern || 'straight';
+  const side = Math.floor(Math.random()*4);
+  let x, y;
+  const tx = W/2 + (Math.random()-0.5)*220;
+  const ty = H/2 + (Math.random()-0.5)*220;
+  if (side===0){ x=Math.random()*W; y=-8; }
+  else if(side===1){ x=W+8; y=Math.random()*H; }
+  else if(side===2){ x=Math.random()*W; y=H+8; }
+  else{ x=-8; y=Math.random()*H; }
+  const dx=tx-x, dy=ty-y, dist=Math.sqrt(dx*dx+dy*dy)||1;
+  const spd = bulletSpeed * (penalty ? 1.2 : 1);
+  const b = {
+    x, y,
+    vx: dx/dist*spd,
+    vy: dy/dist*spd,
+    baseVx: dx/dist*spd,
+    baseVy: dy/dist*spd,
+    penalty: !!penalty,
+    pattern: pat,
+    trail: [],
+    age: 0,  // seconds alive, for sine/spiral motion
+  };
+  bullets.push(b);
+}
+
+function spawnSineBullet() {
+  // Fires from top, goes straight down with side-to-side wave
+  const x = Math.random() * W;
+  const speed = bulletSpeed;
+  bullets.push({
+    x, y: -8,
+    vx: 0, vy: speed,
+    baseVx: 0, baseVy: speed,
+    penalty: false,
+    pattern: 'sine',
+    trail: [],
+    age: 0,
+    sineAmp: 60 + Math.random() * 80,
+    sineFreq: 1.5 + Math.random(),
+    sinePhaseOffset: Math.random() * Math.PI * 2,
+  });
+}
+
+function spawnSpiralBurst() {
+  // Burst of bullets in a spiral/spread pattern from center edges
+  const count = 6 + difficultyLevel;
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 / count) * i + spiralAngle;
+    const spawnDist = 350;
+    const cx = W/2, cy = H/2;
+    const x = cx + Math.cos(angle) * spawnDist;
+    const y = cy + Math.sin(angle) * spawnDist;
+    const dx = cx - x, dy = cy - y;
+    const dist = Math.sqrt(dx*dx+dy*dy) || 1;
+    const spd = bulletSpeed * 0.85;
+    bullets.push({
+      x, y,
+      vx: dx/dist*spd, vy: dy/dist*spd,
+      baseVx: dx/dist*spd, baseVy: dy/dist*spd,
+      penalty: false,
+      pattern: 'spiral',
+      trail: [],
+      age: 0,
+    });
+  }
+  spiralAngle += 0.4;
+}
+
+function spawnPenalty() {
+  for (let i=0; i<50; i++) spawnBullet(true, 'straight');
+}
+
+// === QUIZ ===
+let usedQuizIndices = new Set();
+function pickQuiz() {
+  // Avoid repeating until all questions used
+  if (usedQuizIndices.size >= quizData.length) usedQuizIndices.clear();
+  let idx;
+  do { idx = Math.floor(Math.random() * quizData.length); } while (usedQuizIndices.has(idx));
+  usedQuizIndices.add(idx);
+  quizQuestion = quizData[idx];
+  quizCountdown = 10;
+  quizAnswered = false;
+}
+
+function drawQuizOverlay() {
+  // Dim background
+  ctx.fillStyle = 'rgba(0,0,30,0.88)';
+  ctx.fillRect(0,0,W,H);
+
+  // Panel
+  ctx.save();
+  ctx.fillStyle = 'rgba(10,10,50,0.95)';
+  ctx.strokeStyle = '#3366ff';
+  ctx.lineWidth = 2;
+  ctx.shadowColor = '#3366ff'; ctx.shadowBlur = 20;
+  ctx.beginPath(); ctx.roundRect(W/2-230, H/2-150, 460, 300, 18); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // Category badge (with pulsing glow)
+  const cat = quizQuestion.cat || '상식';
+  const catColors = { '과학':'#00ffaa', '역사':'#ffaa00', '수학':'#88aaff', '지리':'#ff88ff', '국어':'#ffff88' };
+  const catColor = catColors[cat] || '#88ffff';
+  const catPulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.005);
+  ctx.save();
+  ctx.fillStyle = catColor + '44';
+  ctx.strokeStyle = catColor;
+  ctx.lineWidth = 2;
+  ctx.shadowColor = catColor;
+  ctx.shadowBlur = 8 + 12 * catPulse;
+  ctx.beginPath(); ctx.roundRect(W/2-44, H/2-145, 88, 26, 10); ctx.fill(); ctx.stroke();
+  ctx.textAlign = 'center';
+  ctx.fillStyle = catColor;
+  ctx.shadowBlur = 6 + 8 * catPulse;
+  ctx.font = 'bold 14px "맑은 고딕", sans-serif';
+  ctx.fillText(cat, W/2, H/2-128);
+  ctx.restore();
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#ffee00';
+  ctx.font = 'bold 18px "맑은 고딕", sans-serif';
+  ctx.shadowColor = '#ffee00'; ctx.shadowBlur = 10;
+  ctx.fillText('O / X 문제', W/2, H/2-108);
+  ctx.shadowBlur = 0;
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = '17px "맑은 고딕", sans-serif';
+  const chars = quizQuestion.q.split('');
+  let line='', lines=[];
+  chars.forEach(ch => { line+=ch; if(line.length>=22){lines.push(line);line='';} });
+  if(line) lines.push(line);
+  lines.forEach((l,i) => ctx.fillText(l, W/2, H/2-68+i*26));
+
+  // O button
+  const ox = W/2-120, ow=100, oh=52, oy=H/2-10;
+  ctx.save(); ctx.shadowColor='#00ff88'; ctx.shadowBlur=15;
+  ctx.fillStyle='#007744';
+  ctx.beginPath(); ctx.roundRect(ox,oy,ow,oh,12); ctx.fill();
+  ctx.strokeStyle='#00ff88'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='bold 28px monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('O', ox+ow/2, oy+oh/2);
+  ctx.font='11px monospace'; ctx.fillStyle='#88ffaa';
+  ctx.fillText('[키 1]', ox+ow/2, oy+oh-8);
+  ctx.restore();
+
+  // X button
+  const xx = W/2+20, xw=100, xh=52, xy=H/2-10;
+  ctx.save(); ctx.shadowColor='#ff4444'; ctx.shadowBlur=15;
+  ctx.fillStyle='#770022';
+  ctx.beginPath(); ctx.roundRect(xx,xy,xw,xh,12); ctx.fill();
+  ctx.strokeStyle='#ff4444'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#fff'; ctx.font='bold 28px monospace';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('X', xx+xw/2, xy+xh/2);
+  ctx.font='11px monospace'; ctx.fillStyle='#ffaaaa';
+  ctx.fillText('[키 2]', xx+xw/2, xy+xh-8);
+  ctx.restore();
+  ctx.textBaseline = 'alphabetic';
+
+  // Timer bar
+  const ratio = quizCountdown/10;
+  ctx.fillStyle='rgba(255,255,255,0.1)';
+  ctx.beginPath(); ctx.roundRect(W/2-150, H/2+80, 300,10,5); ctx.fill();
+  const bGrd = ctx.createLinearGradient(W/2-150,0,W/2+150,0);
+  bGrd.addColorStop(0, ratio>0.4?'#00ffaa':'#ff4444');
+  bGrd.addColorStop(1, ratio>0.4?'#00ffaa':'#ff0000');
+  ctx.fillStyle=bGrd;
+  ctx.beginPath(); ctx.roundRect(W/2-150, H/2+80, 300*ratio,10,5); ctx.fill();
+  ctx.fillStyle='#fff'; ctx.font='13px monospace';
+  ctx.textAlign='center';
+  ctx.fillText(`${quizCountdown.toFixed(1)}초`, W/2, H/2+110);
+}
+
+function answerQuiz(ans) {
+  if (quizAnswered) return;
+  totalQuizAnswered++;
+  quizAnswered = true;
+  resultCorrect = (ans === quizQuestion.a);
+  if (!resultCorrect) penaltyPending = true;
+  // 퀴즈 HUD flash 효과
+  quizHudFlashTimer = 1.2;
+  quizHudFlashCorrect = resultCorrect;
+  if (resultCorrect) {
+    streak++;
+    totalQuizCorrect++;
+    snd.correct();
+    // Double score: add bonus time for correct answers
+    if (doubleScore) {
+      time += 3; // +3 seconds bonus when double score is active
+      spawnExplosion(W/2, H/2-40, '#ff44ff', 12);
+    }
+    if (streak === 10) {
+      spawnExplosion(W/2, H*0.4, '#ffff00', 35);
+      streakMsg = `${streak}연속!! 번개 실력!`; streakAlpha = 3;
+      screenShake = 10;
+    } else if (streak === 15) {
+      spawnExplosion(W/2, H/3, '#ffffff', 40);
+      spawnExplosion(W/4, H/2, '#ffaa00', 25);
+      spawnExplosion(3*W/4, H/2, '#ffaa00', 25);
+      streakMsg = `${streak}연속!!! 무적 비행사!!`; streakAlpha = 4;
+      screenShake = 20;
+    } else if (streak % 5 === 0) {
+      lives = Math.min(3, lives + 1);
+      snd.lifeUp();
+      streakMsg = `${streak}연속! 목숨 회복!`; streakAlpha = 3;
+    } else if (streak >= 3) {
+      streakMsg = `${streak}연속 정답!`; streakAlpha = 2.5;
+    }
+    // Feature 3: streak >= 5 visual effect
+    if (streak >= 5 && streakAlpha <= 0) {
+      streakMsg = `🔥 ${streak}연속 정답!`;
+      streakAlpha = 2.5;
+    }
+  } else {
+    streak = 0;
+    snd.wrong();
+  }
+  resultTimer = 1.8;
+  state = 'result';
+}
+
+function drawResultOverlay() {
+  const fade = Math.min(1, resultTimer / 0.5);
+  // Screen flash (red for wrong, green for correct)
+  ctx.save();
+  ctx.globalAlpha = fade * 0.5;
+  ctx.fillStyle = resultCorrect ? '#003322' : '#330000';
+  ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  // Big text with scale pop
+  const pop = 1 + Math.max(0, (resultTimer-1.3)) * 1.2;
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, fade*2);
+  ctx.translate(W/2, H/2);
+  ctx.scale(pop, pop);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor = resultCorrect ? '#00ff88' : '#ff3333';
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = resultCorrect ? '#00ff88' : '#ff3333';
+  ctx.font = 'bold 96px "맑은 고딕", sans-serif';
+  ctx.fillText(resultCorrect ? '정답!' : '오답!', 0, 0);
+  if (!resultCorrect) {
+    ctx.font = 'bold 20px "맑은 고딕", sans-serif';
+    ctx.fillStyle = '#ffaaaa'; ctx.shadowBlur=8;
+    ctx.fillText('총알 50개 발사!', 0, 62);
+    ctx.font = '15px "맑은 고딕", sans-serif';
+    ctx.fillStyle = '#ffffaa'; ctx.shadowBlur=4;
+    const correctAns = quizQuestion ? (quizQuestion.a ? '정답: O (맞음)' : '정답: X (틀림)') : '';
+    ctx.fillText(correctAns, 0, 90);
+  }
+  ctx.restore();
+}
+
+function drawCountdownOverlay() {
+  const num = Math.ceil(countdownTimer);
+  if (num<=0) return;
+  const age = 1-(countdownTimer%1);
+  const scale = 1.6-age*0.6;
+  const a = Math.min(1, (1-age)*2.5);
+
+  ctx.save();
+  ctx.globalAlpha=0.4;
+  ctx.fillStyle='#000010';
+  ctx.fillRect(0,0,W,H);
+  ctx.restore();
+
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  ctx.scale(scale, scale);
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.shadowColor='#ffee00'; ctx.shadowBlur=40;
+  ctx.fillStyle=`rgba(255,238,0,${a})`;
+  ctx.font='bold 150px monospace';
+  ctx.fillText(num, 0, 0);
+  ctx.restore();
+
+  ctx.fillStyle='rgba(170,210,255,0.8)';
+  ctx.font='bold 18px "맑은 고딕", sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('준비하세요!', W/2, H/2+100);
+}
+
+// === SCREENS ===
+function drawStart(dt) {
+  titleAnim += dt;
+  const now = titleAnim;
+
+  // Animated title glow
+  const glow = 8 + 6*Math.sin(now*2);
+  ctx.save();
+  ctx.shadowColor='#00eeff'; ctx.shadowBlur=glow*2;
+  ctx.fillStyle='#00eeff';
+  ctx.font='bold 48px "맑은 고딕", monospace';
+  ctx.textAlign='center';
+  ctx.fillText('총알 피하기', W/2, 145);
+  ctx.restore();
+
+  // Subtitle / instructions panel
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,10,40,0.7)';
+  ctx.strokeStyle = '#334488';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(W/2-280, 160, 560, 195, 12); ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  ctx.fillStyle='rgba(150,200,255,0.9)';
+  ctx.font='15px "맑은 고딕", sans-serif';
+  ctx.textAlign='center';
+  const lines=[
+    '방향키 (화살표) 또는 WASD로 비행기를 조종하세요!',
+    '15초마다 O/X 상식 문제가 출제됩니다.',
+    '틀리면 총알 50개가 한꺼번에 날아옵니다!',
+    '목숨 3개  —  총알에 맞으면 목숨을 잃습니다.',
+    '방패: 3초 무적 | 폭탄: 총알 전부 제거 (30초마다 등장)',
+    '5연속 정답 시 목숨 1개 회복  |  ESC/P: 정지  |  M: 음소거',
+  ];
+  lines.forEach((l,i) => ctx.fillText(l, W/2, 184+i*28));
+
+  // Category badges
+  const cats = [
+    {name:'과학', col:'#00ffaa'}, {name:'역사', col:'#ffaa00'},
+    {name:'수학', col:'#88aaff'}, {name:'지리', col:'#ff88ff'}, {name:'국어', col:'#ffff88'}
+  ];
+  ctx.font = 'bold 12px "맑은 고딕", sans-serif';
+  ctx.textBaseline = 'middle';
+  let bx = W/2 - (cats.length * 70) / 2;
+  cats.forEach(c => {
+    ctx.save();
+    ctx.fillStyle = c.col + '33';
+    ctx.strokeStyle = c.col;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.roundRect(bx, 364, 65, 22, 8); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = c.col;
+    ctx.textAlign = 'center';
+    ctx.fillText(c.name, bx+32, 375);
+    ctx.restore();
+    bx += 72;
+  });
+  ctx.textBaseline = 'alphabetic';
+
+  // Difficulty selection label
+  ctx.fillStyle = 'rgba(180,200,255,0.85)';
+  ctx.font = 'bold 13px "맑은 고딕", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('난이도 선택', W/2, 400);
+  drawDiffButtons(W/2, 408);
+
+  // Best time
+  ctx.fillStyle='#ffcc00';
+  ctx.font='bold 16px monospace';
+  ctx.textAlign='center';
+  const diffLabel = selectedDifficulty==='easy'?'쉬움':selectedDifficulty==='hard'?'어려움':'보통';
+  const diffBest = getDiffBest(selectedDifficulty);
+  ctx.fillText(`최고 기록 [${diffLabel}]: ${diffBest>0?diffBest.toFixed(1)+'초':'없음'}`, W/2, 460);
+
+  // Leaderboard
+  drawLeaderboard(W/2, 480);
+
+  // Pulsing start button
+  const pulse = 1+0.05*Math.sin(now*4);
+  ctx.save();
+  ctx.translate(W/2, 570); ctx.scale(pulse, pulse);
+  ctx.shadowColor='#ffee00'; ctx.shadowBlur=20;
+  ctx.fillStyle='rgba(80,60,0,0.85)';
+  ctx.beginPath(); ctx.roundRect(-160,-24,320,48,14); ctx.fill();
+  ctx.strokeStyle='#ffee00'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle='#ffee00'; ctx.shadowBlur=0;
+  ctx.font='bold 20px "맑은 고딕", sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('클릭 또는 아무 키나 눌러 시작', 0, 0);
+  ctx.restore();
+}
+
+function getAceRank(t) {
+  if(t >= 300) return {rank:'🏆 전설의 에이스', color:'#ffd700'};
+  if(t >= 180) return {rank:'🌟 우주 영웅', color:'#ff8800'};
+  if(t >= 120) return {rank:'⚡ 베테랑 조종사', color:'#00ffaa'};
+  if(t >= 60)  return {rank:'🚀 숙련 비행사', color:'#88aaff'};
+  if(t >= 30)  return {rank:'✈️ 신참 조종사', color:'#aaaaff'};
+  return {rank:'🌱 훈련생', color:'#888888'};
+}
+
+function drawDead() {
+  const now = Date.now()/1000;
+  ctx.fillStyle='rgba(0,0,0,0.8)';
+  ctx.fillRect(0,0,W,H);
+
+  ctx.save();
+  ctx.shadowColor='#ff4444'; ctx.shadowBlur=30;
+  ctx.fillStyle='#ff4444';
+  ctx.font='bold 48px "맑은 고딕", monospace';
+  ctx.textAlign='center';
+  ctx.fillText('GAME OVER', W/2, H/2-90);
+  ctx.restore();
+
+  // Rank title
+  const aceRankData = getAceRank(time);
+  ctx.save();
+  ctx.shadowColor = aceRankData.color; ctx.shadowBlur = 20;
+  ctx.fillStyle = aceRankData.color;
+  ctx.font = 'bold 28px "맑은 고딕", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(aceRankData.rank, W/2, H/2 - 68);
+  ctx.restore();
+
+  ctx.font='bold 26px monospace';
+  ctx.fillStyle='#ffffff';
+  ctx.textAlign='center';
+  ctx.fillText(`생존 시간: ${time.toFixed(1)}초`, W/2, H/2-30);
+  ctx.font='16px monospace';
+  ctx.fillStyle='#aaaaaa';
+  ctx.fillText(`최종 난이도: ${difficultyLevel}단계`, W/2, H/2);
+
+  if (isNewRecord) {
+    const glow = 8+6*Math.sin(now*4);
+    ctx.save();
+    ctx.shadowColor='#ffcc00'; ctx.shadowBlur=glow*3;
+    ctx.fillStyle='#ffcc00';
+    ctx.font='bold 28px "맑은 고딕", monospace';
+    ctx.fillText('NEW RECORD!', W/2, H/2+28);
+    ctx.restore();
+  } else {
+    ctx.fillStyle='#ffcc00'; ctx.font='20px monospace';
+    ctx.fillText(`최고 기록: ${bestTime.toFixed(1)}초`, W/2, H/2+28);
+  }
+
+  // Quiz stats
+  if (totalQuizAnswered > 0) {
+    ctx.fillStyle = '#88aaff';
+    ctx.font = '14px "맑은 고딕", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(`퀴즈: ${totalQuizCorrect}/${totalQuizAnswered} 정답 (${Math.round(totalQuizCorrect/totalQuizAnswered*100)}%)`, W/2, H/2 + 48);
+  }
+
+  // Leaderboard on dead screen
+  drawLeaderboard(W/2, H/2+72);
+
+  // 최근 5게임 기록 바 차트
+  if (bulletHistory.length > 0) {
+    const chartX = W/2 - 160;
+    const chartY = H/2 + 185;
+    const chartW = 320;
+    const chartH = 60;
+    const barMaxH = 44;
+    const barCount = bulletHistory.length;
+    const barW = Math.min(44, (chartW - 10) / barCount - 8);
+    const gap = (chartW - barW * barCount) / (barCount + 1);
+
+    // Background panel
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,30,0.75)';
+    ctx.strokeStyle = '#334477';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(chartX - 8, chartY - 22, chartW + 16, chartH + 42, 8); ctx.fill(); ctx.stroke();
+
+    // Title
+    ctx.textAlign = 'center';
+    ctx.font = 'bold 12px "맑은 고딕", monospace';
+    ctx.fillStyle = '#aaddff';
+    ctx.fillText('📊 최근 게임 기록', W/2, chartY - 8);
+
+    // Find max time for relative height scaling
+    const maxT = Math.max(...bulletHistory.map(h => h.time), 1);
+
+    bulletHistory.forEach((h, i) => {
+      const bx = chartX + gap + i * (barW + gap);
+      const bh = Math.max(6, (h.time / maxT) * barMaxH);
+      const by = chartY + barMaxH - bh;
+      const isCurrentGame = (i === bulletHistory.length - 1);
+      const diffIcon = h.diff === 'easy' ? '🌱' : (h.diff === 'hard' ? '🔥' : '⚔️');
+
+      // Bar
+      ctx.save();
+      if (isCurrentGame) {
+        ctx.fillStyle = '#ffe040';
+        ctx.shadowColor = '#ffcc00'; ctx.shadowBlur = 10;
+      } else {
+        ctx.fillStyle = 'rgba(80,130,200,0.55)';
+        ctx.shadowBlur = 0;
+      }
+      ctx.beginPath(); ctx.roundRect(bx, by, barW, bh, 3); ctx.fill();
+      ctx.restore();
+
+      // Time label above bar
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = `bold ${isCurrentGame ? 11 : 10}px monospace`;
+      ctx.fillStyle = isCurrentGame ? '#ffe040' : '#8899bb';
+      ctx.fillText(h.time.toFixed(0) + 's', bx + barW/2, by - 3);
+      ctx.restore();
+
+      // Difficulty icon below chart
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.font = '11px "맑은 고딕", sans-serif';
+      ctx.fillStyle = isCurrentGame ? '#ffe040' : '#667799';
+      ctx.fillText(diffIcon, bx + barW/2, chartY + barMaxH + 14);
+      ctx.restore();
+    });
+    ctx.restore();
+  }
+
+  const pulse = 1+0.04*Math.sin(now*4);
+  ctx.save();
+  ctx.translate(W/2, H/2 + (bulletHistory.length > 0 ? 272 : 198)); ctx.scale(pulse,pulse);
+  ctx.fillStyle='rgba(0,80,0,0.7)';
+  ctx.beginPath(); ctx.roundRect(-130,-18,260,38,10); ctx.fill();
+  ctx.strokeStyle='#88ff88'; ctx.lineWidth=1.5; ctx.stroke();
+  ctx.fillStyle='#88ff88'; ctx.font='16px "맑은 고딕", sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('클릭 또는 아무 키나 눌러 재시작', 0, 0);
+  ctx.restore();
+}
+
+// === EDGE WARNINGS ===
+function drawEdgeWarnings() {
+  const margin = 28;
+  bullets.forEach(b => {
+    const dx = W/2 - b.x, dy = H/2 - b.y;
+    const dot = b.vx*dx + b.vy*dy;
+    if (dot <= 0) return;
+    let ex, ey, angle;
+    if (b.x < 0)      { ex=margin;   ey=Math.max(margin,Math.min(H-margin,b.y)); angle=0; }
+    else if(b.x > W)  { ex=W-margin; ey=Math.max(margin,Math.min(H-margin,b.y)); angle=Math.PI; }
+    else if(b.y < 0)  { ex=Math.max(margin,Math.min(W-margin,b.x)); ey=margin;   angle=Math.PI/2; }
+    else if(b.y > H)  { ex=Math.max(margin,Math.min(W-margin,b.x)); ey=H-margin; angle=-Math.PI/2; }
+    else return;
+    ctx.save();
+    ctx.translate(ex, ey);
+    ctx.rotate(angle);
+    ctx.fillStyle = b.penalty ? 'rgba(255,50,50,0.85)' : 'rgba(255,220,0,0.7)';
+    ctx.shadowColor = b.penalty ? '#ff0000' : '#ffcc00';
+    ctx.shadowBlur = 6;
+    ctx.beginPath(); ctx.moveTo(8,0); ctx.lineTo(-5,-5); ctx.lineTo(-5,5); ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+// === COLLISION ===
+function checkHit() {
+  if (invincible > 0) return;
+  for (let i=bullets.length-1; i>=0; i--) {
+    const b=bullets[i], dx=b.x-ship.x, dy=b.y-ship.y;
+    if (dx*dx+dy*dy < 10*10) {
+      spawnExplosion(b.x, b.y, b.penalty?'#ff4444':'#ffaa00');
+      bullets.splice(i,1);
+      snd.hit();
+      const prevLives = lives;
+      lives--;
+      hitFlash=25;
+      screenShake=14;
+      invincible=1.5;
+      // Trigger heart loss animation
+      lifeAnimLost = prevLives - 1;
+      lifeAnimTimer = 1.0;
+      // Red screen flash
+      hitFlash = 30;
+      if (lives<=0) {
+        isNewRecord = time > bestTime;
+        if (isNewRecord) { bestTime=time; localStorage.setItem('bulletBest',bestTime); }
+        // 신기록 배지: 이전 기록과의 차이 계산
+        if (isNewRecord) {
+          newRecordDiff = time - prevBest;
+          newRecordBadgeTimer = 3.0;
+          newRecordStars = [];
+          for (let si = 0; si < 18; si++) {
+            const angle = Math.random() * Math.PI * 2;
+            const dist = 60 + Math.random() * 120;
+            newRecordStars.push({
+              x: W/2 + Math.cos(angle) * dist,
+              y: H/2 - 60 + Math.sin(angle) * dist,
+              vx: Math.cos(angle) * (1.5 + Math.random() * 2),
+              vy: Math.sin(angle) * (1.5 + Math.random() * 2) - 1,
+              size: 3 + Math.random() * 5,
+              alpha: 1,
+              color: ['#ffd700','#fff176','#ffe082','#ffffff'][Math.floor(Math.random()*4)],
+            });
+          }
+        }
+        setDiffBest(selectedDifficulty, time);
+        updateLeaderboard(time);
+        // 최근 5게임 히스토리 저장
+        bulletHistory.push({ time: parseFloat(time.toFixed(1)), diff: selectedDifficulty, ts: Date.now() });
+        if (bulletHistory.length > 5) bulletHistory = bulletHistory.slice(-5);
+        localStorage.setItem('bulletHistory', JSON.stringify(bulletHistory));
+        state='dead';
+        stopBGM();
+        snd.gameOver();
+        if (isNewRecord) { spawnConfetti(W/2, H/2); snd.newRecord(); }
+        spawnExplosion(ship.x, ship.y, '#ff8800', 40);
+      }
+      return;
+    }
+  }
+}
+
+// === MAIN LOOP ===
+let lastStaticDt = 0;
+function loop(ts) {
+  requestAnimationFrame(loop);
+  const dt = Math.min((ts-lastTime)/1000, 0.05);
+  lastTime = ts;
+  lastStaticDt = dt;
+
+  // Screen shake transform
+  let sx=0, sy=0;
+  if (screenShake>0) { sx=(Math.random()-0.5)*screenShake; sy=(Math.random()-0.5)*screenShake; screenShake*=0.75; if(screenShake<0.5)screenShake=0; }
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  drawBG();
+  drawStars(dt);
+
+  // Wave colour tint (increases with wave number)
+  if (state==='play'||state==='quiz'||state==='result'||state==='countdown') {
+    const wv = 1+Math.floor(time/15);
+    if (wv >= 4) {
+      ctx.save();
+      ctx.globalAlpha = Math.min(0.12, (wv-3)*0.025);
+      ctx.fillStyle = wv >= 7 ? '#ff1100' : '#ff6600';
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+  }
+
+  if (state==='start') { drawStart(dt); ctx.restore(); return; }
+  if (state==='dead')  {
+    drawDead();
+    drawParticles();
+    // 신기록 배지 타이머 감소 및 별 파티클 업데이트/그리기
+    if (newRecordBadgeTimer > 0) {
+      newRecordBadgeTimer = Math.max(0, newRecordBadgeTimer - dt);
+      const badgeAlpha = Math.min(1, newRecordBadgeTimer / 0.5);
+      // 별 파티클 업데이트
+      newRecordStars.forEach(s => {
+        s.x += s.vx; s.y += s.vy;
+        s.alpha = Math.min(1, newRecordBadgeTimer / 1.0);
+        ctx.save();
+        ctx.globalAlpha = s.alpha * badgeAlpha;
+        ctx.fillStyle = s.color;
+        ctx.shadowColor = s.color; ctx.shadowBlur = 8;
+        ctx.font = `bold ${s.size * 2}px monospace`;
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText('★', s.x, s.y);
+        ctx.restore();
+      });
+      // 신기록 배지 텍스트 (금색 그라디언트)
+      const badgeY = H/2 - 130;
+      ctx.save();
+      ctx.globalAlpha = badgeAlpha;
+      const grd = ctx.createLinearGradient(W/2 - 140, badgeY - 20, W/2 + 140, badgeY + 10);
+      grd.addColorStop(0, '#ffd700');
+      grd.addColorStop(0.4, '#fff176');
+      grd.addColorStop(0.7, '#ffb300');
+      grd.addColorStop(1, '#ffd700');
+      ctx.fillStyle = grd;
+      ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 25;
+      ctx.font = 'bold 30px "맑은 고딕", monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      const diffStr = newRecordDiff >= 0 ? '+' + newRecordDiff.toFixed(1) : newRecordDiff.toFixed(1);
+      ctx.fillText(`${diffStr}초 신기록!`, W/2, badgeY);
+      ctx.restore();
+    }
+    ctx.restore();
+    return;
+  }
+  if (paused) {
+    drawThruster(); drawParticles(); drawShip(ship.x, ship.y); drawHUD();
+    drawPauseScreen(); ctx.restore(); return;
+  }
+
+  // Ship keyboard + joystick movement
+  if (state==='play'||state==='countdown') {
+    let dx=0, dy=0;
+    if(keys['ArrowLeft']||keys['a']||keys['A']) dx-=1;
+    if(keys['ArrowRight']||keys['d']||keys['D']) dx+=1;
+    if(keys['ArrowUp']||keys['w']||keys['W'])   dy-=1;
+    if(keys['ArrowDown']||keys['s']||keys['S'])  dy+=1;
+    if (vjoyActive) { dx += vjoyDx; dy += vjoyDy; }
+    const moving = dx!==0||dy!==0;
+    if(dx!==0&&dy!==0){dx*=0.707;dy*=0.707;}
+    ship.vx=dx*SHIP_SPEED; ship.vy=dy*SHIP_SPEED;
+    ship.x=Math.max(20,Math.min(W-20,ship.x+dx*SHIP_SPEED*dt));
+    ship.y=Math.max(20,Math.min(H-20,ship.y+dy*SHIP_SPEED*dt));
+    emitThruster(ship.x, ship.y, ship.vx, ship.vy, moving);
+  }
+
+  if (state==='play') {
+    time+=dt;
+    if (invincible>0) invincible-=dt;
+    if (lifeAnimTimer>0) lifeAnimTimer-=dt;
+    if (doubleScore) {
+      doubleScoreTimer -= dt;
+      if (doubleScoreTimer <= 0) { doubleScore = false; doubleScoreTimer = 0; }
+    }
+
+    // Per-second difficulty update
+    if (ts - lastSecondTimestamp >= 1000) {
+      lastSecondTimestamp = ts;
+      updateDifficultyEverySecond();
+    }
+
+    // Streak message fade
+    if (streakAlpha>0) streakAlpha-=dt*1.2;
+    if (diffAnnounce>0) diffAnnounce-=dt;
+
+    // Bullet spawning with patterns based on difficulty
+    const batchSize = 1+Math.floor(time/15);
+    if (Math.random() < bulletSpawnRate*60*dt) {
+      // Choose pattern based on difficulty
+      const rand = Math.random();
+      if (difficultyLevel >= 5 && rand < 0.25) {
+        // Sine wave bullets
+        for (let i = 0; i < Math.ceil(batchSize/2); i++) spawnSineBullet();
+      } else if (difficultyLevel >= 3 && rand < 0.15) {
+        // Spiral burst (once every few spawns)
+        spawnSpiralBurst();
+      } else {
+        for (let i = 0; i < batchSize; i++) spawnBullet(false, 'straight');
+      }
+      if (Math.random()<0.4) snd.shoot();
+    }
+
+    if (time-lastQuizTime>=15) { vjoyReset(); state='quiz'; pickQuiz(); }
+    if (time-lastPowerupTime>=30 && powerups.length===0) { spawnPowerup(); lastPowerupTime=time; }
+    const curWave = 1+Math.floor(time/15);
+    if (curWave > lastWave) { lastWave=curWave; waveAnnounce=1.6; }
+    if (waveAnnounce>0) waveAnnounce-=dt;
+    // Milestone check
+    MILESTONES.forEach(m => {
+      if (time >= m.time && !reachedMilestones.has(m.time)) {
+        reachedMilestones.add(m.time);
+        showMilestone(m.msg, m.color);
+        snd.newRecord();
+      }
+    });
+    if (milestoneAlpha>0) milestoneAlpha-=dt;
+  }
+
+  if (state==='quiz') {
+    quizCountdown-=dt;
+    if (quizCountdown<=0&&!quizAnswered) {
+      quizAnswered=true; resultCorrect=false; penaltyPending=true;
+      totalQuizAnswered++;
+      quizHudFlashTimer = 1.2; quizHudFlashCorrect = false;
+      snd.wrong(); resultTimer=1.8; state='result';
+    }
+  }
+
+  if (state==='result') {
+    resultTimer-=dt;
+    if (resultTimer<=0) {
+      if(penaltyPending){spawnPenalty();snd.penalty();penaltyPending=false;}
+      countdownTimer=3; lastQuizTime=time; state='countdown';
+    }
+  }
+
+  if (state==='countdown') {
+    const prev=Math.ceil(countdownTimer);
+    countdownTimer-=dt;
+    const cur=Math.ceil(countdownTimer);
+    if(cur<prev&&cur>0) snd.countdown(cur);
+    if(countdownTimer<=0){state='play';snd.countdown(1);}
+  }
+
+  // Update + draw bullets (with pattern motion)
+  const moveBullets = state==='play'||state==='countdown';
+  for (let i=bullets.length-1;i>=0;i--) {
+    const b=bullets[i];
+    if (moveBullets) {
+      if(!b.trail) b.trail=[];
+      b.trail.push({x:b.x,y:b.y});
+      if(b.trail.length>8) b.trail.shift();
+
+      // Pattern-specific motion updates
+      if (b.pattern === 'sine') {
+        b.age += dt;
+        const perp = b.sineAmp * Math.sin(b.sineFreq * b.age * Math.PI * 2 + (b.sinePhaseOffset||0));
+        // perpendicular to main direction (main dir is down, perp is left/right)
+        b.x += (b.baseVx + perp) * dt;
+        b.y += b.baseVy * dt;
+      } else if (b.pattern === 'spiral') {
+        b.age += dt;
+        // slight orbit drift
+        const drift = Math.sin(b.age * 3) * 20 * dt;
+        const perp = { x: -b.baseVy, y: b.baseVx };
+        const plen = Math.sqrt(perp.x*perp.x + perp.y*perp.y) || 1;
+        b.x += b.vx * dt + (perp.x/plen) * drift;
+        b.y += b.vy * dt + (perp.y/plen) * drift;
+      } else {
+        b.x+=b.vx*dt; b.y+=b.vy*dt;
+      }
+    }
+    if(b.x<-60||b.x>W+60||b.y<-60||b.y>H+60){bullets.splice(i,1);continue;}
+    drawBullet(b);
+  }
+
+  if(state==='play') { checkHit(); checkPowerupCollect(); }
+
+  drawPowerups(state==='play' ? dt : 0);
+  drawEdgeWarnings();
+  drawThruster();
+  drawParticles();
+  drawShip(ship.x, ship.y);
+
+  // Red hit flash overlay on screen
+  if (hitFlash > 0) {
+    ctx.save();
+    ctx.globalAlpha = (hitFlash / 30) * 0.35;
+    ctx.fillStyle = '#ff0000';
+    ctx.fillRect(0, 0, W, H);
+    ctx.restore();
+    hitFlash--;
+  }
+
+  // Streak message
+  if (streakAlpha>0 && streakMsg) {
+    ctx.save();
+    ctx.globalAlpha = Math.min(1, streakAlpha);
+    ctx.fillStyle = '#ffaa00';
+    ctx.shadowColor = '#ff8800'; ctx.shadowBlur = 15;
+    ctx.font = 'bold 28px "맑은 고딕", sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(streakMsg, W/2, H/2 - 60);
+    ctx.restore();
+  }
+
+  // Difficulty up announcement
+  if (diffAnnounce > 0 && diffAnnounceMsg) {
+    const a = Math.min(1, diffAnnounce * 0.8);
+    const scale = 1 + 0.05 * Math.sin(Date.now() * 0.006);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(W/2, H * 0.18);
+    ctx.scale(scale, scale);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    const diffColor = difficultyLevel >= 8 ? '#ff4400' : (difficultyLevel >= 5 ? '#ffaa00' : '#88ff88');
+    ctx.shadowColor = diffColor; ctx.shadowBlur = 25;
+    ctx.fillStyle = diffColor;
+    ctx.font = 'bold 26px "맑은 고딕", sans-serif';
+    ctx.fillText(diffAnnounceMsg, 0, 0);
+    ctx.restore();
+  }
+
+  // Milestone popup
+  if (milestoneAlpha > 0 && milestoneText) {
+    const a = Math.min(1, milestoneAlpha);
+    const scale = 1 + 0.08 * Math.sin(Date.now() * 0.004);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(W/2, H * 0.25);
+    ctx.scale(scale, scale);
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = milestoneColor; ctx.shadowBlur = 30;
+    ctx.fillStyle = milestoneColor;
+    ctx.font = 'bold 32px "맑은 고딕", sans-serif';
+    ctx.fillText(milestoneText, 0, 0);
+    ctx.restore();
+  }
+
+  // Invincible shield ring overlay
+  if (invincible>0) {
+    const alpha = Math.floor(invincible*10)%2===0 ? 0.15 : 0;
+    if (alpha > 0) {
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#00ccff';
+      ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+  }
+
+  // Wave announcement flash
+  if (waveAnnounce > 0 && lastWave > 1) {
+    const a = Math.min(1, waveAnnounce * 1.2);
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.shadowColor = '#aaddff'; ctx.shadowBlur = 30;
+    ctx.fillStyle = '#aaddff';
+    ctx.font = `bold ${Math.floor(36 + (1-a)*10)}px "맑은 고딕", sans-serif`;
+    ctx.fillText(`WAVE ${lastWave}`, W/2, H*0.72);
+    ctx.restore();
+  }
+
+  // quiz HUD flash timer decay
+  if (quizHudFlashTimer > 0) quizHudFlashTimer = Math.max(0, quizHudFlashTimer - dt);
+
+  drawHUD();
+
+  if(state==='quiz')      drawQuizOverlay();
+  if(state==='result')    drawResultOverlay();
+  if(state==='countdown') drawCountdownOverlay();
+
+  ctx.restore();
+}
+
+// === INPUT ===
+function startGame() {
+  state='play';
+  ship={x:W/2, y:H/2, vx:0, vy:0};
+  bullets=[]; particles=[]; thrusterParts=[];
+  time=0; lives=3; lastQuizTime=0;
+  quizAnswered=false; penaltyPending=false;
+  resultTimer=0; countdownTimer=0;
+  hitFlash=0; screenShake=0; isNewRecord=false;
+  invincible=0; paused=false; streak=0; streakAlpha=0;
+  powerups=[]; lastPowerupTime=-20; lastWave=1; waveAnnounce=0;
+  doubleScore=false; doubleScoreTimer=0;
+  reachedMilestones.clear(); milestoneAlpha=0;
+  // Reset difficulty
+  gameTimeSec=0; difficultyLevel=1; diffAnnounce=0; diffAnnounceMsg='';
+  applyDifficulty();
+  spiralAngle=0; sinePhase=0;
+  lifeAnimTimer=0; lifeAnimLost=-1;
+  lastSecondTimestamp=0;
+  usedQuizIndices.clear();
+  totalQuizAnswered = 0;
+  totalQuizCorrect = 0;
+  // 신기록 배지: 게임 시작 시 현재 최고기록 저장
+  prevBest = getDiffBest(selectedDifficulty);
+  newRecordBadgeTimer = 0;
+  newRecordStars = [];
+  quizHudFlashTimer = 0;
+  startBGM();
+}
+
+function drawPauseScreen() {
+  ctx.fillStyle='rgba(0,0,20,0.75)';
+  ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#ffffff';
+  ctx.font='bold 44px "맑은 고딕", monospace';
+  ctx.textAlign='center';
+  ctx.shadowColor='#00ccff'; ctx.shadowBlur=20;
+  ctx.fillText('일시정지', W/2, H/2-30);
+  ctx.shadowBlur=0;
+  ctx.font='18px "맑은 고딕", sans-serif';
+  ctx.fillStyle='#aaddff';
+  ctx.fillText('ESC 또는 P 키를 눌러 계속', W/2, H/2+20);
+  ctx.fillStyle='#778899';
+  ctx.font='14px monospace';
+  ctx.fillText(`생존 시간: ${time.toFixed(1)}s  |  난이도: ${difficultyLevel}단계`, W/2, H/2+55);
+}
+
+document.addEventListener('keydown', e=>{
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault();
+  if(state==='start'||state==='dead'){startGame();return;}
+  if((e.key==='Escape'||e.key==='p'||e.key==='P') && (state==='play'||paused)) {
+    paused=!paused;
+    return;
+  }
+  if(e.key==='m'||e.key==='M') {
+    muted=!muted;
+    masterGain.gain.value = muted ? 0 : 0.7;
+    return;
+  }
+  if(paused) return;
+  if(state==='quiz'){
+    if(e.key==='1') answerQuiz(true);
+    if(e.key==='2') answerQuiz(false);
+  }
+});
+
+canvas.addEventListener('click', e=>{
+  const rect=canvas.getBoundingClientRect();
+  const cx=(e.clientX-rect.left)*W/rect.width;
+  const cy=(e.clientY-rect.top)*H/rect.height;
+  if(state==='start'){
+    // Check diff buttons first
+    for (const b of diffButtons) {
+      if (cx >= b.x && cx <= b.x+b.w && cy >= b.y && cy <= b.y+b.h) {
+        selectedDifficulty = b.diff;
+        return;
+      }
+    }
+    startGame(); return;
+  }
+  if(state==='dead'){startGame();return;}
+  if(state==='quiz'){
+    if(cx>=W/2-120&&cx<=W/2-20&&cy>=H/2-10&&cy<=H/2+42) answerQuiz(true);
+    if(cx>=W/2+20&&cx<=W/2+120&&cy>=H/2-10&&cy<=H/2+42) answerQuiz(false);
+  }
+});
+
+requestAnimationFrame(loop);
+
+// === 모바일 가상 조이스틱 ===
+let vjoyDx = 0, vjoyDy = 0, vjoyActive = false;
+const vjoyZone = document.getElementById('vjoy-zone');
+const vjoyStick = document.getElementById('vjoy-stick');
+const VJOY_HALF = 55, VSTICK_HALF = 22;
+
+function vjoyReset() {
+  vjoyActive = false; vjoyDx = 0; vjoyDy = 0;
+  if (vjoyStick) {
+    vjoyStick.style.left = (VJOY_HALF - VSTICK_HALF) + 'px';
+    vjoyStick.style.top  = (VJOY_HALF - VSTICK_HALF) + 'px';
+  }
+}
+
+function vjoyUpdateTouch(touch) {
+  const rect = vjoyZone.getBoundingClientRect();
+  const cx = rect.left + rect.width/2, cy = rect.top + rect.height/2;
+  let dx = touch.clientX - cx, dy = touch.clientY - cy;
+  const dist = Math.sqrt(dx*dx + dy*dy);
+  const maxR = VJOY_HALF - VSTICK_HALF;
+  if (dist > maxR) { const s = maxR / dist; dx *= s; dy *= s; }
+  vjoyDx = dx / maxR; vjoyDy = dy / maxR;
+  vjoyStick.style.left = (VJOY_HALF - VSTICK_HALF + dx) + 'px';
+  vjoyStick.style.top  = (VJOY_HALF - VSTICK_HALF + dy) + 'px';
+}
+
+vjoyZone.addEventListener('touchstart', e => { e.preventDefault(); vjoyActive = true; vjoyUpdateTouch(e.touches[0]); }, {passive:false});
+vjoyZone.addEventListener('touchmove',  e => { e.preventDefault(); if (vjoyActive) vjoyUpdateTouch(e.touches[0]); }, {passive:false});
+vjoyZone.addEventListener('touchend',   e => { e.preventDefault(); vjoyReset(); }, {passive:false});
+vjoyZone.addEventListener('touchcancel',e => { e.preventDefault(); vjoyReset(); }, {passive:false});
+
+// 캔버스 터치: 퀴즈 답변 + 시작/사망 화면
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  if (state === 'start') {
+    const t = e.changedTouches[0];
+    const rect = canvas.getBoundingClientRect();
+    const cx = (t.clientX - rect.left) * W / rect.width;
+    const cy = (t.clientY - rect.top) * H / rect.height;
+    for (const b of diffButtons) {
+      if (cx >= b.x && cx <= b.x+b.w && cy >= b.y && cy <= b.y+b.h) {
+        selectedDifficulty = b.diff;
+        return;
+      }
+    }
+    startGame(); return;
+  }
+  if (state === 'dead') { startGame(); return; }
+  if (state === 'quiz') {
+    const t = e.changedTouches[0];
+    const rect = canvas.getBoundingClientRect();
+    const mx = (t.clientX - rect.left) * W / rect.width;
+    const my = (t.clientY - rect.top) * H / rect.height;
+    if (mx>=W/2-120&&mx<=W/2-20&&my>=H/2-10&&my<=H/2+42) answerQuiz(true);
+    if (mx>=W/2+20&&mx<=W/2+120&&my>=H/2-10&&my<=H/2+42) answerQuiz(false);
+  }
+}, {passive:false});
+
+// 터치 기기 감지 후 조이스틱 표시/숨김 (drawHUD 호출마다 갱신)
+const _isTouchDev = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+if (_isTouchDev) vjoyZone.style.display = 'block';
+
+function updateVjoyVisibility() {
+  if (!_isTouchDev || !vjoyZone) return;
+  const show = state !== 'start' && state !== 'dead';
+  if (show && vjoyZone.style.display === 'none') vjoyZone.style.display = 'block';
+  else if (!show && vjoyZone.style.display !== 'none') { vjoyZone.style.display = 'none'; vjoyReset(); }
+}
+const __drawHUD = drawHUD;
+drawHUD = function() { __drawHUD(); updateVjoyVisibility(); };
+</script>
+</body>
