@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>🤖 트랜스포머 구구단 대작전 🚀</title>
+<script src="shared.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; overflow:hidden; font-family:'Arial Black',Arial,sans-serif; }
@@ -89,6 +90,10 @@ canvas { display:block; }
 .diff-btn.normal{ background:linear-gradient(135deg,#003399,#0088ff); }
 .diff-btn.hard  { background:linear-gradient(135deg,#991100,#ff4400); }
 .diff-btn.active{ border-color:#fff; transform:scale(1.1); box-shadow:0 0 20px rgba(255,255,255,0.35); }
+.diff-btn .rec-tag{ display:inline-block; margin-top:4px; font-size:.68em; color:#ffd700; }
+#profile-badge{ font-size:13px; color:#88ccff; margin-bottom:8px; text-align:center; }
+#profile-badge b{ color:#ffd700; }
+#review-tag{ display:inline-block; font-size:11px; color:#ffd166; background:rgba(255,209,102,0.15); border:1px solid rgba(255,209,102,0.4); border-radius:8px; padding:2px 8px; margin-left:8px; }
 
 #msg {
   position:fixed; top:0; left:0; right:0; bottom:0;
@@ -352,6 +357,7 @@ canvas { display:block; }
 <div id="screen">
   <div class="s-title">🤖 트랜스포머<br>구구단 대작전 🚀</div>
   <div class="s-sub">우주군단을 이끌고 은하계를 정복하라!</div>
+  <div id="profile-badge"></div>
   <div id="best-disp">🏆 최고점수: 0점</div>
   <div id="diff-records-wrap">
     <div id="diff-records-table"></div>
@@ -841,7 +847,28 @@ function genQuestions(difficulty){
     for(let b=3;b<=9;b++) pool.push({a:2,b,ans:2*b});
   }
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
-  return pool.slice(0,30);
+  let questions = pool.slice(0,30);
+
+  // 오답노트 복습 문제 주입 (최대 5개, 앞쪽에 우선 배치)
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    const review = LearningHub.getReviewQueue('구구단','수학',5);
+    review.forEach(rq=>{
+      if(rq && typeof rq.a==='number' && typeof rq.b==='number'){
+        // 중복 제거 후 앞쪽에 삽입
+        questions = questions.filter(q=>!(q.a===rq.a && q.b===rq.b));
+        questions.splice(Math.min(2,questions.length), 0, {a:rq.a,b:rq.b,ans:rq.a*rq.b, review:true});
+      }
+    });
+    questions = questions.slice(0,30);
+  }
+  return questions;
+}
+
+// 학년(3~6) -> 난이도 매핑
+function gradeToDifficulty(grade){
+  if(grade<=3) return 'easy';
+  if(grade<=4) return 'normal';
+  return 'hard';
 }
 
 const usedBots=new Set();
@@ -880,6 +907,9 @@ function updateTimer(dt){
     if(G.army.length>0){G.lostBot=G.army.pop();G.botScale.pop();}
     G.shake=26;G.wrongFlash=1.0;
     sfxWrong();
+    if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+      LearningHub.recordAnswer({gameId:'구구단',subject:'수학',qKey:q.a+'x'+q.b,data:{a:q.a,b:q.b},correct:false});
+    }
     G.wrongList.push({a:q.a,b:q.b,ans:q.ans,given:'시간초과'});
     spawnScorePopup(W/2,H*0.42,`⏱ 시간초과! 정답: ${q.ans}`,'#ff8844');
     showMsg('⏱ 시간초과!',`정답은 ${q.ans} 이었어요!`,'','#ff6644');
@@ -1329,6 +1359,9 @@ function gradeStars(g){return'★'.repeat(g)+'☆'.repeat(5-g);}
 // ═══════════════════════════════════════════
 function startGame(skipStory){
   initAudio();
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    G.difficulty = gradeToDifficulty(LearningHub.getGrade('수학'));
+  }
   const maxTimer=G.difficulty==='easy'?20:G.difficulty==='hard'?10:15;
   G.questions=genQuestions(G.difficulty);G.qi=0;G.army=[];G.score=0;
   G.particles=[];G.scrollX=0;G.botScale=[];
@@ -1388,6 +1421,9 @@ function submitAnswer(){
   showNumpad(false);
 
   if(val===q.ans){
+    if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+      LearningHub.recordAnswer({gameId:'구구단',subject:'수학',qKey:q.a+'x'+q.b,data:{a:q.a,b:q.b},correct:true});
+    }
     const timeBonus=Math.round((G.timer/G.maxTimer)*3);
     G.score+=1+timeBonus;G.combo++;
     if(G.combo>G.maxCombo) G.maxCombo=G.combo;
@@ -1425,6 +1461,9 @@ function submitAnswer(){
     showMsg('🎉 정답!','새 동료: '+newBot.name+multLabel,gradeStars(newBot.grade),'#ffdd00');
     G.phase='correct';G.animT=0;
   } else {
+    if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+      LearningHub.recordAnswer({gameId:'구구단',subject:'수학',qKey:q.a+'x'+q.b,data:{a:q.a,b:q.b},correct:false});
+    }
     G.combo=0;
     updatePowerBar(0);
     G.wrongList.push({a:q.a,b:q.b,ans:q.ans,given:val});
@@ -1609,6 +1648,15 @@ function endGame(){
   const s=document.getElementById('screen');
   const win=G.battleWin;
 
+  // 학습 허브: 플레이 기록 + 학년 레벨업 평가
+  let levelInfo=null;
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    const correctCount=30-G.wrongList.length;
+    const accuracy=correctCount/30;
+    LearningHub.recordPlay('구구단',{score:G.score,correct:correctCount,total:30,grade:LearningHub.getGrade('수학')});
+    levelInfo=LearningHub.evaluateLevel('수학',accuracy);
+  }
+
   let wrongHtml='';
   if(G.wrongList.length===0){
     wrongHtml='<div style="color:#88ff88;margin-bottom:14px;font-size:clamp(12px,1.6vw,17px);">✅ 틀린 문제 없음! 완벽!</div>';
@@ -1624,6 +1672,15 @@ function endGame(){
   const maxComboDisp = G.maxCombo;
   const bestNow=getBest(G.difficulty);
 
+  let levelHtml='';
+  if(levelInfo && levelInfo.changed){
+    if(levelInfo.direction==='up'){
+      levelHtml=`<div style="font-size:clamp(13px,2vw,20px);color:#88ff88;text-shadow:0 0 16px #44ff44;margin-bottom:10px;">⬆️ 레벨업! 수학 ${levelInfo.newGrade}학년 난이도로 올라갑니다!</div>`;
+    } else {
+      levelHtml=`<div style="font-size:clamp(13px,2vw,20px);color:#ffaa88;text-shadow:0 0 16px #ff6644;margin-bottom:10px;">⬇️ 수학 ${levelInfo.newGrade}학년 난이도로 조정해서 다시 연습해봐요!</div>`;
+    }
+  }
+
   s.innerHTML=`
     <div class="s-title" style="font-size:clamp(24px,4.5vw,54px)">${win?'🏆 은하계 정복!':'💀 다시 도전!'}</div>
     ${isNewRecord?'<div style="font-size:clamp(16px,2.5vw,28px);color:#ffd700;text-shadow:0 0 20px #ffd700;animation:kfIn .5s ease-out;margin-bottom:10px;">🏆 신기록 달성!</div>':''}
@@ -1634,6 +1691,7 @@ function endGame(){
     <div style="font-size:clamp(13px,2vw,22px);color:${win?'#ffd700':'#ff8888'};margin-bottom:10px">
       ${win?'🌟 완벽한 구구단 마스터! 우주 최강 군단!':G.score>=20?'💪 조금만 더 하면 이길 수 있어!':'🤖 구구단을 더 연습하자!'}
     </div>
+    ${levelHtml}
     ${wrongHtml}
     <div class="result-btn-row">
       <button class="s-btn-sm" id="restartBtn" style="background:linear-gradient(135deg,#ff4400,#ff8800);box-shadow:0 0 25px #ff440066;">🔄 같은 난이도로!</button>
@@ -1657,13 +1715,16 @@ function endGame(){
 
 function showStartScreen(){
   const s=document.getElementById('screen');
+  const recDiff = (typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()) ? gradeToDifficulty(LearningHub.getGrade('수학')) : null;
   const diffButtons=['easy','normal','hard'].map(d=>{
     const labels={easy:'🌱 쉬움<small>2~5단 · 20초</small>',normal:'⚡ 보통<small>3~7단 · 15초</small>',hard:'🔥 어려움<small>6~9단 · 10초</small>'};
-    return `<button class="diff-btn ${d}${G.difficulty===d?' active':''}" data-d="${d}">${labels[d]}</button>`;
+    const recTag = (d===recDiff) ? '<span class="rec-tag">⭐내 학년 추천</span>' : '';
+    return `<button class="diff-btn ${d}${G.difficulty===d?' active':''}" data-d="${d}">${labels[d]}${recTag}</button>`;
   }).join('');
   s.innerHTML=`
     <div class="s-title">🤖 트랜스포머<br>구구단 대작전 🚀</div>
     <div class="s-sub">우주군단을 이끌고 은하계를 정복하라!</div>
+    <div id="profile-badge"></div>
     <div id="best-disp">🏆 최고점수: ${getBest(G.difficulty)}점</div>
     <div id="diff-records-wrap"><div id="diff-records-table"></div></div>
     <div id="diff-wrap">${diffButtons}</div>
@@ -1673,7 +1734,22 @@ function showStartScreen(){
   G.phase='start';
   initDiffButtons();
   updateAllDiffTable();
+  renderProfileBadge();
   document.getElementById('startBtn').addEventListener('click',()=>{initAudio();startGame(false);});
+}
+
+function renderProfileBadge(){
+  const el=document.getElementById('profile-badge');
+  if(!el) return;
+  if(typeof LearningHub==='undefined' || !LearningHub.getCurrentUser()){
+    el.innerHTML='';
+    return;
+  }
+  const u=LearningHub.getCurrentUser();
+  const grade=LearningHub.getGrade('수학');
+  const reviewN=LearningHub.getReviewCount('구구단','수학');
+  el.innerHTML=`👤 <b>${LearningHub.escapeHtml(u.name)}</b> · 수학 ${LearningHub.gradeLabel(grade)}`+
+    (reviewN>0?`<span id="review-tag">📝 복습문제 ${reviewN}개 포함</span>`:'');
 }
 
 function initDiffButtons(){
@@ -1714,6 +1790,24 @@ document.addEventListener('keydown',e=>{
 initDiffButtons();
 refreshBestDisp();
 updateAllDiffTable();
+
+// 학습 허브: 로그인 확인 및 학년 기반 추천 난이도 초기화
+if(typeof LearningHub!=='undefined'){
+  function applyHubProfile(){
+    const user=LearningHub.getCurrentUser();
+    if(user){
+      G.difficulty=gradeToDifficulty(LearningHub.getGrade('수학'));
+      document.querySelectorAll('.diff-btn').forEach(b=>b.classList.toggle('active', b.getAttribute('data-d')===G.difficulty));
+      refreshBestDisp();
+    }
+    renderProfileBadge();
+  }
+  if(!LearningHub.getCurrentUser()){
+    LearningHub.injectLoginModal(applyHubProfile);
+  } else {
+    applyHubProfile();
+  }
+}
 
 // ═══════════════════════════════════════════
 //  MAIN LOOP

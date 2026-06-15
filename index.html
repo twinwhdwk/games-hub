@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>🎮 미니게임 허브</title>
+<title>🎓 학습 게임 허브</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -14,7 +14,6 @@
     overflow-x: hidden;
   }
 
-  /* 별 배경 */
   #stars-canvas {
     position: fixed;
     top: 0; left: 0;
@@ -28,12 +27,69 @@
     z-index: 1;
     max-width: 1100px;
     margin: 0 auto;
-    padding: 40px 20px 60px;
+    padding: 28px 20px 60px;
   }
+
+  /* 프로필 바 */
+  .profile-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 14px 20px;
+    margin-bottom: 28px;
+  }
+
+  .profile-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
+  .profile-name {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .grade-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.74rem;
+    font-weight: 700;
+    color: #c4cde0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px;
+    padding: 4px 10px;
+  }
+
+  .profile-actions {
+    display: flex;
+    gap: 8px;
+  }
+
+  .profile-btn {
+    font-size: 0.78rem;
+    color: #c4cde0;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .profile-btn:hover { border-color:#7c7cff; color:#fff; background: rgba(124,124,255,0.15); }
 
   header {
     text-align: center;
-    margin-bottom: 60px;
+    margin-bottom: 36px;
   }
 
   .logo {
@@ -56,6 +112,33 @@
     text-transform: uppercase;
   }
 
+  /* 과목 필터 */
+  .subject-filter {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+
+  .subject-pill {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #8892a4;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 100px;
+    padding: 8px 18px;
+    cursor: pointer;
+    transition: .15s;
+  }
+  .subject-pill:hover { color:#fff; border-color: rgba(255,255,255,0.3); }
+  .subject-pill.active {
+    color: #0a0a1a;
+    background: linear-gradient(135deg, #00d4ff, #a855f7);
+    border-color: transparent;
+  }
+
   /* 게임 그리드 */
   .games-grid {
     display: grid;
@@ -66,6 +149,8 @@
   @media (max-width: 540px) {
     .games-grid { grid-template-columns: 1fr; }
     .logo { font-size: 2rem; }
+    .profile-bar { flex-direction: column; align-items: stretch; }
+    .profile-actions { justify-content: flex-end; }
   }
 
   /* 게임 카드 */
@@ -74,9 +159,11 @@
     border-radius: 20px;
     overflow: hidden;
     cursor: pointer;
-    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transition: transform 0.3s ease, box-shadow 0.3s ease, opacity .25s;
     text-decoration: none;
   }
+
+  .game-card.hidden { display: none; }
 
   .game-card:hover {
     transform: translateY(-8px) scale(1.01);
@@ -114,6 +201,7 @@
     background: rgba(255,255,255,0.03);
     backdrop-filter: blur(12px);
     border-radius: 20px;
+    height: 100%;
   }
 
   .card-icon {
@@ -124,6 +212,14 @@
   }
 
   .card-content { flex: 1; }
+
+  .card-tag-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+  }
 
   .card-tag {
     display: inline-block;
@@ -136,7 +232,16 @@
     border: 1px solid var(--accent);
     border-radius: 100px;
     padding: 3px 10px;
-    margin-bottom: 10px;
+  }
+
+  .card-grade-badge {
+    display: inline-block;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #0a0a1a;
+    background: linear-gradient(135deg,#fff,#c4cde0);
+    border-radius: 100px;
+    padding: 3px 10px;
   }
 
   .card-title {
@@ -166,6 +271,12 @@
     background: rgba(255,255,255,0.06);
     border-radius: 6px;
     padding: 3px 9px;
+  }
+
+  .feature-chip.review-chip {
+    color: #ffd166;
+    background: rgba(255,209,102,0.12);
+    border: 1px solid rgba(255,209,102,0.3);
   }
 
   .card-play-btn {
@@ -228,7 +339,14 @@
                 radial-gradient(ellipse at bottom right, #1c1003, transparent 70%);
   }
 
-  /* 하단 */
+  .empty-state {
+    text-align: center;
+    color: #5a6378;
+    padding: 60px 20px;
+    font-size: 0.95rem;
+    grid-column: 1 / -1;
+  }
+
   footer {
     text-align: center;
     margin-top: 60px;
@@ -243,28 +361,44 @@
 <canvas id="stars-canvas"></canvas>
 
 <div class="container">
+
+  <div class="profile-bar" id="profile-bar"></div>
+
   <header>
-    <div class="logo">🎮 미니게임 허브</div>
-    <div class="subtitle">학습 + 재미를 한 곳에서</div>
+    <div class="logo">🎓 학습 게임 허브</div>
+    <div class="subtitle">나에게 맞는 레벨로, 놀면서 배우는 초등 학습</div>
   </header>
 
-  <div class="games-grid">
+  <div class="subject-filter" id="subject-filter">
+    <div class="subject-pill active" data-subject="전체">전체</div>
+    <div class="subject-pill" data-subject="수학">📐 수학</div>
+    <div class="subject-pill" data-subject="영어">🔤 영어</div>
+    <div class="subject-pill" data-subject="국어">📖 국어</div>
+    <div class="subject-pill" data-subject="사회">🏛 사회</div>
+    <div class="subject-pill" data-subject="과학">🔬 과학</div>
+  </div>
+
+  <div class="games-grid" id="games-grid">
 
     <!-- 영어 게임 -->
-    <a class="game-card card-english" href="영어단어게임.html">
+    <a class="game-card card-english" data-subjects="영어,사회" data-gameid="영단어정벌" href="영어단어게임.html">
       <div class="card-bg"></div>
       <div class="card-border"></div>
       <div class="card-inner">
         <div class="card-icon">⚔️</div>
         <div class="card-content">
-          <div class="card-tag">영어 · 역사</div>
+          <div class="card-tag-row">
+            <div class="card-tag">영어 · 역사</div>
+            <div class="card-grade-badge grade-badge" data-subject="영어"></div>
+          </div>
           <div class="card-title">수양대군의 영어 정벌</div>
-          <div class="card-desc">영어 단어를 맞춰 적군을 물리치세요! 시간 내에 정확한 뜻을 골라 성을 지키는 타워디펜스 학습 게임.</div>
+          <div class="card-desc">영어 단어를 맞춰 적군을 물리치세요! 시간 내에 정확한 뜻을 골라 성을 지키는 타워디펜스 학습 게임. 내 학년에 맞는 단어 난이도로 자동 조절돼요.</div>
           <div class="card-features">
             <span class="feature-chip">🏆 10단계</span>
             <span class="feature-chip">⏱ 제한시간</span>
             <span class="feature-chip">💡 힌트</span>
             <span class="feature-chip">🔥 콤보</span>
+            <span class="feature-chip review-chip review-count" data-gameid="영단어정벌">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>
@@ -272,20 +406,24 @@
     </a>
 
     <!-- 분수 게임 -->
-    <a class="game-card card-fraction" href="분수계단게임.html">
+    <a class="game-card card-fraction" data-subjects="수학" data-gameid="분수계단" href="분수계단게임.html">
       <div class="card-bg"></div>
       <div class="card-border"></div>
       <div class="card-inner">
         <div class="card-icon">🧙</div>
         <div class="card-content">
-          <div class="card-tag">수학 · 분수</div>
+          <div class="card-tag-row">
+            <div class="card-tag">수학 · 분수</div>
+            <div class="card-grade-badge grade-badge" data-subject="수학"></div>
+          </div>
           <div class="card-title">분수 계단 탈출</div>
-          <div class="card-desc">마법사 아리아와 함께 어두운 지하 감옥을 탈출하세요! 분수 문제를 풀어 계단을 올라가는 판타지 어드벤처.</div>
+          <div class="card-desc">마법사 아리아와 함께 어두운 지하 감옥을 탈출하세요! 분수 문제를 풀어 계단을 올라가는 판타지 어드벤처. 학년별 난이도가 자동으로 적용돼요.</div>
           <div class="card-features">
             <span class="feature-chip">🗺 5스테이지</span>
             <span class="feature-chip">❤️ 3목숨</span>
             <span class="feature-chip">⭐ 별점</span>
-            <span class="feature-chip">🎯 난이도 3종</span>
+            <span class="feature-chip">🎯 학년별 난이도</span>
+            <span class="feature-chip review-chip review-count" data-gameid="분수계단">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>
@@ -293,13 +431,15 @@
     </a>
 
     <!-- 총알피하기 -->
-    <a class="game-card card-bullet" href="총알피하기.html">
+    <a class="game-card card-bullet" data-subjects="수학,과학,사회,국어" data-gameid="총알피하기" href="총알피하기.html">
       <div class="card-bg"></div>
       <div class="card-border"></div>
       <div class="card-inner">
         <div class="card-icon">🚀</div>
         <div class="card-content">
-          <div class="card-tag">아케이드 · 퀴즈</div>
+          <div class="card-tag-row">
+            <div class="card-tag">아케이드 · 종합퀴즈</div>
+          </div>
           <div class="card-title">총알 피하기</div>
           <div class="card-desc">쏟아지는 총알을 피하면서 퀴즈를 맞히세요! 틀리면 총알이 더 쏟아집니다. 과학, 역사, 수학, 상식 100문항.</div>
           <div class="card-features">
@@ -307,6 +447,7 @@
             <span class="feature-chip">📱 모바일 지원</span>
             <span class="feature-chip">🌊 웨이브</span>
             <span class="feature-chip">🏅 리더보드</span>
+            <span class="feature-chip review-chip review-count" data-gameid="총알피하기">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>
@@ -314,43 +455,48 @@
     </a>
 
     <!-- 구구단 -->
-    <a class="game-card card-math" href="구구단게임.html">
+    <a class="game-card card-math" data-subjects="수학" data-gameid="구구단" href="구구단게임.html">
       <div class="card-bg"></div>
       <div class="card-border"></div>
       <div class="card-inner">
         <div class="card-icon">🤖</div>
         <div class="card-content">
-          <div class="card-tag">수학 · 구구단</div>
+          <div class="card-tag-row">
+            <div class="card-tag">수학 · 구구단</div>
+            <div class="card-grade-badge grade-badge" data-subject="수학"></div>
+          </div>
           <div class="card-title">트랜스포머 구구단 대작전</div>
-          <div class="card-desc">구구단을 맞힐수록 강력한 로봇이 소환됩니다! 30문제를 풀고 최종 보스와 대결하는 우주 배틀.</div>
+          <div class="card-desc">구구단을 맞힐수록 강력한 로봇이 소환됩니다! 30문제를 풀고 최종 보스와 대결하는 우주 배틀. 내 수학 학년에 맞춰 자동으로 난이도가 조절돼요.</div>
           <div class="card-features">
             <span class="feature-chip">🤖 로봇 소환</span>
             <span class="feature-chip">💥 최종 보스</span>
             <span class="feature-chip">⭐ 5성 등급</span>
-            <span class="feature-chip">🎯 난이도 3종</span>
+            <span class="feature-chip">🎯 학년별 난이도</span>
+            <span class="feature-chip review-chip review-count" data-gameid="구구단">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>
       </div>
     </a>
 
-  </div>
-
     <!-- 역사 게임 -->
-    <a class="game-card card-history" href="역사탐험게임.html">
+    <a class="game-card card-history" data-subjects="사회" data-gameid="한국사탐험" href="역사탐험게임.html">
       <div class="card-bg"></div>
       <div class="card-border"></div>
       <div class="card-inner">
         <div class="card-icon">🏯</div>
         <div class="card-content">
-          <div class="card-tag">역사 · 한국사</div>
+          <div class="card-tag-row">
+            <div class="card-tag">사회 · 한국사</div>
+            <div class="card-grade-badge grade-badge" data-subject="사회"></div>
+          </div>
           <div class="card-title">한국사 시간탐험대</div>
-          <div class="card-desc">고조선부터 광복까지! 시대별 퀴즈를 풀며 역사를 탐험하세요. 초등 6학년 한국사 전 범위를 게임으로 완전 정복.</div>
+          <div class="card-desc">고조선부터 광복까지! 시대별 퀴즈를 풀며 역사를 탐험하세요. 초등 한국사 전 범위를 게임으로 완전 정복.</div>
           <div class="card-features">
             <span class="feature-chip">🏺 6개 시대</span>
             <span class="feature-chip">❓ 48문제</span>
             <span class="feature-chip">⏱ 제한시간</span>
-            <span class="feature-chip">🔥 콤보</span>
+            <span class="feature-chip review-chip review-count" data-gameid="한국사탐험">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>
@@ -359,11 +505,11 @@
 
   </div>
 
-  <footer>© 2025 미니게임 허브 · twinwhdwk</footer>
+  <footer>© 2026 학습 게임 허브 · twinwhdwk</footer>
 </div>
 
+<script src="shared.js"></script>
 <script>
-// 별 배경 애니메이션
 const canvas = document.getElementById('stars-canvas');
 const ctx = canvas.getContext('2d');
 let stars = [];
@@ -409,6 +555,101 @@ window.addEventListener('resize', () => { resize(); initStars(); });
 resize();
 initStars();
 requestAnimationFrame(drawStars);
+
+function renderProfileBar() {
+  const bar = document.getElementById('profile-bar');
+  const user = LearningHub.getCurrentUser();
+  if (!user) {
+    bar.innerHTML = `
+      <div class="profile-info">
+        <span class="profile-name">👤 로그인이 필요해요</span>
+      </div>
+      <div class="profile-actions">
+        <div class="profile-btn" id="login-btn">로그인 / 프로필 만들기</div>
+      </div>
+    `;
+    document.getElementById('login-btn').onclick = () => {
+      LearningHub.injectLoginModal(() => { renderProfileBar(); renderAll(); });
+    };
+    return;
+  }
+  const chips = LearningHub.SUBJECTS.map(s =>
+    `<span class="grade-chip">${s} ${LearningHub.gradeLabel(user.grades[s])}</span>`
+  ).join('');
+  bar.innerHTML = `
+    <div class="profile-info">
+      <span class="profile-name">👤 ${LearningHub.escapeHtml(user.name)}</span>
+      ${chips}
+    </div>
+    <div class="profile-actions">
+      <div class="profile-btn" id="switch-btn">사용자 전환</div>
+      <div class="profile-btn" id="logout-btn">로그아웃</div>
+    </div>
+  `;
+  document.getElementById('switch-btn').onclick = () => {
+    LearningHub.logout();
+    LearningHub.injectLoginModal(() => { renderProfileBar(); renderAll(); });
+  };
+  document.getElementById('logout-btn').onclick = () => {
+    LearningHub.logout();
+    renderProfileBar();
+    renderAll();
+  };
+}
+
+function renderAll() {
+  const user = LearningHub.getCurrentUser();
+  document.querySelectorAll('.grade-badge').forEach(el => {
+    if (!user) { el.style.display = 'none'; return; }
+    el.style.display = 'inline-block';
+    const subj = el.dataset.subject;
+    el.textContent = subj + ' ' + LearningHub.gradeLabel(user.grades[subj]);
+  });
+  document.querySelectorAll('.review-count').forEach(el => {
+    if (!user) { el.style.display = 'none'; return; }
+    const gameId = el.dataset.gameid;
+    const n = LearningHub.getReviewCount(gameId);
+    if (n > 0) {
+      el.style.display = 'inline-block';
+      el.textContent = '📝 복습 ' + n + '개 대기중';
+    } else {
+      el.style.display = 'none';
+    }
+  });
+}
+
+document.querySelectorAll('.subject-pill').forEach(pill => {
+  pill.addEventListener('click', () => {
+    document.querySelectorAll('.subject-pill').forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    const subject = pill.dataset.subject;
+    const grid = document.getElementById('games-grid');
+    let visibleCount = 0;
+    document.querySelectorAll('.game-card').forEach(card => {
+      const subs = (card.dataset.subjects || '').split(',');
+      const show = subject === '전체' || subs.includes(subject);
+      card.classList.toggle('hidden', !show);
+      if (show) visibleCount++;
+    });
+    let empty = grid.querySelector('.empty-state');
+    if (visibleCount === 0) {
+      if (!empty) {
+        empty = document.createElement('div');
+        empty.className = 'empty-state';
+        empty.textContent = '이 과목의 게임을 준비 중이에요. 곧 만나요! 🛠️';
+        grid.appendChild(empty);
+      }
+    } else if (empty) {
+      empty.remove();
+    }
+  });
+});
+
+renderProfileBar();
+renderAll();
+if (!LearningHub.getCurrentUser()) {
+  LearningHub.injectLoginModal(() => { renderProfileBar(); renderAll(); });
+}
 </script>
 </body>
 </html>
