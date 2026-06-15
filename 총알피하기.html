@@ -1606,6 +1606,7 @@ function checkHit() {
           });
           const expResult = LearningHub.addExp(totalExp, '총알피하기');
           LearningHub.announceExpResult(expResult);
+          if (Math.round(time*10) >= 1000) LearningHub.unlockAchievement('총알피하기','score_1000');
         }
       }
       return;

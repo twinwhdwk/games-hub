@@ -618,7 +618,7 @@
     </div>
     <div class="character-actions">
       <div class="profile-btn" id="open-inventory-btn">🎒 캐릭터 꾸미기</div>
-      <div class="profile-btn" id="open-room-btn">🏠 내 방</div>
+      <div class="profile-btn" id="open-room-btn">🏕️ 베이스캠프</div>
       <a class="profile-btn" href="성장일지.html" style="text-decoration:none;">📔 성장 일지</a>
     </div>
   </div>
@@ -633,14 +633,14 @@
 
   <div id="room-overlay">
     <div class="inv-box room-box">
-      <div class="inv-title">🏠 내 방 <span class="inv-close" id="close-room-btn">✕</span></div>
+      <div class="inv-title">🏕️ 베이스캠프 <span class="inv-close" id="close-room-btn">✕</span></div>
       <div id="room-scene">
         <div id="room-furniture-layer"></div>
         <div id="room-floor"></div>
         <canvas id="room-char-canvas" width="128" height="128"
           style="position:absolute;bottom:28%;left:12%;image-rendering:pixelated;width:100px;height:100px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.6));"></canvas>
       </div>
-      <div class="room-hint">보유한 가구를 탭하면 방에 놓이거나 치워져요. 자동으로 예쁘게 배치됩니다.</div>
+      <div class="room-hint">보유한 장비를 탭하면 캠프에 놓이거나 치워져요. 레벨업하면 새 장비가 해금됩니다.</div>
       <div id="room-slots"></div>
     </div>
   </div>
@@ -989,8 +989,8 @@ function renderCharacterPanel() {
 }
 
 // ── 인벤토리 / 꾸미기 모달 ──────────────────────────
-const SLOT_LABELS = { body:'피부', hair:'머리', outfit:'옷', hat:'모자', weapon:'무기/도구', pet:'펫' };
-const SLOT_ORDER = ['body','hair','outfit','hat','weapon','pet'];
+const SLOT_LABELS = { body:'피부', hair:'머리', outfit:'옷', hat:'모자', weapon:'무기/도구', pet1:'펫 1번', pet2:'펫 2번' };
+const SLOT_ORDER = ['body','hair','outfit','hat','weapon','pet1','pet2'];
 
 function renderInventory() {
   const c = LearningHub.getCharacter();
@@ -1030,7 +1030,7 @@ function renderInventory() {
       }
       // 아이템 단독 미리보기: 해당 슬롯만 채워서 렌더 (잠긴 아이템은 스포일러 방지를 위해 숨김)
       if (item.unlocked) {
-        const previewEquip = Object.assign({body:'body_basic',hair:'hair_brown',outfit:'outfit_basic',hat:'hat_none',weapon:'weapon_none',pet:'pet_none'}, {[slot]: item.id});
+        const previewEquip = Object.assign({body:'body_basic',hair:'hair_brown',outfit:'outfit_basic',hat:'hat_none',weapon:'weapon_none',pet1:'pet_none',pet2:'pet_none'}, {[slot]: item.id});
         LearningHub.renderCharacter(cv, previewEquip, 2);
       } else {
         const ctx = cv.getContext('2d');
@@ -1065,7 +1065,7 @@ document.getElementById('inventory-overlay')?.addEventListener('click', (e) => {
 });
 
 // ---------------------------------------------------------
-// 🏠 내 방 (룸 꾸미기)
+// 🏕️ 베이스캠프 (룸 꾸미기)
 // ---------------------------------------------------------
 function renderRoomScene() {
   const room = LearningHub.getRoom();
@@ -1157,7 +1157,7 @@ function renderRoomSlots() {
   const room = LearningHub.getRoom();
   const lab = document.createElement('div');
   lab.className = 'inv-slot-label';
-  lab.textContent = '가구';
+  lab.textContent = '캠프 장비';
   wrap.appendChild(lab);
   const row = document.createElement('div');
   row.className = 'inv-items-row';
