@@ -637,6 +637,8 @@
       <div id="room-scene">
         <div id="room-furniture-layer"></div>
         <div id="room-floor"></div>
+        <canvas id="room-char-canvas" width="128" height="128"
+          style="position:absolute;bottom:28%;left:12%;image-rendering:pixelated;width:100px;height:100px;filter:drop-shadow(0 4px 10px rgba(0,0,0,0.6));"></canvas>
       </div>
       <div class="room-hint">보유한 가구를 탭하면 방에 놓이거나 치워져요. 자동으로 예쁘게 배치됩니다.</div>
       <div id="room-slots"></div>
@@ -1077,6 +1079,13 @@ function renderRoomScene() {
   scene.style.background = wallpaper ? wallpaper.color : '#2a2a44';
   floorEl.style.background = floor ? floor.color : '#a9764f';
   floorEl.textContent = '';
+
+  // 캐릭터 + 펫 렌더링 (renderCharacter가 펫까지 통합 처리)
+  const c = LearningHub.getCharacter();
+  if (c) {
+    const charCanvas = document.getElementById('room-char-canvas');
+    if (charCanvas) LearningHub.renderCharacter(charCanvas, c.equipped, 8);
+  }
 
   furnLayer.innerHTML = '';
   room.furniture.forEach(itemId => {
