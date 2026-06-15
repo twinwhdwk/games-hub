@@ -227,6 +227,29 @@
     return u.stats[gameId] || null;
   }
 
+  function getAllStats() {
+    const u = getCurrentUser();
+    if (!u) return {};
+    return u.stats;
+  }
+
+  /**
+   * 과목별 오답노트 요약: { 과목: { total, mastered, pending } }
+   */
+  function getWrongBankSummary() {
+    const u = getCurrentUser();
+    const result = {};
+    SUBJECTS.forEach(s => result[s] = { total: 0, mastered: 0, pending: 0 });
+    if (!u) return result;
+    u.wrongBank.forEach(w => {
+      if (!result[w.subject]) result[w.subject] = { total: 0, mastered: 0, pending: 0 };
+      result[w.subject].total += 1;
+      if (w.mastered) result[w.subject].mastered += 1;
+      else result[w.subject].pending += 1;
+    });
+    return result;
+  }
+
   // ---------------------------------------------------------
   // UI 헬퍼: 상단 프로필 바
   // ---------------------------------------------------------
@@ -583,7 +606,7 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
     createOrSwitchUser, switchUser, deleteUser, logout,
     getGrade, setGrade, evaluateLevel, gradeToTier, gradeLabel,
     recordAnswer, getReviewQueue, getReviewCount,
-    recordPlay, getStats,
+    recordPlay, getStats, getAllStats, getWrongBankSummary,
     renderProfileBadge, injectLoginModal, escapeHtml,
     // 캐릭터/아이템/EXP
     ITEM_CATALOG, SPRITE_DATA, LEVEL_EXP,

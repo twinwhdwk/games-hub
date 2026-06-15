@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📔 성장 일지</title>
+<script src="shared.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: radial-gradient(ellipse at top, #1a2a4a 0%, #06070f 70%);
+  color:#fff; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  min-height:100vh; padding:20px;
+}
+#app { max-width:600px; margin:0 auto; }
+
+.title {
+  font-size: clamp(24px,6vw,32px); font-weight:900; text-align:center;
+  background: linear-gradient(135deg,#00d4ff,#a855f7,#ffd166);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom:6px;
+}
+.subtitle { text-align:center; color:#8892a4; font-size:0.85rem; margin-bottom:20px; }
+
+.section {
+  background: rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
+  border-radius:18px; padding:20px; margin-bottom:16px; backdrop-filter:blur(10px);
+}
+.section-title { font-size:1rem; font-weight:800; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+
+/* 캐릭터 */
+.char-row { display:flex; align-items:center; gap:18px; }
+#char-canvas { width:96px; height:96px; image-rendering:pixelated; background:rgba(0,0,0,0.25); border-radius:14px; border:2px solid rgba(255,255,255,0.1); flex-shrink:0; }
+.char-info { flex:1; }
+.char-level { font-size:1.1rem; font-weight:900; margin-bottom:6px; }
+.char-level .lv-num { color:#ffd700; font-size:1.3rem; }
+.exp-bar-wrap { height:10px; background:rgba(255,255,255,0.08); border-radius:100px; overflow:hidden; margin-bottom:6px; }
+.exp-bar-fill { height:100%; background:linear-gradient(90deg,#00d4ff,#a855f7); border-radius:100px; transition:width .4s; }
+.exp-label { font-size:0.72rem; color:#8892a4; }
+
+/* 과목별 학년 */
+.subject-row { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.subject-row:last-child { margin-bottom:0; }
+.subject-icon { font-size:1.6rem; width:32px; text-align:center; }
+.subject-main { flex:1; }
+.subject-name-row { display:flex; justify-content:space-between; font-size:0.85rem; font-weight:700; margin-bottom:6px; }
+.subject-name-row .grade-val { color:#ffd700; }
+.grade-track { display:flex; gap:4px; }
+.grade-seg { flex:1; height:8px; border-radius:100px; background:rgba(255,255,255,0.08); }
+.grade-seg.filled { background:linear-gradient(90deg,#00d4ff,#a855f7); }
+.review-pill {
+  font-size:0.68rem; color:#ffd166; background:rgba(255,209,102,0.12);
+  border:1px solid rgba(255,209,102,0.35); border-radius:8px; padding:2px 8px; margin-left:8px; white-space:nowrap;
+}
+
+/* 게임 통계 */
+.game-stat-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05); }
+.game-stat-row:last-child { border-bottom:none; }
+.game-stat-icon { font-size:1.5rem; width:32px; text-align:center; }
+.game-stat-info { flex:1; }
+.game-stat-name { font-size:0.9rem; font-weight:700; }
+.game-stat-sub { font-size:0.72rem; color:#8892a4; margin-top:2px; }
+.game-stat-acc { font-size:1.1rem; font-weight:900; color:#4ade80; min-width:50px; text-align:right; }
+.game-stat-acc.low { color:#ff9a76; }
+
+.empty-msg { text-align:center; color:#5a6378; font-size:0.85rem; padding:20px 0; }
+
+a.back-link { display:block; text-align:center; margin-top:14px; color:#8892a4; font-size:0.8rem; text-decoration:none; }
+a.back-link:hover { color:#fff; }
+
+#login-prompt { text-align:center; padding:40px 20px; }
+#login-prompt .start-btn {
+  display:inline-block; padding:14px 28px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,#00d4ff,#a855f7); color:#06070f; font-weight:900;
+  font-size:1rem; cursor:pointer; margin-top:16px;
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="title">📔 성장 일지</div>
+  <div class="subtitle">내 캐릭터와 학습 기록을 한눈에!</div>
+
+  <div id="content" style="display:none;">
+    <!-- 캐릭터 -->
+    <div class="section">
+      <div class="section-title">🧙 내 캐릭터</div>
+      <div class="char-row">
+        <canvas id="char-canvas" width="128" height="128"></canvas>
+        <div class="char-info">
+          <div class="char-level">Lv.<span class="lv-num" id="char-level">1</span> <span id="char-name"></span></div>
+          <div class="exp-bar-wrap"><div class="exp-bar-fill" id="char-exp-fill" style="width:0%"></div></div>
+          <div class="exp-label" id="char-exp-label">EXP 0 / 100</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 과목별 학년 -->
+    <div class="section">
+      <div class="section-title">🎯 과목별 학습 레벨</div>
+      <div id="subject-grades"></div>
+    </div>
+
+    <!-- 게임별 통계 -->
+    <div class="section">
+      <div class="section-title">🎮 게임별 기록</div>
+      <div id="game-stats"></div>
+    </div>
+  </div>
+
+  <div id="login-prompt">
+    <div style="font-size:1rem;color:#8892a4;">로그인하면 나만의 성장 일지를 볼 수 있어요!</div>
+    <button class="start-btn" id="login-btn">로그인 / 프로필 만들기</button>
+  </div>
+
+  <a class="back-link" href="index.html">← 학습 게임 허브로 돌아가기</a>
+</div>
+
+<script>
+const GAME_META = {
+  '구구단':       { icon:'🤖', name:'트랜스포머 구구단 대작전' },
+  '분수계단':     { icon:'🧙', name:'분수 계단 탈출' },
+  '영단어정벌':   { icon:'⚔️', name:'수양대군의 영어 정벌' },
+  '한국사탐험':   { icon:'🏯', name:'한국사 시간탐험대' },
+  '총알피하기':   { icon:'🚀', name:'총알 피하기' },
+  '지식탐험':     { icon:'🧭', name:'지식 탐험대' },
+  '짝꿍찾기':     { icon:'🃏', name:'짝꿍 찾기' },
+};
+
+const SUBJECT_ICONS = { '수학':'📐', '영어':'🔤', '국어':'📖', '사회':'🏛', '과학':'🔬' };
+
+function renderCharacter() {
+  const c = LearningHub.getCharacter();
+  const need = LearningHub.LEVEL_EXP(c.level);
+  document.getElementById('char-level').textContent = c.level;
+  document.getElementById('char-name').textContent = LearningHub.getCurrentUser().name;
+  document.getElementById('char-exp-fill').style.width = Math.min(100, (c.exp / need) * 100) + '%';
+  document.getElementById('char-exp-label').textContent = `EXP ${c.exp} / ${need}`;
+  LearningHub.renderCurrentCharacter(document.getElementById('char-canvas'), 8);
+}
+
+function renderSubjectGrades() {
+  const wrap = document.getElementById('subject-grades');
+  wrap.innerHTML = '';
+  const u = LearningHub.getCurrentUser();
+  const wrongSummary = LearningHub.getWrongBankSummary();
+  LearningHub.SUBJECTS.forEach(subject => {
+    const grade = u.grades[subject];
+    const segs = [];
+    for (let g = LearningHub.MIN_GRADE; g <= LearningHub.MAX_GRADE; g++) {
+      segs.push(`<div class="grade-seg ${g <= grade ? 'filled' : ''}"></div>`);
+    }
+    const pendingReview = wrongSummary[subject] ? wrongSummary[subject].pending : 0;
+    const row = document.createElement('div');
+    row.className = 'subject-row';
+    row.innerHTML = `
+      <div class="subject-icon">${SUBJECT_ICONS[subject] || '📘'}</div>
+      <div class="subject-main">
+        <div class="subject-name-row">
+          <span>${subject}</span>
+          <span class="grade-val">${LearningHub.gradeLabel(grade)}${pendingReview>0?`<span class="review-pill">📝 복습 ${pendingReview}개</span>`:''}</span>
+        </div>
+        <div class="grade-track">${segs.join('')}</div>
+      </div>
+    `;
+    wrap.appendChild(row);
+  });
+}
+
+function renderGameStats() {
+  const wrap = document.getElementById('game-stats');
+  wrap.innerHTML = '';
+  const allStats = LearningHub.getAllStats();
+  const gameIds = Object.keys(GAME_META);
+  let hasAny = false;
+
+  gameIds.forEach(gameId => {
+    const s = allStats[gameId];
+    if (!s || s.plays === 0) return;
+    hasAny = true;
+    const meta = GAME_META[gameId];
+    const accuracy = s.totalQ > 0 ? Math.round((s.totalCorrect / s.totalQ) * 100) : 0;
+    const row = document.createElement('div');
+    row.className = 'game-stat-row';
+    row.innerHTML = `
+      <div class="game-stat-icon">${meta.icon}</div>
+      <div class="game-stat-info">
+        <div class="game-stat-name">${meta.name}</div>
+        <div class="game-stat-sub">${s.plays}회 플레이 · 정답 ${s.totalCorrect}/${s.totalQ}</div>
+      </div>
+      <div class="game-stat-acc ${accuracy < 60 ? 'low' : ''}">${accuracy}%</div>
+    `;
+    wrap.appendChild(row);
+  });
+
+  if (!hasAny) {
+    wrap.innerHTML = '<div class="empty-msg">아직 플레이한 게임이 없어요. 게임을 시작해보세요! 🎮</div>';
+  }
+}
+
+function renderAll() {
+  if (!LearningHub.getCurrentUser()) {
+    document.getElementById('content').style.display = 'none';
+    document.getElementById('login-prompt').style.display = 'block';
+    return;
+  }
+  document.getElementById('content').style.display = 'block';
+  document.getElementById('login-prompt').style.display = 'none';
+  renderCharacter();
+  renderSubjectGrades();
+  renderGameStats();
+}
+
+document.getElementById('login-btn').addEventListener('click', () => {
+  LearningHub.injectLoginModal(() => renderAll());
+});
+
+renderAll();
+</script>
+</body>
+</html>
