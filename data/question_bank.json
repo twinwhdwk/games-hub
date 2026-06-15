@@ -1432,5 +1432,271 @@
    ],
    "answer": 0
   }
+ ],
+ "영어": [
+  {
+   "grade": 3,
+   "unit": "인사 표현",
+   "q": "처음 만난 사람에게 자신을 소개할 때 쓰는 표현은?",
+   "choices": [
+    "I'm ___ (이름).",
+    "Thank you.",
+    "Good night.",
+    "See you."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 3,
+   "unit": "be동사",
+   "q": "'나는 학생이다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "I am a student.",
+    "I is a student.",
+    "I are a student.",
+    "I be a student."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 3,
+   "unit": "숫자 표현",
+   "q": "영어로 '3개의 사과'를 바르게 쓴 것은?",
+   "choices": [
+    "three apples",
+    "three apple",
+    "threes apples",
+    "three a apple"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 3,
+   "unit": "색깔 표현",
+   "q": "'이것은 빨간색이다'를 영어로 바르게 표현한 것은?",
+   "choices": [
+    "This is red.",
+    "This red is.",
+    "Red this is.",
+    "Is this red."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 3,
+   "unit": "의문문",
+   "q": "이름을 물어볼 때 쓰는 표현은?",
+   "choices": [
+    "What's your name?",
+    "How are you?",
+    "Where are you?",
+    "When is it?"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 3,
+   "unit": "인사 표현",
+   "q": "헤어질 때 하는 인사로 알맞은 것은?",
+   "choices": [
+    "Goodbye / See you",
+    "Hello",
+    "Thank you",
+    "Sorry"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 4,
+   "unit": "복수형",
+   "q": "'책 두 권'을 영어로 바르게 쓴 것은?",
+   "choices": [
+    "two books",
+    "two book",
+    "two bookes",
+    "twos books"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 4,
+   "unit": "현재진행형",
+   "q": "'나는 지금 달리고 있다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "I am running now.",
+    "I run now.",
+    "I running now.",
+    "I is running now."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 4,
+   "unit": "의문문",
+   "q": "'이것은 무엇입니까?'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "What is this?",
+    "What this is?",
+    "Is this what?",
+    "This is what?"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 4,
+   "unit": "전치사",
+   "q": "'책상 위에'를 영어로 바르게 표현한 것은?",
+   "choices": [
+    "on the desk",
+    "in the desk",
+    "at the desk under",
+    "the desk on"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 4,
+   "unit": "가족 표현",
+   "q": "'이 사람은 나의 어머니이다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "This is my mother.",
+    "This my mother is.",
+    "Is this my mother.",
+    "My mother this is."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 4,
+   "unit": "날씨 표현",
+   "q": "날씨를 물을 때 쓰는 표현은?",
+   "choices": [
+    "How's the weather?",
+    "What's your name?",
+    "How old are you?",
+    "Where do you live?"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 5,
+   "unit": "과거시제",
+   "q": "'나는 어제 학교에 갔다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "I went to school yesterday.",
+    "I go to school yesterday.",
+    "I goes to school yesterday.",
+    "I going to school yesterday."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 5,
+   "unit": "비교급",
+   "q": "'더 크다'를 영어로 바르게 표현한 것은?",
+   "choices": [
+    "bigger",
+    "big more",
+    "more big",
+    "biggest"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 5,
+   "unit": "can 표현",
+   "q": "'나는 수영할 수 있다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "I can swim.",
+    "I can swimming.",
+    "I am can swim.",
+    "I cans swim."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 5,
+   "unit": "길묻기 표현",
+   "q": "길을 물을 때 쓰는 표현은?",
+   "choices": [
+    "How can I get to the station?",
+    "What time is it?",
+    "How old are you?",
+    "What do you like?"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 5,
+   "unit": "미래시제",
+   "q": "'나는 내일 그것을 할 것이다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "I will do it tomorrow.",
+    "I do it tomorrow.",
+    "I doing it tomorrow.",
+    "I did it tomorrow."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 6,
+   "unit": "to부정사",
+   "q": "'나는 의사가 되고 싶다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "I want to be a doctor.",
+    "I want be a doctor.",
+    "I want to being a doctor.",
+    "I wants to be doctor."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 6,
+   "unit": "최상급",
+   "q": "'가장 높은'을 영어로 바르게 표현한 것은?",
+   "choices": [
+    "the tallest",
+    "the more tall",
+    "tallest more",
+    "the tall"
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 6,
+   "unit": "현재완료",
+   "q": "'나는 그 영화를 본 적이 있다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "I have seen the movie.",
+    "I have see the movie.",
+    "I has seen the movie.",
+    "I had seeing the movie."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 6,
+   "unit": "제안 표현",
+   "q": "무언가를 제안할 때 쓰는 표현은?",
+   "choices": [
+    "Why don't we...? / Let's...",
+    "I must...",
+    "You should not...",
+    "Never mind."
+   ],
+   "answer": 0
+  },
+  {
+   "grade": 6,
+   "unit": "수동태",
+   "q": "'이 책은 많은 사람들에게 읽힌다'를 영어로 바르게 쓴 것은?",
+   "choices": [
+    "This book is read by many people.",
+    "This book reads many people.",
+    "This book is reading by many people.",
+    "This book read by many people."
+   ],
+   "answer": 0
+  }
  ]
 }
