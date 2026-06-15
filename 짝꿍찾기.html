@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🃏 짝꿍 찾기</title>
+<script src="shared.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: radial-gradient(ellipse at top, #2a1a4a 0%, #06070f 70%);
+  color:#fff; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  overflow-x:hidden; padding:12px;
+}
+#app { width:100%; max-width:560px; }
+
+.card-panel {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 22px;
+  backdrop-filter: blur(10px);
+}
+
+.title {
+  font-size: clamp(22px,6vw,32px);
+  font-weight: 900;
+  text-align: center;
+  background: linear-gradient(135deg,#ff9ecf,#a855f7,#00d4ff);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom: 6px;
+}
+.subtitle { text-align:center; color:#8892a4; font-size:0.85rem; margin-bottom:16px; }
+
+#profile-badge { text-align:center; font-size:0.8rem; color:#88ccff; margin-bottom:12px; }
+#profile-badge b { color:#ffd700; }
+.review-tag { display:inline-block; margin-left:6px; font-size:0.7rem; color:#ffd166;
+  background:rgba(255,209,102,0.12); border:1px solid rgba(255,209,102,0.35); border-radius:8px; padding:2px 8px; }
+
+/* 과목 선택 */
+.subject-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+.subject-btn { display:flex; align-items:center; gap:14px; background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 16px; cursor:pointer; transition:.15s; }
+.subject-btn:hover, .subject-btn.selected { border-color:#a855f7; background:rgba(168,85,247,0.1); }
+.subject-icon { font-size:2rem; }
+.subject-info { flex:1; }
+.subject-name { font-weight:800; font-size:1.05rem; }
+.subject-grade { font-size:0.75rem; color:#8892a4; margin-top:2px; }
+
+.start-btn { display:block; width:100%; padding:14px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,#ff9ecf,#a855f7); color:#06070f; font-weight:900;
+  font-size:1.05rem; cursor:pointer; letter-spacing:1px; }
+.start-btn:hover { filter:brightness(1.1); }
+.start-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+/* 게임 화면 */
+#game-screen { display:none; }
+.game-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:0.85rem; color:#c4cde0; }
+
+.board {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:16px;
+}
+.mcard {
+  aspect-ratio:1; border-radius:10px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  text-align:center; font-size:0.78rem; font-weight:700; padding:6px; line-height:1.3;
+  background:linear-gradient(135deg,#2a1a4a,#1a1030); border:2px solid rgba(255,255,255,0.1);
+  transition:transform .2s, background .2s, border-color .2s; user-select:none;
+}
+.mcard.flipped { background:linear-gradient(135deg,#3a2a6a,#2a1a50); border-color:#a855f7; color:#fff; transform: scale(1.02); }
+.mcard.matched { background:rgba(74,222,128,0.15); border-color:#4ade80; color:#4ade80; cursor:default; }
+.mcard.shake { animation: mcardShake .3s; }
+.mcard .back-icon { font-size:1.6rem; opacity:.5; }
+@keyframes mcardShake {
+  0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)}
+}
+
+/* 결과 화면 */
+#result-screen { display:none; text-align:center; }
+.result-emoji { font-size:3.5rem; margin-bottom:8px; }
+.result-score { font-size:1.6rem; font-weight:900; margin-bottom:4px; }
+.result-sub { color:#8892a4; font-size:0.9rem; margin-bottom:14px; }
+.level-msg { font-size:0.95rem; font-weight:700; margin-bottom:14px; }
+.level-msg.up { color:#4ade80; }
+.level-msg.down { color:#ff9a76; }
+
+.btn-row { display:flex; gap:10px; }
+.btn-row .start-btn { flex:1; }
+.secondary-btn { flex:1; padding:14px; border:2px solid rgba(255,255,255,0.15); border-radius:14px;
+  background:transparent; color:#c4cde0; font-weight:800; font-size:0.95rem; cursor:pointer; }
+
+a.back-link { display:block; text-align:center; margin-top:14px; color:#8892a4; font-size:0.8rem; text-decoration:none; }
+a.back-link:hover { color:#fff; }
+
+@media (max-width:380px) {
+  .board { grid-template-columns:repeat(3,1fr); }
+}
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="card-panel">
+    <div class="title">🃏 짝꿍 찾기</div>
+    <div class="subtitle">개념과 뜻을 짝지어보세요!</div>
+    <div id="profile-badge"></div>
+
+    <!-- 시작 화면 -->
+    <div id="start-screen">
+      <div class="subject-grid" id="subject-grid"></div>
+      <button class="start-btn" id="start-btn" disabled>탐험을 시작하려면 과목을 선택하세요</button>
+    </div>
+
+    <!-- 게임 화면 -->
+    <div id="game-screen">
+      <div class="game-top">
+        <span id="game-pairs">0 / 6 짝</span>
+        <span id="game-moves">시도: 0</span>
+        <span id="game-time">⏱ 0초</span>
+      </div>
+      <div class="board" id="board"></div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="result-screen">
+      <div class="result-emoji" id="result-emoji">🎉</div>
+      <div class="result-score" id="result-score">6쌍 완성!</div>
+      <div class="result-sub" id="result-sub"></div>
+      <div class="level-msg" id="level-msg"></div>
+      <div class="btn-row">
+        <button class="secondary-btn" id="retry-btn">다시 도전</button>
+        <button class="start-btn" id="home-btn">과목 선택</button>
+      </div>
+    </div>
+
+    <a class="back-link" href="index.html">← 학습 게임 허브로 돌아가기</a>
+  </div>
+</div>
+
+<script>
+const SUBJECTS = [
+  { key:'국어', icon:'📖', desc:'속담, 관용표현, 한자성어, 낱말' },
+  { key:'영어', icon:'🔤', desc:'단어와 뜻 짝짓기' },
+  { key:'과학', icon:'🔬', desc:'과학 용어와 정의' },
+  { key:'사회', icon:'🏛', desc:'인물, 역사, 사회 개념' },
+];
+
+const PAIRS_COUNT = 6; // 6쌍 = 12카드
+
+let MBANK = null;
+let session = null;
+let timerInterval = null;
+
+async function loadBank() {
+  if (MBANK) return MBANK;
+  const res = await fetch('data/matching_bank.json');
+  MBANK = await res.json();
+  return MBANK;
+}
+
+function renderProfileBadge() {
+  const el = document.getElementById('profile-badge');
+  if (typeof LearningHub === 'undefined' || !LearningHub.getCurrentUser()) {
+    el.innerHTML = '';
+    return;
+  }
+  const u = LearningHub.getCurrentUser();
+  el.innerHTML = `👤 <b>${LearningHub.escapeHtml(u.name)}</b>님, 짝을 찾아볼까요?`;
+}
+
+function renderSubjectGrid() {
+  const grid = document.getElementById('subject-grid');
+  grid.innerHTML = '';
+  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
+  SUBJECTS.forEach(s => {
+    const grade = user ? LearningHub.getGrade(s.key) : 3;
+    const reviewN = user ? LearningHub.getReviewCount('짝꿍찾기', s.key) : 0;
+    const btn = document.createElement('div');
+    btn.className = 'subject-btn';
+    btn.dataset.subject = s.key;
+    btn.innerHTML = `
+      <div class="subject-icon">${s.icon}</div>
+      <div class="subject-info">
+        <div class="subject-name">${s.key}</div>
+        <div class="subject-grade">${s.desc} · 현재 ${LearningHub ? LearningHub.gradeLabel(grade) : grade+'학년'}${reviewN>0?` <span class="review-tag">📝 복습 ${reviewN}개</span>`:''}</div>
+      </div>
+    `;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      const startBtn = document.getElementById('start-btn');
+      startBtn.disabled = false;
+      startBtn.textContent = `${s.icon} ${s.key} 짝꿍 찾기 시작!`;
+      startBtn.dataset.subject = s.key;
+    });
+    grid.appendChild(btn);
+  });
+}
+
+function buildPairs(subject) {
+  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
+  const grade = user ? LearningHub.getGrade(subject) : 3;
+  const pool = MBANK[subject].filter(p => p.grade <= grade);
+  const source = pool.length >= PAIRS_COUNT ? pool : MBANK[subject];
+  let shuffled = source.slice().sort(() => Math.random() - 0.5);
+  let pairs = shuffled.slice(0, PAIRS_COUNT);
+
+  // 오답노트 복습 쌍 주입 (최대 2개)
+  if (user) {
+    const review = LearningHub.getReviewQueue('짝꿍찾기', subject, 2);
+    review.forEach(rq => {
+      if (!rq || !rq.term) return;
+      const match = MBANK[subject].find(item => item.term === rq.term);
+      if (match) {
+        pairs = pairs.filter(item => item.term !== match.term);
+        pairs.splice(Math.min(1, pairs.length), 0, match);
+      }
+    });
+    pairs = pairs.slice(0, PAIRS_COUNT);
+  }
+  return pairs;
+}
+
+function startGame(subject) {
+  const pairs = buildPairs(subject);
+  const cards = [];
+  pairs.forEach((p, i) => {
+    cards.push({ pairId: i, side: 'term', text: p.term, pair: p });
+    cards.push({ pairId: i, side: 'def', text: p.def, pair: p });
+  });
+  cards.sort(() => Math.random() - 0.5);
+
+  session = {
+    subject, pairs, cards,
+    flipped: [], matched: new Set(), moves: 0,
+    matchedCount: 0, startTime: Date.now(), attemptCounts: {} // pairId -> 시도 횟수
+  };
+
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('game-screen').style.display = 'block';
+
+  renderBoard();
+  updateHUD();
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    const sec = Math.floor((Date.now() - session.startTime) / 1000);
+    document.getElementById('game-time').textContent = `⏱ ${sec}초`;
+  }, 500);
+}
+
+function renderBoard() {
+  const board = document.getElementById('board');
+  board.innerHTML = '';
+  session.cards.forEach((card, idx) => {
+    const div = document.createElement('div');
+    div.className = 'mcard';
+    if (session.matched.has(idx)) div.className += ' matched';
+    else if (session.flipped.includes(idx)) div.className += ' flipped';
+
+    if (session.matched.has(idx) || session.flipped.includes(idx)) {
+      div.textContent = card.text;
+    } else {
+      div.innerHTML = '<span class="back-icon">❓</span>';
+    }
+    div.addEventListener('click', () => flipCard(idx));
+    board.appendChild(div);
+  });
+}
+
+function updateHUD() {
+  document.getElementById('game-pairs').textContent = `${session.matchedCount} / ${session.pairs.length} 짝`;
+  document.getElementById('game-moves').textContent = `시도: ${session.moves}`;
+}
+
+function flipCard(idx) {
+  if (session.matched.has(idx)) return;
+  if (session.flipped.includes(idx)) return;
+  if (session.flipped.length >= 2) return;
+
+  session.flipped.push(idx);
+  renderBoard();
+
+  if (session.flipped.length === 2) {
+    session.moves++;
+    updateHUD();
+    const [a, b] = session.flipped;
+    const cardA = session.cards[a], cardB = session.cards[b];
+
+    if (cardA.pairId === cardB.pairId && cardA.side !== cardB.side) {
+      // 매칭 성공
+      setTimeout(() => {
+        session.matched.add(a);
+        session.matched.add(b);
+        session.matchedCount++;
+        session.flipped = [];
+        renderBoard();
+        updateHUD();
+
+        // 학습허브: 오답노트 기록 (시도 2회 이하면 정답으로 간주, 3회 이상이면 오답노트 추가)
+        if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+          const attempts = session.attemptCounts[cardA.pairId] || 0;
+          const correct = attempts === 0;
+          LearningHub.recordAnswer({
+            gameId: '짝꿍찾기', subject: session.subject, qKey: cardA.pair.term,
+            data: { term: cardA.pair.term, def: cardA.pair.def, unit: cardA.pair.unit, grade: cardA.pair.grade },
+            correct: correct
+          });
+        }
+
+        if (session.matchedCount === session.pairs.length) {
+          finishGame();
+        }
+      }, 400);
+    } else {
+      // 매칭 실패
+      session.attemptCounts[cardA.pairId] = (session.attemptCounts[cardA.pairId] || 0) + 1;
+      session.attemptCounts[cardB.pairId] = (session.attemptCounts[cardB.pairId] || 0) + 1;
+      const els = document.querySelectorAll('.mcard.flipped');
+      els.forEach(el => el.classList.add('shake'));
+      setTimeout(() => {
+        session.flipped = [];
+        renderBoard();
+      }, 600);
+    }
+  }
+}
+
+function finishGame() {
+  clearInterval(timerInterval);
+  const elapsed = Math.floor((Date.now() - session.startTime) / 1000);
+
+  document.getElementById('game-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+
+  const perfectMoves = session.pairs.length; // 이상적인 시도 횟수
+  const efficiency = perfectMoves / session.moves; // 1.0이 만점
+
+  document.getElementById('result-emoji').textContent =
+    efficiency >= 0.9 ? '🏆' : efficiency >= 0.6 ? '🎉' : '💪';
+  document.getElementById('result-score').textContent = `${session.pairs.length}쌍 완성! (${session.moves}번 시도, ${elapsed}초)`;
+  document.getElementById('result-sub').textContent =
+    efficiency >= 0.9 ? '완벽한 기억력이에요!' :
+    efficiency >= 0.6 ? '잘했어요! 조금만 더 집중하면 완벽!' :
+    '괜찮아요, 다시 도전하면 더 빨라질 거예요!';
+
+  const levelMsgEl = document.getElementById('level-msg');
+  levelMsgEl.textContent = '';
+  levelMsgEl.className = 'level-msg';
+
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const accuracy = Math.min(1, efficiency);
+    LearningHub.recordPlay('짝꿍찾기', { score: session.matchedCount*10, correct: session.matchedCount, total: session.pairs.length, grade: LearningHub.getGrade(session.subject) });
+    const li = LearningHub.evaluateLevel(session.subject, accuracy, { upThreshold: 0.85, downThreshold: 0.35 });
+    if (li.changed) {
+      if (li.direction === 'up') {
+        levelMsgEl.textContent = `⬆️ 레벨업! ${session.subject} ${li.newGrade}학년 난이도로 올라갑니다!`;
+        levelMsgEl.classList.add('up');
+      } else {
+        levelMsgEl.textContent = `⬇️ ${session.subject} ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!`;
+        levelMsgEl.classList.add('down');
+      }
+    }
+    const expGain = session.pairs.length * 3 + (efficiency >= 0.95 ? 15 : 0);
+    const expResult = LearningHub.addExp(expGain, '짝꿍찾기');
+    if (efficiency >= 0.95) LearningHub.unlockAchievement('짝꿍찾기', 'perfect_' + session.subject);
+    LearningHub.announceExpResult(expResult);
+  }
+
+  renderProfileBadge();
+}
+
+document.getElementById('start-btn').addEventListener('click', (e) => {
+  const subject = e.target.dataset.subject;
+  if (!subject) return;
+  startGame(subject);
+});
+
+document.getElementById('retry-btn').addEventListener('click', () => {
+  startGame(session.subject);
+});
+
+document.getElementById('home-btn').addEventListener('click', () => {
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'block';
+  renderSubjectGrid();
+  renderProfileBadge();
+});
+
+(async function init() {
+  await loadBank();
+  renderSubjectGrid();
+  renderProfileBadge();
+  if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
+    LearningHub.injectLoginModal(() => { renderSubjectGrid(); renderProfileBadge(); });
+  }
+})();
+</script>
+</body>
+</html>

@@ -348,6 +348,15 @@
                 radial-gradient(ellipse at bottom right, #052e16, transparent 70%);
   }
 
+  .card-matching {
+    --accent: #f472b6;
+    --glow: rgba(244,114,182,0.4);
+  }
+  .card-matching .card-bg {
+    background: radial-gradient(ellipse at top left, #4a0e2e, transparent 70%),
+                radial-gradient(ellipse at bottom right, #1a0a14, transparent 70%);
+  }
+
   .empty-state {
     text-align: center;
     color: #5a6378;
@@ -736,6 +745,30 @@
             <span class="feature-chip">📖 국어</span>
             <span class="feature-chip">🎯 학년별 난이도</span>
             <span class="feature-chip review-chip review-count" data-gameid="지식탐험">복습 0개</span>
+          </div>
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>
+    </a>
+
+    <!-- 짝꿍찾기 게임 -->
+    <a class="game-card card-matching" data-subjects="국어,영어,과학,사회" data-gameid="짝꿍찾기" href="짝꿍찾기.html">
+      <div class="card-bg"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">🃏</div>
+        <div class="card-content">
+          <div class="card-tag-row">
+            <div class="card-tag">국어 · 영어 · 과학 · 사회</div>
+          </div>
+          <div class="card-title">짝꿍 찾기</div>
+          <div class="card-desc">카드를 뒤집어 개념과 뜻의 짝을 찾는 기억력 게임! 속담, 한자성어, 영단어, 과학 용어 등 4과목을 학년별로 즐겨요.</div>
+          <div class="card-features">
+            <span class="feature-chip">🧠 기억력</span>
+            <span class="feature-chip">🃏 12카드</span>
+            <span class="feature-chip">⏱ 시간/시도 측정</span>
+            <span class="feature-chip">🎯 학년별 난이도</span>
+            <span class="feature-chip review-chip review-count" data-gameid="짝꿍찾기">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>
