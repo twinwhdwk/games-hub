@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>총알 피하기</title>
+<script src="shared.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; display:flex; justify-content:center; align-items:center; height:100vh; overflow:hidden; }
@@ -28,6 +29,7 @@ canvas { display:block; max-width:100vw; max-height:100vh; }
 </head>
 <body>
 <canvas id="c"></canvas>
+<div id="lh-profile-badge" style="position:fixed;top:10px;left:50%;transform:translateX(-50%);font-size:13px;color:#88ccff;font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;pointer-events:none;z-index:50;text-shadow:0 1px 4px rgba(0,0,0,0.8);"></div>
 <div id="vjoy-zone">
   <div id="vjoy-base"></div>
   <div id="vjoy-stick"></div>
@@ -1031,8 +1033,26 @@ function spawnPenalty() {
 }
 
 // === QUIZ ===
+// 게임 내 카테고리 -> 학습허브 과목 매핑
+const CAT_TO_SUBJECT = { '과학':'과학', '역사':'사회', '국어':'국어', '수학':'수학', '지리':'사회' };
+let runSubjectStats = {}; // { 과목: {correct, total} }
 let usedQuizIndices = new Set();
 function pickQuiz() {
+  // 학습허브: 30% 확률로 오답노트 복습문제 우선 출제
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser() && Math.random() < 0.3) {
+    const review = LearningHub.getReviewQueue('총알피하기', null, 5);
+    if (review.length > 0) {
+      const rq = review[Math.floor(Math.random()*review.length)];
+      const idx = quizData.findIndex(item => item.q === rq.q);
+      if (idx >= 0) {
+        usedQuizIndices.add(idx);
+        quizQuestion = Object.assign({}, quizData[idx], { _review: true });
+        quizCountdown = 10;
+        quizAnswered = false;
+        return;
+      }
+    }
+  }
   // Avoid repeating until all questions used
   if (usedQuizIndices.size >= quizData.length) usedQuizIndices.clear();
   let idx;
@@ -1138,6 +1158,21 @@ function answerQuiz(ans) {
   quizAnswered = true;
   resultCorrect = (ans === quizQuestion.a);
   if (!resultCorrect) penaltyPending = true;
+
+  // 학습허브: 오답노트 기록 및 과목별 통계
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const subject = CAT_TO_SUBJECT[quizQuestion.cat] || '상식';
+    if (CAT_TO_SUBJECT[quizQuestion.cat]) {
+      LearningHub.recordAnswer({
+        gameId: '총알피하기', subject: subject, qKey: quizQuestion.q,
+        data: { q: quizQuestion.q, a: quizQuestion.a, cat: quizQuestion.cat },
+        correct: resultCorrect
+      });
+      if (!runSubjectStats[subject]) runSubjectStats[subject] = { correct:0, total:0 };
+      runSubjectStats[subject].total++;
+      if (resultCorrect) runSubjectStats[subject].correct++;
+    }
+  }
   // 퀴즈 HUD flash 효과
   quizHudFlashTimer = 1.2;
   quizHudFlashCorrect = resultCorrect;
@@ -1551,6 +1586,26 @@ function checkHit() {
         snd.gameOver();
         if (isNewRecord) { spawnConfetti(W/2, H/2); snd.newRecord(); }
         spawnExplosion(ship.x, ship.y, '#ff8800', 40);
+
+        // 학습 허브: 과목별 레벨평가 + EXP
+        if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+          let totalExp = Math.round(time) + totalQuizCorrect*2;
+          Object.keys(runSubjectStats).forEach(subject => {
+            const s = runSubjectStats[subject];
+            if (s.total === 0) return;
+            const accuracy = s.correct / s.total;
+            LearningHub.recordPlay('총알피하기', { score: Math.round(time*10), correct: s.correct, total: s.total, grade: LearningHub.getGrade(subject) });
+            const li = LearningHub.evaluateLevel(subject, accuracy, { upThreshold: 0.8, downThreshold: 0.4 });
+            if (li.changed) {
+              const msg = li.direction === 'up'
+                ? `⬆️ ${subject} ${li.newGrade}학년 난이도로 올라갑니다!`
+                : `⬇️ ${subject} ${li.newGrade}학년 난이도로 조정`;
+              setTimeout(() => LearningHub.showToast(msg), 800);
+            }
+          });
+          const expResult = LearningHub.addExp(totalExp, '총알피하기');
+          LearningHub.announceExpResult(expResult);
+        }
       }
       return;
     }
@@ -1880,6 +1935,7 @@ function startGame() {
   usedQuizIndices.clear();
   totalQuizAnswered = 0;
   totalQuizCorrect = 0;
+  runSubjectStats = {};
   // 신기록 배지: 게임 시작 시 현재 최고기록 저장
   prevBest = getDiffBest(selectedDifficulty);
   newRecordBadgeTimer = 0;
@@ -2010,6 +2066,8 @@ const _isTouchDev = ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 if (_isTouchDev) vjoyZone.style.display = 'block';
 
 function updateVjoyVisibility() {
+  const badge = document.getElementById('lh-profile-badge');
+  if (badge) badge.style.display = (state === 'start' || state === 'dead') ? 'block' : 'none';
   if (!_isTouchDev || !vjoyZone) return;
   const show = state !== 'start' && state !== 'dead';
   if (show && vjoyZone.style.display === 'none') vjoyZone.style.display = 'block';
@@ -2017,5 +2075,26 @@ function updateVjoyVisibility() {
 }
 const __drawHUD = drawHUD;
 drawHUD = function() { __drawHUD(); updateVjoyVisibility(); };
+
+// 학습 허브: 프로필 뱃지 및 로그인
+function renderLHProfileBadgeB(){
+  const el=document.getElementById('lh-profile-badge');
+  if(!el) return;
+  if(typeof LearningHub==='undefined' || !LearningHub.getCurrentUser()){
+    el.innerHTML='';
+    return;
+  }
+  const u=LearningHub.getCurrentUser();
+  const reviewN=LearningHub.getReviewCount('총알피하기');
+  el.innerHTML='👤 <b style="color:#ffd700">'+LearningHub.escapeHtml(u.name)+'</b>'+
+    (reviewN>0?' <span style="display:inline-block;margin-left:6px;font-size:11px;color:#ffd166;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);border-radius:8px;padding:2px 8px;">📝 복습문제 '+reviewN+'개 포함</span>':'');
+}
+if(typeof LearningHub!=='undefined'){
+  if(!LearningHub.getCurrentUser()){
+    LearningHub.injectLoginModal(function(){ renderLHProfileBadgeB(); });
+  } else {
+    renderLHProfileBadgeB();
+  }
+}
 </script>
 </body>
