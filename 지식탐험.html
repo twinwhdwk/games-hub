@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🧭 지식 탐험대</title>
+<script src="shared.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: radial-gradient(ellipse at top, #1a2a4a 0%, #06070f 70%);
+  color:#fff; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  overflow-x:hidden;
+}
+#app { width:100%; max-width:520px; padding:18px; }
+
+/* ── 공통 카드 ── */
+.card {
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px;
+  padding: 24px;
+  backdrop-filter: blur(10px);
+}
+
+.title {
+  font-size: clamp(24px,6vw,34px);
+  font-weight: 900;
+  text-align: center;
+  background: linear-gradient(135deg,#00d4ff,#a855f7,#ffd166);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom: 6px;
+}
+.subtitle { text-align:center; color:#8892a4; font-size:0.85rem; margin-bottom:18px; }
+
+#profile-badge { text-align:center; font-size:0.8rem; color:#88ccff; margin-bottom:14px; }
+#profile-badge b { color:#ffd700; }
+.review-tag {
+  display:inline-block; margin-left:6px; font-size:0.7rem; color:#ffd166;
+  background:rgba(255,209,102,0.12); border:1px solid rgba(255,209,102,0.35);
+  border-radius:8px; padding:2px 8px;
+}
+
+/* ── 과목 선택 ── */
+.subject-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+.subject-btn {
+  display:flex; align-items:center; gap:14px;
+  background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.08);
+  border-radius: 14px; padding: 14px 16px;
+  cursor:pointer; transition:.15s;
+}
+.subject-btn:hover { border-color:#7c7cff; background:rgba(124,124,255,0.1); }
+.subject-icon { font-size:2rem; }
+.subject-info { flex:1; }
+.subject-name { font-weight:800; font-size:1.05rem; }
+.subject-grade { font-size:0.75rem; color:#8892a4; margin-top:2px; }
+
+.start-btn {
+  display:block; width:100%; padding:14px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,#00d4ff,#a855f7); color:#06070f; font-weight:900;
+  font-size:1.05rem; cursor:pointer; letter-spacing:1px;
+}
+.start-btn:hover { filter:brightness(1.1); }
+.start-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+/* ── 퀴즈 화면 ── */
+#quiz-screen { display:none; }
+.quiz-top {
+  display:flex; justify-content:space-between; align-items:center; margin-bottom:14px;
+  font-size:0.85rem; color:#c4cde0;
+}
+.timer-bar-wrap { height:8px; background:rgba(255,255,255,0.08); border-radius:100px; overflow:hidden; margin-bottom:18px; }
+.timer-bar-fill { height:100%; background:linear-gradient(90deg,#00d4ff,#ffd166,#ff6b6b); border-radius:100px; transition:width .1s linear; }
+
+.unit-tag {
+  display:inline-block; font-size:0.7rem; font-weight:700; color:#a855f7;
+  background:rgba(168,85,247,0.12); border:1px solid rgba(168,85,247,0.35);
+  border-radius:100px; padding:3px 10px; margin-bottom:10px;
+}
+.review-badge {
+  display:inline-block; font-size:0.7rem; font-weight:700; color:#ffd166;
+  background:rgba(255,209,102,0.12); border:1px solid rgba(255,209,102,0.35);
+  border-radius:100px; padding:3px 10px; margin-bottom:10px; margin-left:6px;
+}
+
+.question-text { font-size:clamp(17px,4.5vw,22px); font-weight:800; line-height:1.5; margin-bottom:20px; min-height:60px; }
+
+.choices { display:flex; flex-direction:column; gap:10px; }
+.choice-btn {
+  text-align:left; padding:14px 16px; border-radius:12px;
+  background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.08);
+  color:#fff; font-size:0.95rem; cursor:pointer; transition:.12s;
+}
+.choice-btn:hover { border-color:#7c7cff; background:rgba(124,124,255,0.1); }
+.choice-btn.correct { border-color:#4ade80; background:rgba(74,222,128,0.18); }
+.choice-btn.wrong { border-color:#ff6b6b; background:rgba(255,107,107,0.18); }
+.choice-btn.disabled { pointer-events:none; opacity:.7; }
+
+/* ── 결과 화면 ── */
+#result-screen { display:none; text-align:center; }
+.result-emoji { font-size:3.5rem; margin-bottom:8px; }
+.result-score { font-size:2rem; font-weight:900; margin-bottom:4px; }
+.result-sub { color:#8892a4; font-size:0.9rem; margin-bottom:14px; }
+.level-msg { font-size:0.95rem; font-weight:700; margin-bottom:14px; }
+.level-msg.up { color:#4ade80; }
+.level-msg.down { color:#ff9a76; }
+.wrong-review {
+  text-align:left; background:rgba(255,107,107,0.08); border:1px solid rgba(255,107,107,0.25);
+  border-radius:12px; padding:12px 14px; margin-bottom:14px; font-size:0.85rem; line-height:1.8;
+  max-height:160px; overflow-y:auto;
+}
+
+.btn-row { display:flex; gap:10px; }
+.btn-row .start-btn { flex:1; }
+.secondary-btn {
+  flex:1; padding:14px; border:2px solid rgba(255,255,255,0.15); border-radius:14px;
+  background:transparent; color:#c4cde0; font-weight:800; font-size:0.95rem; cursor:pointer;
+}
+
+a.back-link { display:block; text-align:center; margin-top:14px; color:#8892a4; font-size:0.8rem; text-decoration:none; }
+a.back-link:hover { color:#fff; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="card">
+    <div class="title">🧭 지식 탐험대</div>
+    <div class="subtitle">사회 · 과학 · 국어 — 교과 지식 캡슐을 모으자!</div>
+    <div id="profile-badge"></div>
+
+    <!-- 시작 화면 -->
+    <div id="start-screen">
+      <div class="subject-grid" id="subject-grid"></div>
+      <button class="start-btn" id="start-btn" disabled>탐험을 시작하려면 과목을 선택하세요</button>
+    </div>
+
+    <!-- 퀴즈 화면 -->
+    <div id="quiz-screen">
+      <div class="quiz-top">
+        <span id="quiz-progress">1 / 10</span>
+        <span id="quiz-score">점수: 0</span>
+      </div>
+      <div class="timer-bar-wrap"><div class="timer-bar-fill" id="timer-bar" style="width:100%"></div></div>
+      <div id="unit-row"></div>
+      <div class="question-text" id="question-text"></div>
+      <div class="choices" id="choices"></div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="result-screen">
+      <div class="result-emoji" id="result-emoji">🎉</div>
+      <div class="result-score" id="result-score">8 / 10</div>
+      <div class="result-sub" id="result-sub"></div>
+      <div class="level-msg" id="level-msg"></div>
+      <div class="wrong-review" id="wrong-review" style="display:none;"></div>
+      <div class="btn-row">
+        <button class="secondary-btn" id="retry-btn">다시 도전</button>
+        <button class="start-btn" id="home-btn">과목 선택</button>
+      </div>
+    </div>
+
+    <a class="back-link" href="index.html">← 학습 게임 허브로 돌아가기</a>
+  </div>
+</div>
+
+<script>
+const SUBJECTS = [
+  { key:'사회', icon:'🏛', desc:'국토, 역사, 정치, 경제, 세계 여러 나라' },
+  { key:'과학', icon:'🔬', desc:'물질, 생물, 지구, 에너지, 실험' },
+  { key:'국어', icon:'📖', desc:'어휘, 맞춤법, 속담, 문법' },
+];
+
+let BANK = null;
+let session = null; // { subject, questions:[], idx, score, correct, wrong:[] }
+let timerInterval = null;
+
+async function loadBank() {
+  if (BANK) return BANK;
+  const res = await fetch('data/question_bank.json');
+  BANK = await res.json();
+  return BANK;
+}
+
+function renderProfileBadge() {
+  const el = document.getElementById('profile-badge');
+  if (typeof LearningHub === 'undefined' || !LearningHub.getCurrentUser()) {
+    el.innerHTML = '';
+    return;
+  }
+  const u = LearningHub.getCurrentUser();
+  el.innerHTML = `👤 <b>${LearningHub.escapeHtml(u.name)}</b>님의 탐험 준비 완료!`;
+}
+
+function renderSubjectGrid() {
+  const grid = document.getElementById('subject-grid');
+  grid.innerHTML = '';
+  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
+  SUBJECTS.forEach(s => {
+    const grade = user ? LearningHub.getGrade(s.key) : 3;
+    const reviewN = user ? LearningHub.getReviewCount('지식탐험', s.key) : 0;
+    const btn = document.createElement('div');
+    btn.className = 'subject-btn';
+    btn.dataset.subject = s.key;
+    btn.innerHTML = `
+      <div class="subject-icon">${s.icon}</div>
+      <div class="subject-info">
+        <div class="subject-name">${s.key}</div>
+        <div class="subject-grade">${s.desc} · 현재 ${LearningHub ? LearningHub.gradeLabel(grade) : grade+'학년'}${reviewN>0?` <span class="review-tag">📝 복습 ${reviewN}개</span>`:''}</div>
+      </div>
+    `;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.subject-btn').forEach(b => b.style.borderColor = 'rgba(255,255,255,0.08)');
+      btn.style.borderColor = '#00d4ff';
+      const startBtn = document.getElementById('start-btn');
+      startBtn.disabled = false;
+      startBtn.textContent = `${s.icon} ${s.key} 탐험 시작!`;
+      startBtn.dataset.subject = s.key;
+    });
+    grid.appendChild(btn);
+  });
+}
+
+function buildQuestions(subject) {
+  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
+  const grade = user ? LearningHub.getGrade(subject) : 3;
+  const pool = BANK[subject].filter(q => q.grade <= grade);
+  // 만약 현재 학년 이하 문제가 너무 적으면 전체 풀에서 보충
+  const source = pool.length >= 6 ? pool : BANK[subject];
+  let shuffled = source.slice().sort(() => Math.random() - 0.5);
+  let questions = shuffled.slice(0, Math.min(10, shuffled.length));
+
+  // 오답노트 복습 문제 주입 (최대 3개)
+  if (user) {
+    const review = LearningHub.getReviewQueue('지식탐험', subject, 3);
+    review.forEach(rq => {
+      if (!rq || !rq.q) return;
+      const match = BANK[subject].find(item => item.q === rq.q);
+      if (match) {
+        questions = questions.filter(item => item.q !== match.q);
+        questions.splice(Math.min(1, questions.length), 0, Object.assign({}, match, { _review: true }));
+      }
+    });
+    questions = questions.slice(0, 10);
+  }
+  return questions;
+}
+
+function startQuiz(subject) {
+  const questions = buildQuestions(subject);
+  session = { subject, questions, idx: 0, score: 0, correct: 0, wrong: [] };
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  showQuestion();
+}
+
+function showQuestion() {
+  clearInterval(timerInterval);
+  const q = session.questions[session.idx];
+  document.getElementById('quiz-progress').textContent = `${session.idx+1} / ${session.questions.length}`;
+  document.getElementById('quiz-score').textContent = `점수: ${session.score}`;
+
+  const unitRow = document.getElementById('unit-row');
+  unitRow.innerHTML = `<span class="unit-tag">${LearningHub.escapeHtml(session.subject)} · ${LearningHub.escapeHtml(q.unit)} · ${q.grade}학년</span>` +
+    (q._review ? '<span class="review-badge">📝 복습 문제</span>' : '');
+
+  document.getElementById('question-text').textContent = q.q;
+
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  const order = q.choices.map((c,i) => i).sort(() => Math.random()-0.5);
+  order.forEach(origIdx => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = q.choices[origIdx];
+    btn.addEventListener('click', () => selectAnswer(origIdx, btn));
+    choicesEl.appendChild(btn);
+  });
+
+  // 타이머 (15초)
+  let timeLeft = 15000;
+  const maxTime = 15000;
+  const bar = document.getElementById('timer-bar');
+  bar.style.width = '100%';
+  const start = Date.now();
+  timerInterval = setInterval(() => {
+    const elapsed = Date.now() - start;
+    const pct = Math.max(0, 100 - (elapsed/maxTime)*100);
+    bar.style.width = pct + '%';
+    if (elapsed >= maxTime) {
+      clearInterval(timerInterval);
+      selectAnswer(-1, null); // 시간초과
+    }
+  }, 50);
+}
+
+function selectAnswer(chosenIdx, btnEl) {
+  clearInterval(timerInterval);
+  const q = session.questions[session.idx];
+  const correct = chosenIdx === q.answer;
+  const allBtns = document.querySelectorAll('.choice-btn');
+  allBtns.forEach(b => b.classList.add('disabled'));
+
+  allBtns.forEach((b, i) => {
+    // i는 DOM 순서(셔플된 순서)이므로 텍스트로 매칭
+    if (b.textContent === q.choices[q.answer]) b.classList.add('correct');
+  });
+  if (!correct && btnEl) btnEl.classList.add('wrong');
+
+  if (correct) {
+    session.score += 10;
+    session.correct += 1;
+  } else {
+    session.wrong.push(q);
+  }
+
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    LearningHub.recordAnswer({
+      gameId: '지식탐험', subject: session.subject, qKey: q.q,
+      data: { q: q.q, unit: q.unit, grade: q.grade, choices: q.choices, answer: q.answer },
+      correct: correct
+    });
+  }
+
+  setTimeout(() => {
+    session.idx += 1;
+    if (session.idx < session.questions.length) {
+      showQuestion();
+    } else {
+      finishQuiz();
+    }
+  }, 900);
+}
+
+function finishQuiz() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+
+  const total = session.questions.length;
+  const accuracy = session.correct / total;
+
+  document.getElementById('result-emoji').textContent =
+    accuracy >= 0.9 ? '🏆' : accuracy >= 0.7 ? '🎉' : accuracy >= 0.4 ? '💪' : '📚';
+  document.getElementById('result-score').textContent = `${session.correct} / ${total}  (점수 ${session.score})`;
+  document.getElementById('result-sub').textContent =
+    accuracy >= 0.9 ? '완벽해요! 지식 탐험가 인증!' :
+    accuracy >= 0.7 ? '훌륭해요! 조금만 더 연습하면 만점!' :
+    accuracy >= 0.4 ? '좋아요! 틀린 문제는 곧 다시 만나게 될 거예요.' :
+    '괜찮아요, 천천히 다시 도전해봐요!';
+
+  const levelMsgEl = document.getElementById('level-msg');
+  levelMsgEl.textContent = '';
+  levelMsgEl.className = 'level-msg';
+
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    LearningHub.recordPlay('지식탐험', { score: session.score, correct: session.correct, total, grade: LearningHub.getGrade(session.subject) });
+    const li = LearningHub.evaluateLevel(session.subject, accuracy, { upThreshold: 0.8, downThreshold: 0.4 });
+    if (li.changed) {
+      if (li.direction === 'up') {
+        levelMsgEl.textContent = `⬆️ 레벨업! ${session.subject} ${li.newGrade}학년 난이도로 올라갑니다!`;
+        levelMsgEl.classList.add('up');
+      } else {
+        levelMsgEl.textContent = `⬇️ ${session.subject} ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!`;
+        levelMsgEl.classList.add('down');
+      }
+    }
+    const expGain = session.correct * 4 + (accuracy === 1 ? 15 : 0);
+    const expResult = LearningHub.addExp(expGain, '지식탐험');
+    if (accuracy === 1) LearningHub.unlockAchievement('지식탐험', 'perfect_' + session.subject);
+    LearningHub.announceExpResult(expResult);
+  }
+
+  const wrongEl = document.getElementById('wrong-review');
+  if (session.wrong.length > 0) {
+    wrongEl.style.display = 'block';
+    wrongEl.innerHTML = '<b>❌ 틀린 문제 복습</b><br>' + session.wrong.map(w =>
+      `· ${LearningHub.escapeHtml(w.q)}<br>&nbsp;&nbsp;→ 정답: <span style="color:#4ade80">${LearningHub.escapeHtml(w.choices[w.answer])}</span>`
+    ).join('<br>');
+  } else {
+    wrongEl.style.display = 'none';
+  }
+
+  renderProfileBadge();
+}
+
+document.getElementById('start-btn').addEventListener('click', (e) => {
+  const subject = e.target.dataset.subject;
+  if (!subject) return;
+  startQuiz(subject);
+});
+
+document.getElementById('retry-btn').addEventListener('click', () => {
+  startQuiz(session.subject);
+});
+
+document.getElementById('home-btn').addEventListener('click', () => {
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'block';
+  renderSubjectGrid();
+  renderProfileBadge();
+});
+
+// ── 초기화 ──
+(async function init() {
+  await loadBank();
+  renderSubjectGrid();
+  renderProfileBadge();
+  if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
+    LearningHub.injectLoginModal(() => { renderSubjectGrid(); renderProfileBadge(); });
+  }
+})();
+</script>
+</body>
+</html>

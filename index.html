@@ -339,6 +339,15 @@
                 radial-gradient(ellipse at bottom right, #1c1003, transparent 70%);
   }
 
+  .card-knowledge {
+    --accent: #4ade80;
+    --glow: rgba(74,222,128,0.4);
+  }
+  .card-knowledge .card-bg {
+    background: radial-gradient(ellipse at top left, #14532d, transparent 70%),
+                radial-gradient(ellipse at bottom right, #052e16, transparent 70%);
+  }
+
   .empty-state {
     text-align: center;
     color: #5a6378;
@@ -703,6 +712,30 @@
             <span class="feature-chip">❓ 48문제</span>
             <span class="feature-chip">⏱ 제한시간</span>
             <span class="feature-chip review-chip review-count" data-gameid="한국사탐험">복습 0개</span>
+          </div>
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>
+    </a>
+
+    <!-- 지식탐험 게임 -->
+    <a class="game-card card-knowledge" data-subjects="사회,과학,국어" data-gameid="지식탐험" href="지식탐험.html">
+      <div class="card-bg"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">🧭</div>
+        <div class="card-content">
+          <div class="card-tag-row">
+            <div class="card-tag">사회 · 과학 · 국어</div>
+          </div>
+          <div class="card-title">지식 탐험대</div>
+          <div class="card-desc">사회·과학·국어 교과 지식을 4지선다 퀴즈로! 내 학년에 맞는 단원 문제가 나오고, 틀린 문제는 복습으로 다시 만나요.</div>
+          <div class="card-features">
+            <span class="feature-chip">🏛 사회</span>
+            <span class="feature-chip">🔬 과학</span>
+            <span class="feature-chip">📖 국어</span>
+            <span class="feature-chip">🎯 학년별 난이도</span>
+            <span class="feature-chip review-chip review-count" data-gameid="지식탐험">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>
