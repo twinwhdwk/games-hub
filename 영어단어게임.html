@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>수양대군의 영어 정벌</title>
+<script src="shared.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #1a0a00; overflow: hidden; font-family: 'Malgun Gothic', sans-serif; display: flex; flex-direction: column; align-items: center; }
@@ -127,6 +128,7 @@ canvas { display: block; width: 900px; height: 420px; }
 <div id="start-screen">
   <canvas id="start-bg-canvas"></canvas>
   <h1>&#9876;&#65039; 수양대군의 영어 정벌</h1>
+  <div id="lh-profile-badge" style="text-align:center;font-size:13px;color:#88ccff;margin-top:6px;"></div>
   <div class="story">
     때는 조선 시대.<br>
     <strong>수양대군</strong>이 영어 왕국을 정벌하러 나섰습니다!<br>
@@ -697,7 +699,26 @@ function buildLevelWords(){
       pool.push(Object.assign({},w,{cat:catName}));
     });
   }
-  pool=shuffleArray(pool);return pool.slice(0,cfg.words);
+  pool=shuffleArray(pool);
+  var words=pool.slice(0,cfg.words);
+
+  // 학습허브: 오답노트 복습단어 주입 (최대 2개)
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    var review=LearningHub.getReviewQueue('영단어정벌','영어',2);
+    review.forEach(function(rq){
+      if(!rq||!rq.w) return;
+      var match=null;
+      for(var catKey in WORD_POOL){
+        WORD_POOL[catKey].forEach(function(w){ if(w.w===rq.w) match=Object.assign({},w,{cat:catKey}); });
+      }
+      if(match){
+        words=words.filter(function(item){return item.w!==match.w;});
+        words.splice(Math.min(1,words.length),0,match);
+      }
+    });
+    words=words.slice(0,cfg.words);
+  }
+  return words;
 }
 function clearTimerInterval(){
   if(state.timerInterval!==null){
@@ -746,6 +767,9 @@ function startQuestionTimer(){
         }
       }
       if(q) state.wrongWords.push({word:q.w, meaning:q.m});
+      if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser() && q){
+        LearningHub.recordAnswer({gameId:'영단어정벌',subject:'영어',qKey:q.w,data:{w:q.w,m:q.m,d:q.d,cat:q.cat},correct:false});
+      }
       if(q){var cat=q.cat||'etc';if(!state.catStats[cat])state.catStats[cat]={c:0,w:0};state.catStats[cat].w++;}
       state.totalAnswered++;
       state.combo=0;state.wrongsThisLevel++;updateCombo();
@@ -793,6 +817,9 @@ function submitAnswer(choiceIdx){
   state.answering=false;
   state.totalAnswered++;
   var q=state.currentQ,chosen=q._choices[choiceIdx],correct=(chosen===q.m);
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    LearningHub.recordAnswer({gameId:'영단어정벌',subject:'영어',qKey:q.w,data:{w:q.w,m:q.m,d:q.d,cat:q.cat},correct:correct});
+  }
   var ids=['a','b','c','d'];
   for(var i=0;i<4;i++){
     var el=document.getElementById('choice-'+ids[i]);
@@ -876,6 +903,23 @@ function getStarRank(totalStars, maxPossibleStars) {
   if(ratio >= 0.3) return '🔰 영어 병사';
   return '🌱 영어 신병';
 }
+function applyLearningHubResult(isFinalVictory){
+  if(typeof LearningHub==='undefined' || !LearningHub.getCurrentUser() || state.totalAnswered===0) return '';
+  var accuracy=state.totalCorrectAll/state.totalAnswered;
+  LearningHub.recordPlay('영단어정벌',{score:state.score,correct:state.totalCorrectAll,total:state.totalAnswered,grade:LearningHub.getGrade('영어')});
+  var li=LearningHub.evaluateLevel('영어',accuracy,{upThreshold:0.8,downThreshold:0.4});
+  var msg='';
+  if(li.changed){
+    msg = li.direction==='up'
+      ? '\\n\\n⬆️ 레벨업! 영어 '+li.newGrade+'학년 난이도로 올라갑니다!'
+      : '\\n\\n⬇️ 영어 '+li.newGrade+'학년 난이도로 조정해서 다시 연습해봐요!';
+  }
+  var expGain=state.totalCorrectAll*2 + (isFinalVictory?30:0) + (state.wrongsThisLevel===0?5:0);
+  var expResult=LearningHub.addExp(expGain,'영단어정벌');
+  if(isFinalVictory) LearningHub.unlockAchievement('영단어정벌','perfect_stage');
+  LearningHub.announceExpResult(expResult);
+  return msg;
+}
 function levelComplete(){
   clearTimerInterval();
   saveBestCombo(state.sessionMaxCombo);
@@ -904,6 +948,7 @@ function levelComplete(){
     }
     setTimeout(spawnVictoryFireworks, 250);
     addCum(state.totalCorrectAll, state.totalAnswered, state.catStats);
+    body += applyLearningHubResult(true);
     showMsg(title,body,true);
     showWrongReview();
   }else{
@@ -931,6 +976,7 @@ function gameOver(){
       if(t>0)body+='\n'+(CAT_KO[c]||c)+'  '+s.c+'/'+t+'문제';
     });
   }
+  body += applyLearningHubResult(false);
   showMsg(title,body,true);
   showWrongReview();
 }
@@ -1024,10 +1070,21 @@ function dismissStart(){
   state.timer = state.timerMax;
   document.getElementById('start-screen').style.display='none';
   restartGame();
+  // 학습허브: 첫 플레이인 경우 학년에 맞는 단계부터 시작
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    var rec=getLvStars();
+    if(Object.keys(rec).length===0){
+      var recLevel=LearningHub.gradeToTier(LearningHub.getGrade('영어'), LEVELS.length);
+      if(recLevel>0){
+        state.level=recLevel;
+        startLevel();
+      }
+    }
+  }
   startBGM();
 }
 var CUM_KEY='syd_cum';
-function getCum(){try{return JSON.parse(localStorage.getItem(CUM_KEY)||'{"g":0,"c":0,"t":0,"bc":{}}');}catch(e){return{g:0,c:0,t:0,bc:{};};}}
+function getCum(){try{return JSON.parse(localStorage.getItem(CUM_KEY)||'{"g":0,"c":0,"t":0,"bc":{}}');}catch(e){return{g:0,c:0,t:0,bc:{}};}}
 function saveCum(d){try{localStorage.setItem(CUM_KEY,JSON.stringify(d));}catch(e){}}
 function addCum(correct,total,catStats){
   var d=getCum();d.g++;d.c+=correct;d.t+=total;
@@ -1265,6 +1322,28 @@ renderLevelGrid();
 renderCumStats();
 renderTodayWord();
 document.getElementById('start-bestcombo').textContent='🔥 최고 콤보: '+state.bestCombo+'연속';
+
+// 학습 허브: 프로필 뱃지 및 로그인
+function renderLHProfileBadgeE(){
+  var el=document.getElementById('lh-profile-badge');
+  if(!el) return;
+  if(typeof LearningHub==='undefined' || !LearningHub.getCurrentUser()){
+    el.innerHTML='';
+    return;
+  }
+  var u=LearningHub.getCurrentUser();
+  var grade=LearningHub.getGrade('영어');
+  var reviewN=LearningHub.getReviewCount('영단어정벌','영어');
+  el.innerHTML='👤 <b style="color:#ffd700">'+LearningHub.escapeHtml(u.name)+'</b> · 영어 '+LearningHub.gradeLabel(grade)+
+    (reviewN>0?' <span style="display:inline-block;margin-left:6px;font-size:11px;color:#ffd166;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);border-radius:8px;padding:2px 8px;">📝 복습단어 '+reviewN+'개 포함</span>':'');
+}
+if(typeof LearningHub!=='undefined'){
+  if(!LearningHub.getCurrentUser()){
+    LearningHub.injectLoginModal(function(){ renderLHProfileBadgeE(); });
+  } else {
+    renderLHProfileBadgeE();
+  }
+}
 </script>
 </body>
 </html>
