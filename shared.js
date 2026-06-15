@@ -320,6 +320,35 @@
     setTimeout(() => el.remove(), 3000);
   }
 
+  // ---------------------------------------------------------
+  // 허브로 돌아가기 링크 (모든 게임 페이지 좌상단에 고정)
+  // ---------------------------------------------------------
+  function injectBackLink() {
+    if (typeof document === 'undefined') return;
+    if (document.getElementById('lh-back-link')) return;
+    const a = document.createElement('a');
+    a.id = 'lh-back-link';
+    a.href = 'index.html';
+    a.textContent = '← 허브';
+    a.style.position = 'fixed';
+    a.style.top = '10px';
+    a.style.left = '10px';
+    a.style.zIndex = '99998';
+    a.style.background = 'rgba(0,0,0,0.45)';
+    a.style.color = '#c4cde0';
+    a.style.fontSize = '0.78rem';
+    a.style.fontWeight = '700';
+    a.style.padding = '6px 12px';
+    a.style.borderRadius = '100px';
+    a.style.border = '1px solid rgba(255,255,255,0.15)';
+    a.style.textDecoration = 'none';
+    a.style.fontFamily = "'Malgun Gothic','Apple SD Gothic Neo',sans-serif";
+    a.style.backdropFilter = 'blur(4px)';
+    a.onmouseover = () => { a.style.color = '#fff'; a.style.borderColor = '#7c7cff'; };
+    a.onmouseout = () => { a.style.color = '#c4cde0'; a.style.borderColor = 'rgba(255,255,255,0.15)'; };
+    document.body.appendChild(a);
+  }
+
   /**
    * addExp 결과를 받아서 레벨업/아이템 획득 토스트를 자동으로 표시
    */
@@ -613,6 +642,6 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
     getCharacter, addExp, unlockAchievement, equipItem,
     getInventoryBySlot, getItemById,
     renderCharacter, renderCurrentCharacter,
-    showToast, announceExpResult
+    showToast, announceExpResult, injectBackLink
   };
 })(window);

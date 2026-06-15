@@ -2068,6 +2068,8 @@ if (_isTouchDev) vjoyZone.style.display = 'block';
 function updateVjoyVisibility() {
   const badge = document.getElementById('lh-profile-badge');
   if (badge) badge.style.display = (state === 'start' || state === 'dead') ? 'block' : 'none';
+  const backLink = document.getElementById('lh-back-link');
+  if (backLink) backLink.style.display = (state === 'start' || state === 'dead') ? 'block' : 'none';
   if (!_isTouchDev || !vjoyZone) return;
   const show = state !== 'start' && state !== 'dead';
   if (show && vjoyZone.style.display === 'none') vjoyZone.style.display = 'block';
@@ -2090,6 +2092,7 @@ function renderLHProfileBadgeB(){
     (reviewN>0?' <span style="display:inline-block;margin-left:6px;font-size:11px;color:#ffd166;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);border-radius:8px;padding:2px 8px;">📝 복습문제 '+reviewN+'개 포함</span>':'');
 }
 if(typeof LearningHub!=='undefined'){
+  LearningHub.injectBackLink();
   if(!LearningHub.getCurrentUser()){
     LearningHub.injectLoginModal(function(){ renderLHProfileBadgeB(); });
   } else {

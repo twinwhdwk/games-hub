@@ -504,6 +504,7 @@ function renderProfileBadgeH(){
 }
 
 if(typeof LearningHub!=='undefined'){
+  LearningHub.injectBackLink();
   if(!LearningHub.getCurrentUser()){
     LearningHub.injectLoginModal(()=>{ renderProfileBadgeH(); });
   } else {

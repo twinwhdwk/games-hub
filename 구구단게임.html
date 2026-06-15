@@ -1797,6 +1797,7 @@ updateAllDiffTable();
 
 // 학습 허브: 로그인 확인 및 학년 기반 추천 난이도 초기화
 if(typeof LearningHub!=='undefined'){
+  LearningHub.injectBackLink();
   function applyHubProfile(){
     const user=LearningHub.getCurrentUser();
     if(user){

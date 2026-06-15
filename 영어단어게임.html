@@ -1338,6 +1338,7 @@ function renderLHProfileBadgeE(){
     (reviewN>0?' <span style="display:inline-block;margin-left:6px;font-size:11px;color:#ffd166;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);border-radius:8px;padding:2px 8px;">📝 복습단어 '+reviewN+'개 포함</span>':'');
 }
 if(typeof LearningHub!=='undefined'){
+  LearningHub.injectBackLink();
   if(!LearningHub.getCurrentUser()){
     LearningHub.injectLoginModal(function(){ renderLHProfileBadgeE(); });
   } else {

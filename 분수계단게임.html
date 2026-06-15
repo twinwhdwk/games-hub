@@ -1862,6 +1862,7 @@ buildStage(1, true);
 
 // 학습 허브: 로그인 확인 및 프로필 뱃지 표시
 if(typeof LearningHub!=='undefined'){
+  LearningHub.injectBackLink();
   if(!LearningHub.getCurrentUser()){
     LearningHub.injectLoginModal(()=>{ renderLHProfileBadge(); loadStageStarBadges(); });
   } else {

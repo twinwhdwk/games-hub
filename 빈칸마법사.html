@@ -364,6 +364,7 @@ document.getElementById('home-btn').addEventListener('click', () => {
 
 (async function init() {
   await loadBank();
+  if (typeof LearningHub !== 'undefined') LearningHub.injectBackLink();
   renderSubjectGrid();
   renderProfileBadge();
   if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
