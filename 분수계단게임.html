@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>분수 계단 탈출</title>
+<script src="shared.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:'맑은 고딕',sans-serif; overflow:hidden; user-select:none; }
@@ -205,6 +206,7 @@ canvas { display:block; max-width:100%; max-height:100vh; }
   <!-- 배경 별들 -->
   <canvas id="starcanvas" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
   <div class="start-title" style="font-size:clamp(30px,7vw,72px);font-weight:900;color:#ffdd88;text-shadow:0 0 40px #ff8800,0 0 80px #ff4400;text-align:center;margin-bottom:14px;position:relative;">🏰 분수 계단 탈출 🏃</div>
+  <div id="lh-profile-badge" style="font-size:13px;color:#88ccff;margin-bottom:8px;text-align:center;position:relative;"></div>
   <div class="start-story" style="font-size:clamp(12px,2.2vw,19px);color:#bb7733;text-align:center;margin-bottom:10px;line-height:1.9;max-width:520px;background:rgba(0,0,0,0.4);padding:16px 24px;border-radius:14px;border:1px solid #553300;position:relative;">
     📜 <strong style="color:#ffcc66">마법사 아리아</strong>가 어두운 분수 던전에 갇혔어요!<br>
     분수의 비밀을 풀어 계단을 올라가야 탈출할 수 있어요.<br>
@@ -345,6 +347,15 @@ function dismissStart() {
   playStartTime = Date.now();
   initAudio();
   setTimeout(() => startBGM(), 100);
+  totalRunCorrect = 0; totalRunAnswered = 0;
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    stage = gradeToStartStage(LearningHub.getGrade('수학'));
+  } else {
+    stage = 1;
+  }
+  document.getElementById('snum').textContent = stage;
+  buildStage(stage, false);
+  gstate = 'playing';
 }
 
 // ── 오디오 시스템 ──
@@ -659,6 +670,30 @@ function loadStageStarBadges() {
 }
 document.addEventListener('DOMContentLoaded', function() { loadStageStarBadges(); renderFracLB(); });
 
+function renderLHProfileBadge() {
+  const el = document.getElementById('lh-profile-badge');
+  if (!el) return;
+  if (typeof LearningHub === 'undefined' || !LearningHub.getCurrentUser()) {
+    el.innerHTML = '';
+    for (let s = 1; s <= 5; s++) {
+      const card = document.getElementById('fsc-' + s);
+      if (card) card.style.outline = '';
+    }
+    return;
+  }
+  const u = LearningHub.getCurrentUser();
+  const grade = LearningHub.getGrade('수학');
+  const startStage = gradeToStartStage(grade);
+  const reviewN = LearningHub.getReviewCount('분수계단', '수학');
+  el.innerHTML = `👤 <b style="color:#ffd700">${LearningHub.escapeHtml(u.name)}</b> · 수학 ${LearningHub.gradeLabel(grade)}` +
+    ` · 추천 시작: ${startStage}관문` +
+    (reviewN > 0 ? `<span style="display:inline-block;margin-left:8px;font-size:11px;color:#ffd166;background:rgba(255,209,102,0.15);border:1px solid rgba(255,209,102,0.4);border-radius:8px;padding:2px 8px;">📝 복습문제 ${reviewN}개 포함</span>` : '');
+  for (let s = 1; s <= 5; s++) {
+    const card = document.getElementById('fsc-' + s);
+    if (card) card.style.outline = (s === startStage) ? '2px solid #ffd700' : '';
+  }
+}
+
 function practiceStage(s) {
   dismissStart();
   stage = s;
@@ -849,8 +884,14 @@ let stageStarsRecord = [];  // 각 관문의 별점 기록 [1,2,3,2,3]
 let paused = false;
 let score = 0, combo = 0, totalCorrect = 0, stageWrongs = 0, totalStars = 0;
 let perfectStreakThisGame = 0;  // 연속 퍼펙트 클리어 관문 수
+let totalRunCorrect = 0, totalRunAnswered = 0; // 학습허브 레벨평가용
 // playing | question | jumping | falling | impact | dead | clear | gameover | explanation
 let gstate = 'playing';
+
+// 학년(3~6) -> 시작 관문(1~5). 3학년=1관문, 4학년=2관문, 5학년=3관문, 6학년=4관문
+function gradeToStartStage(grade){
+  return Math.max(1, Math.min(5, grade - 2));
+}
 
 // ── 문제 타이머 (관문별 제한 시간) ──
 const STAGE_TIMERS = [15, 13, 11, 10, 9];
@@ -1061,6 +1102,21 @@ function buildStage(s, skipIntro) {
   snakes=[];
   if(s>=3) snakes.push({visible:false,timer:80+Math.random()*120});
   stageQs = shuffle(gatePools[s-1]).slice(0,5);
+
+  // 학습허브: 이 관문의 복습 대기 문제를 1~2개 주입 (중복 텍스트 제거 후 앞쪽 배치)
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    const review = LearningHub.getReviewQueue('분수계단', '수학', 2)
+      .filter(rq => rq && rq.stage === s);
+    review.forEach(rq=>{
+      const match = gatePools[s-1].find(item=>item.q===rq.q);
+      if(match){
+        stageQs = stageQs.filter(item=>item.q!==match.q);
+        stageQs.splice(Math.min(1,stageQs.length), 0, match);
+      }
+    });
+    stageQs = stageQs.slice(0,5);
+  }
+
   updateProgressBar();
 
   if (_ac) { stopBGM(); setTimeout(() => startBGM(), 200); }
@@ -1110,6 +1166,11 @@ function answer(userTrue) {
   clearQTimer();
   document.getElementById('qbox').style.display='none';
   const correct = userTrue===currentQ.a;
+  totalRunAnswered++;
+  if(correct) totalRunCorrect++;
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    LearningHub.recordAnswer({gameId:'분수계단', subject:'수학', qKey:currentQ.q, data:{q:currentQ.q, a:currentQ.a, hint:currentQ.hint, stage:stage}, correct:correct});
+  }
   showFlash(correct ? '⭕' : '❌');
   if (correct) {
     combo++;
@@ -1254,11 +1315,13 @@ function showPerfectStreakPopup(msg) {
 
 // ── 재시작 ──
 function restartGame() {
-  stage=1; lives=3; score=0; combo=0; totalCorrect=0; stageWrongs=0; totalStars=0;
+  const startStage = (typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()) ? gradeToStartStage(LearningHub.getGrade('수학')) : 1;
+  stage=startStage; lives=3; score=0; combo=0; totalCorrect=0; stageWrongs=0; totalStars=0;
   stageStarsRecord = []; perfectStreakThisGame = 0;
+  totalRunCorrect = 0; totalRunAnswered = 0;
   const nrBadge = document.getElementById('nr-badge');
   if (nrBadge) nrBadge.style.display = 'none';
-  document.getElementById('snum').textContent=1;
+  document.getElementById('snum').textContent=startStage;
   updateHeartsUI();
   updateScoreUI();
   document.getElementById('gameover').style.display='none';
@@ -1266,7 +1329,7 @@ function restartGame() {
   document.getElementById('stageclear').style.display='none';
   finalClearTimer=0;
   _parts.length=0;
-  buildStage(1, true);
+  buildStage(startStage, true);
   startBGM();
   gstate='playing';
 }
@@ -1308,6 +1371,19 @@ function showClear(){
     const prevHi = getHighScore();
     saveHighScore(score);
     updateHighScoreUI();
+
+    let levelHtml='';
+    if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser() && totalRunAnswered>0){
+      const accuracy = totalRunCorrect/totalRunAnswered;
+      LearningHub.recordPlay('분수계단',{score:score,correct:totalRunCorrect,total:totalRunAnswered,grade:LearningHub.getGrade('수학')});
+      const li = LearningHub.evaluateLevel('수학',accuracy,{upThreshold:0.85,downThreshold:0.4});
+      if(li.changed){
+        levelHtml = li.direction==='up'
+          ? `<div style="color:#88ff88;margin-top:10px;font-size:15px;">⬆️ 레벨업! 수학 ${li.newGrade}학년 난이도로 올라갑니다!</div>`
+          : `<div style="color:#ffaa88;margin-top:10px;font-size:15px;">⬇️ 수학 ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!</div>`;
+      }
+    }
+
     const diffLbl = document.querySelector('.diff-btn-frac.active') ? (document.querySelector('.diff-btn-frac.active').textContent.trim().split('\n')[0] || '') : '';
     saveFracLB(score, diffLbl);
     if (score > prevHi) {
@@ -1327,8 +1403,11 @@ function showClear(){
     const fcMm = String(Math.floor(playSecs/60)).padStart(2,'0');
     const fcSs = String(playSecs % 60).padStart(2,'0');
     const timeStr = fcMm + ':' + fcSs;
-    document.getElementById('fc-stars').textContent = `⭐ ${totalStars} / 15 별`;
-    document.getElementById('fc-score').textContent = `총 점수: ${score}점 · 정답: ${totalCorrect}/25  |  ⏱ ${timeStr}`;
+    const playedStages = stageStarsRecord.filter(s=>s!=null).length;
+    const maxStars = playedStages * 3;
+    const maxQ = playedStages * 5;
+    document.getElementById('fc-stars').textContent = `⭐ ${totalStars} / ${maxStars} 별`;
+    document.getElementById('fc-score').textContent = `총 점수: ${score}점 · 정답: ${totalCorrect}/${maxQ}  |  ⏱ ${timeStr}`;
     let rank = '';
     if (score >= 2800) rank = '🏆 전설의 분수 마스터!';
     else if (score >= 2400) rank = '🥇 분수 왕';
@@ -1339,15 +1418,16 @@ function showClear(){
     const summaryEl = document.getElementById('fc-stage-summary');
     if (summaryEl) {
       let summaryHtml = stageThemes.map((t, i) => {
+        if (stageStarsRecord[i] == null) return null;
         const s = stageStarsRecord[i] || 0;
         return `${t.name}: ${'⭐'.repeat(s)}${'🖤'.repeat(3-s)}`;
-      }).join('&nbsp;&nbsp;');
+      }).filter(Boolean).join('&nbsp;&nbsp;');
       const perfectStageCount = stageStarsRecord.filter(s => s === 3).length;
       summaryHtml += `<br><span style="font-size:13px;color:#FFD700;">퍼펙트 관문: ${perfectStageCount}/5</span>`;
       if (perfectStageCount === 5) {
         summaryHtml += `&nbsp;<span style="font-size:13px;color:#FFD700;font-weight:900;">👑 완벽한 클리어! 퍼펙트 마스터!</span>`;
       }
-      summaryEl.innerHTML = summaryHtml;
+      summaryEl.innerHTML = summaryHtml + levelHtml;
     }
     document.getElementById('finalclear').style.display = 'flex';
     if (perfectStreakThisGame === 5 || (stageStarsRecord.filter(s=>s===3).length === 5)) {
@@ -1401,8 +1481,27 @@ function gameOver(){
   if (score > 0) saveFracLB(score, diffLbl2);
   const hi = getHighScore();
   const isNew = score >= hi && score > 0;
+  let levelHtml='';
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser() && totalRunAnswered>0){
+    const accuracy = totalRunCorrect/totalRunAnswered;
+    LearningHub.recordPlay('분수계단',{score:score,correct:totalRunCorrect,total:totalRunAnswered,grade:LearningHub.getGrade('수학')});
+    const li = LearningHub.evaluateLevel('수학',accuracy,{upThreshold:0.85,downThreshold:0.4});
+    if(li.changed){
+      levelHtml = li.direction==='up'
+        ? `<div style="color:#88ff88;margin-top:8px;">⬆️ 레벨업! 수학 ${li.newGrade}학년 난이도로 올라갑니다!</div>`
+        : `<div style="color:#ffaa88;margin-top:8px;">⬇️ 수학 ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!</div>`;
+    }
+  }
   document.getElementById('go-score').textContent=`점수: ${score}점 · 정답: ${totalCorrect}개${isNew?' 🎉 최고기록!':''}`;
-  document.getElementById('gameover').style.display='flex';
+  const goEl=document.getElementById('gameover');
+  let levelEl = goEl.querySelector('.lh-level-msg');
+  if(!levelEl){
+    levelEl=document.createElement('div');
+    levelEl.className='lh-level-msg';
+    goEl.appendChild(levelEl);
+  }
+  levelEl.innerHTML = levelHtml;
+  goEl.style.display='flex';
 }
 
 // ── 업데이트 ──
@@ -1753,5 +1852,14 @@ buildStage(1, true);
   render();
   requestAnimationFrame(loop);
 })();
+
+// 학습 허브: 로그인 확인 및 프로필 뱃지 표시
+if(typeof LearningHub!=='undefined'){
+  if(!LearningHub.getCurrentUser()){
+    LearningHub.injectLoginModal(()=>{ renderLHProfileBadge(); loadStageStarBadges(); });
+  } else {
+    renderLHProfileBadge();
+  }
+}
 </script>
 </body>
