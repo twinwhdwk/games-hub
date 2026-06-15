@@ -476,10 +476,43 @@ const SPRITE_DATA = {"bodies": {"기본": [[0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
 
 const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "slot": "hair", "sprite": "짧은머리_브라운", "rarity": "common", "unlock": {"type": "default"}}, {"id": "outfit_basic", "name": "기본 옷", "slot": "outfit", "sprite": "기본옷", "rarity": "common", "unlock": {"type": "default"}}, {"id": "hat_none", "name": "모자 없음", "slot": "hat", "sprite": "없음", "rarity": "common", "unlock": {"type": "default"}}, {"id": "weapon_none", "name": "맨손", "slot": "weapon", "sprite": "없음", "rarity": "common", "unlock": {"type": "default"}}, {"id": "pet_none", "name": "펫 없음", "slot": "pet", "sprite": "없음", "rarity": "common", "unlock": {"type": "default"}}, {"id": "hair_black", "name": "짧은머리(블랙)", "slot": "hair", "sprite": "짧은머리_블랙", "rarity": "common", "unlock": {"type": "level", "value": 2}}, {"id": "hat_cap", "name": "야구모자", "slot": "hat", "sprite": "야구모자", "rarity": "common", "unlock": {"type": "level", "value": 2}}, {"id": "weapon_shield", "name": "방패", "slot": "weapon", "sprite": "방패", "rarity": "common", "unlock": {"type": "level", "value": 3}}, {"id": "hair_pony", "name": "포니테일(레드)", "slot": "hair", "sprite": "포니테일_레드", "rarity": "rare", "unlock": {"type": "level", "value": 4}}, {"id": "outfit_green", "name": "초록 모험가옷", "slot": "outfit", "sprite": "초록옷", "rarity": "rare", "unlock": {"type": "level", "value": 5}}, {"id": "hat_band", "name": "머리띠", "slot": "hat", "sprite": "머리띠", "rarity": "common", "unlock": {"type": "level", "value": 3}}, {"id": "weapon_sword", "name": "용사의 검", "slot": "weapon", "sprite": "검", "rarity": "rare", "unlock": {"type": "level", "value": 6}}, {"id": "outfit_armor", "name": "강철 갑옷", "slot": "outfit", "sprite": "갑옷", "rarity": "epic", "unlock": {"type": "level", "value": 8}}, {"id": "hat_crown", "name": "왕관", "slot": "hat", "sprite": "왕관", "rarity": "epic", "unlock": {"type": "level", "value": 10}}, {"id": "hair_purple", "name": "긴머리(퍼플)", "slot": "hair", "sprite": "긴머리_퍼플", "rarity": "epic", "unlock": {"type": "level", "value": 7}}, {"id": "weapon_wand", "name": "마법 지팡이", "slot": "weapon", "sprite": "마법지팡이", "rarity": "rare", "unlock": {"type": "achievement", "game": "분수계단", "value": "clear5"}}, {"id": "outfit_robe", "name": "마법사 로브", "slot": "outfit", "sprite": "마법사로브", "rarity": "epic", "unlock": {"type": "achievement", "game": "분수계단", "value": "perfect_clear"}}, {"id": "hat_wizard", "name": "마법사 모자", "slot": "hat", "sprite": "마법사모자", "rarity": "epic", "unlock": {"type": "achievement", "game": "구구단", "value": "final_boss_win"}}, {"id": "weapon_book", "name": "지혜의 책", "slot": "weapon", "sprite": "책", "rarity": "rare", "unlock": {"type": "achievement", "game": "영단어정벌", "value": "perfect_stage"}}, {"id": "pet_cat", "name": "고양이", "slot": "pet", "sprite": "고양이", "rarity": "rare", "unlock": {"type": "level", "value": 3}}, {"id": "pet_owl", "name": "부엉이", "slot": "pet", "sprite": "부엉이", "rarity": "rare", "unlock": {"type": "achievement", "game": "한국사탐험", "value": "all_eras_clear"}}, {"id": "pet_slime", "name": "슬라임", "slot": "pet", "sprite": "슬라임", "rarity": "common", "unlock": {"type": "level", "value": 5}}, {"id": "pet_dragon", "name": "드래곤", "slot": "pet", "sprite": "드래곤", "rarity": "legendary", "unlock": {"type": "level", "value": 12}}, {"id": "body_basic", "name": "기본 피부", "slot": "body", "sprite": "기본", "rarity": "common", "unlock": {"type": "default"}}, {"id": "body_cool", "name": "쿨톤 피부", "slot": "body", "sprite": "쿨톤", "rarity": "common", "unlock": {"type": "level", "value": 2}}, {"id": "hair_gold", "name": "황금 머리카락", "slot": "hair", "sprite": "황금머리", "rarity": "legendary", "unlock": {"type": "level", "value": 9}}, {"id": "outfit_ninja", "name": "닌자 복장", "slot": "outfit", "sprite": "닌자복", "rarity": "epic", "unlock": {"type": "level", "value": 11}}, {"id": "weapon_bow", "name": "숙련의 활", "slot": "weapon", "sprite": "활", "rarity": "epic", "unlock": {"type": "achievement", "game": "지식탐험", "value": "perfect_사회"}}, {"id": "pet_fox", "name": "여우", "slot": "pet", "sprite": "여우", "rarity": "rare", "unlock": {"type": "achievement", "game": "짝꿍찾기", "value": "perfect_국어"}}, {"id": "hat_grad", "name": "졸업모", "slot": "hat", "sprite": "졸업모", "rarity": "epic", "unlock": {"type": "achievement", "game": "지식탐험", "value": "perfect_영어"}}, {"id": "outfit_cape", "name": "전설의 망토", "slot": "outfit", "sprite": "전설의망토", "rarity": "legendary", "unlock": {"type": "achievement", "game": "영단어정벌", "value": "combo20"}}, {"id": "body_warm", "name": "웜톤 피부", "slot": "body", "sprite": "웜톤", "rarity": "common", "unlock": {"type": "level", "value": 4}}, {"id": "body_dark", "name": "다크톤 피부", "slot": "body", "sprite": "다크톤", "rarity": "rare", "unlock": {"type": "achievement", "game": "빈칸마법사", "value": "perfect_영어"}}, {"id": "hair_bob", "name": "단발머리(블루)", "slot": "hair", "sprite": "단발머리_블루", "rarity": "rare", "unlock": {"type": "level", "value": 6}}];
 
+// ---------------------------------------------------------
+// 🏠 캐릭터 룸(꾸미기 공간) 아이템 카탈로그
+// slot: 'wallpaper'(벽지), 'floor'(바닥) - 1개씩만 적용
+//       'furniture' - 자유 배치 (여러개 보유 가능)
+// ---------------------------------------------------------
+const ROOM_ITEM_CATALOG = [
+  { id: 'wall_basic',  name: '기본 벽지',     slot: 'wallpaper', emoji: '⬜', color: '#2a2a44', rarity: 'common',  unlock: { type: 'default' } },
+  { id: 'wall_sky',    name: '하늘 벽지',     slot: 'wallpaper', emoji: '☁️', color: '#6ec6ff', rarity: 'common',  unlock: { type: 'level', value: 3 } },
+  { id: 'wall_night',  name: '밤하늘 벽지',   slot: 'wallpaper', emoji: '🌌', color: '#1a1a40', rarity: 'rare',    unlock: { type: 'level', value: 7 } },
+  { id: 'wall_castle', name: '성벽 벽지',     slot: 'wallpaper', emoji: '🏰', color: '#8d99ae', rarity: 'epic',    unlock: { type: 'achievement', game: '한국사탐험', value: 'all_eras_clear' } },
+
+  { id: 'floor_wood',  name: '나무 바닥',     slot: 'floor', emoji: '🟫', color: '#a9764f', rarity: 'common', unlock: { type: 'default' } },
+  { id: 'floor_grass', name: '잔디 바닥',     slot: 'floor', emoji: '🟩', color: '#5fae5f', rarity: 'common', unlock: { type: 'level', value: 4 } },
+  { id: 'floor_marble',name: '대리석 바닥',   slot: 'floor', emoji: '⬛', color: '#cfd8e3', rarity: 'rare',   unlock: { type: 'level', value: 8 } },
+  { id: 'floor_lava',  name: '용암 바닥',     slot: 'floor', emoji: '🟥', color: '#c1440e', rarity: 'legendary', unlock: { type: 'level', value: 12 } },
+
+  { id: 'furn_bed',    name: '침대',          slot: 'furniture', emoji: '🛏️', rarity: 'common', unlock: { type: 'default' } },
+  { id: 'furn_desk',   name: '책상',          slot: 'furniture', emoji: '🪑', rarity: 'common', unlock: { type: 'level', value: 2 } },
+  { id: 'furn_plant',  name: '화분',          slot: 'furniture', emoji: '🪴', rarity: 'common', unlock: { type: 'level', value: 3 } },
+  { id: 'furn_books',  name: '책장',          slot: 'furniture', emoji: '📚', rarity: 'common', unlock: { type: 'level', value: 5 } },
+  { id: 'furn_clock',  name: '시계',          slot: 'furniture', emoji: '🕰️', rarity: 'common', unlock: { type: 'level', value: 6 } },
+  { id: 'furn_globe',  name: '지구본',        slot: 'furniture', emoji: '🌍', rarity: 'rare',   unlock: { type: 'achievement', game: '지식탐험', value: 'perfect_사회' } },
+  { id: 'furn_telescope', name: '망원경',     slot: 'furniture', emoji: '🔭', rarity: 'rare',   unlock: { type: 'level', value: 7 } },
+  { id: 'furn_trophy', name: '트로피',        slot: 'furniture', emoji: '🏆', rarity: 'epic',   unlock: { type: 'achievement', game: '구구단', value: 'final_boss_win' } },
+  { id: 'furn_piano',  name: '피아노',        slot: 'furniture', emoji: '🎹', rarity: 'rare',   unlock: { type: 'level', value: 9 } },
+  { id: 'furn_aquarium', name: '수족관',      slot: 'furniture', emoji: '🐠', rarity: 'epic',   unlock: { type: 'achievement', game: '짝꿍찾기', value: 'perfect_과학' } },
+  { id: 'furn_chest',  name: '보물상자',      slot: 'furniture', emoji: '🧰', rarity: 'epic',   unlock: { type: 'level', value: 10 } },
+  { id: 'furn_castle', name: '레고 성',       slot: 'furniture', emoji: '🏯', rarity: 'legendary', unlock: { type: 'level', value: 11 } },
+  { id: 'furn_cake',   name: '케이크',        slot: 'furniture', emoji: '🎂', rarity: 'rare',   unlock: { type: 'achievement', game: '영단어정벌', value: 'perfect_stage' } },
+  { id: 'furn_rocket', name: '로켓 장난감',   slot: 'furniture', emoji: '🚀', rarity: 'epic',   unlock: { type: 'achievement', game: '빈칸마법사', value: 'perfect_국어' } },
+];
+
   const LEVEL_EXP = lvl => lvl * 100; // 레벨업에 필요한 EXP (lvl->lvl+1)
 
   function defaultCharacter() {
     const defaultItems = ITEM_CATALOG.filter(it => it.unlock.type === 'default').map(it => it.id);
+    const defaultRoomItems = ROOM_ITEM_CATALOG.filter(it => it.unlock.type === 'default').map(it => it.id);
     return {
       level: 1,
       exp: 0,
@@ -492,7 +525,13 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
         weapon: 'weapon_none',
         pet: 'pet_none'
       },
-      achievements: [] // ["분수계단:clear5", ...]
+      achievements: [], // ["분수계단:clear5", ...]
+      roomInventory: defaultRoomItems,
+      room: {
+        wallpaper: 'wall_basic',
+        floor: 'floor_wood',
+        furniture: [] // ['furn_bed', ...] 배치된 가구 id 목록 (자동 배치)
+      }
     };
   }
 
@@ -504,6 +543,11 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
     if (!c.achievements) c.achievements = [];
     if (typeof c.level !== 'number') c.level = 1;
     if (typeof c.exp !== 'number') c.exp = 0;
+    if (!c.roomInventory) c.roomInventory = defaultCharacter().roomInventory;
+    if (!c.room) c.room = defaultCharacter().room;
+    if (!c.room.wallpaper) c.room.wallpaper = 'wall_basic';
+    if (!c.room.floor) c.room.floor = 'floor_wood';
+    if (!c.room.furniture) c.room.furniture = [];
     return c;
   }
 
@@ -534,6 +578,18 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
       else if (cond.type === 'achievement') unlocked = c.achievements.includes(cond.game + ':' + cond.value);
       if (unlocked) {
         c.inventory.push(it.id);
+        newly.push(it);
+      }
+    });
+    ROOM_ITEM_CATALOG.forEach(it => {
+      if (c.roomInventory.includes(it.id)) return;
+      const cond = it.unlock;
+      let unlocked = false;
+      if (cond.type === 'default') unlocked = true;
+      else if (cond.type === 'level') unlocked = c.level >= cond.value;
+      else if (cond.type === 'achievement') unlocked = c.achievements.includes(cond.game + ':' + cond.value);
+      if (unlocked) {
+        c.roomInventory.push(it.id);
         newly.push(it);
       }
     });
@@ -589,6 +645,82 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
     c.equipped[slot] = itemId;
     saveDB(db);
     return true;
+  }
+
+  // ---------------------------------------------------------
+  // 🏠 캐릭터 룸(꾸미기) 관리
+  // ---------------------------------------------------------
+  function getRoomItemById(id) {
+    return ROOM_ITEM_CATALOG.find(it => it.id === id);
+  }
+
+  function getRoom() {
+    const c = getCharacter();
+    return c ? c.room : null;
+  }
+
+  /**
+   * 보유한 방 아이템(잠금 제외)을 슬롯별로 반환
+   */
+  function getRoomInventoryBySlot(slot) {
+    const c = getCharacter();
+    if (!c) return [];
+    return c.roomInventory.map(getRoomItemById).filter(it => it && it.slot === slot);
+  }
+
+  /**
+   * 슬롯의 모든 방 아이템(잠금 포함) 반환. unlocked:bool 추가.
+   */
+  function getAllRoomItemsBySlot(slot) {
+    const c = getCharacter();
+    const owned = new Set(c ? c.roomInventory : []);
+    return ROOM_ITEM_CATALOG.filter(it => it.slot === slot).map(it => Object.assign({}, it, { unlocked: owned.has(it.id) }));
+  }
+
+  function setWallpaper(itemId) {
+    const db = loadDB();
+    const u = db.users[db.currentUser];
+    if (!u) return false;
+    const c = ensureCharacter(u);
+    const item = getRoomItemById(itemId);
+    if (!item || item.slot !== 'wallpaper') return false;
+    if (!c.roomInventory.includes(itemId)) return false;
+    c.room.wallpaper = itemId;
+    saveDB(db);
+    return true;
+  }
+
+  function setFloor(itemId) {
+    const db = loadDB();
+    const u = db.users[db.currentUser];
+    if (!u) return false;
+    const c = ensureCharacter(u);
+    const item = getRoomItemById(itemId);
+    if (!item || item.slot !== 'floor') return false;
+    if (!c.roomInventory.includes(itemId)) return false;
+    c.room.floor = itemId;
+    saveDB(db);
+    return true;
+  }
+
+  /**
+   * 가구를 방에 배치/제거 토글 (자동 배치, 위치 지정 불필요)
+   * 반환: 배치 후 상태(true=놓임, false=치워짐)
+   */
+  function toggleFurniture(itemId) {
+    const db = loadDB();
+    const u = db.users[db.currentUser];
+    if (!u) return null;
+    const c = ensureCharacter(u);
+    const item = getRoomItemById(itemId);
+    if (!item || item.slot !== 'furniture') return null;
+    if (!c.roomInventory.includes(itemId)) return null;
+    const idx = c.room.furniture.indexOf(itemId);
+    let placed;
+    if (idx >= 0) { c.room.furniture.splice(idx, 1); placed = false; }
+    else { c.room.furniture.push(itemId); placed = true; }
+    saveDB(db);
+    return placed;
   }
 
   function getInventoryBySlot(slot) {
@@ -708,6 +840,8 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
     ITEM_CATALOG, SPRITE_DATA, LEVEL_EXP,
     getCharacter, addExp, unlockAchievement, equipItem,
     getInventoryBySlot, getAllItemsBySlot, describeUnlock, getItemById,
+    ROOM_ITEM_CATALOG, getRoom, getRoomItemById, getRoomInventoryBySlot, getAllRoomItemsBySlot,
+    setWallpaper, setFloor, toggleFurniture,
     renderCharacter, renderCurrentCharacter,
     showToast, announceExpResult, injectBackLink
   };

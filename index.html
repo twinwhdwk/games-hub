@@ -455,6 +455,29 @@
   }
   #inventory-overlay.open { display: flex; }
 
+  #room-overlay {
+    position: fixed; inset: 0; background: rgba(5,5,15,0.92); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; z-index: 9998;
+  }
+  #room-overlay.open { display: flex; }
+  .room-box { max-width: 480px; }
+  #room-scene {
+    position: relative; width: 100%; aspect-ratio: 4/3; border-radius: 14px; overflow: hidden;
+    border: 2px solid rgba(255,255,255,0.1); margin-bottom: 12px; font-size: 2rem;
+    display: flex; align-items: flex-end; justify-content: flex-start;
+  }
+  #room-floor { position: absolute; left:0; right:0; bottom:0; height: 28%; display:flex; align-items:center; justify-content:center; font-size:1.4rem; }
+  #room-furniture-layer {
+    position: absolute; inset: 0; display: flex; flex-wrap: wrap; align-items: flex-end;
+    gap: 10px; padding: 14px; align-content: flex-end;
+  }
+  .room-furn-item {
+    font-size: 2rem; cursor: pointer; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));
+    transition: transform .1s;
+  }
+  .room-furn-item:hover { transform: scale(1.15); }
+  .room-hint { font-size: 0.72rem; color: #666f8c; margin-bottom: 14px; text-align: center; }
+
   .inv-box {
     background: linear-gradient(160deg,#181830,#0c0c1c);
     border: 1px solid #3a3a66;
@@ -595,6 +618,7 @@
     </div>
     <div class="character-actions">
       <div class="profile-btn" id="open-inventory-btn">🎒 캐릭터 꾸미기</div>
+      <div class="profile-btn" id="open-room-btn">🏠 내 방</div>
       <a class="profile-btn" href="성장일지.html" style="text-decoration:none;">📔 성장 일지</a>
     </div>
   </div>
@@ -604,6 +628,18 @@
       <div class="inv-title">🎒 캐릭터 꾸미기 <span class="inv-close" id="close-inventory-btn">✕</span></div>
       <div class="inv-preview"><canvas id="inv-preview-canvas" width="128" height="128"></canvas></div>
       <div id="inv-slots"></div>
+    </div>
+  </div>
+
+  <div id="room-overlay">
+    <div class="inv-box room-box">
+      <div class="inv-title">🏠 내 방 <span class="inv-close" id="close-room-btn">✕</span></div>
+      <div id="room-scene">
+        <div id="room-furniture-layer"></div>
+        <div id="room-floor"></div>
+      </div>
+      <div class="room-hint">보유한 가구를 탭하면 방에 놓이거나 치워져요. 자동으로 예쁘게 배치됩니다.</div>
+      <div id="room-slots"></div>
     </div>
   </div>
 
@@ -1024,6 +1060,132 @@ document.getElementById('close-inventory-btn')?.addEventListener('click', () => 
 });
 document.getElementById('inventory-overlay')?.addEventListener('click', (e) => {
   if (e.target.id === 'inventory-overlay') e.target.classList.remove('open');
+});
+
+// ---------------------------------------------------------
+// 🏠 내 방 (룸 꾸미기)
+// ---------------------------------------------------------
+function renderRoomScene() {
+  const room = LearningHub.getRoom();
+  if (!room) return;
+  const scene = document.getElementById('room-scene');
+  const floorEl = document.getElementById('room-floor');
+  const furnLayer = document.getElementById('room-furniture-layer');
+
+  const wallpaper = LearningHub.getRoomItemById(room.wallpaper);
+  const floor = LearningHub.getRoomItemById(room.floor);
+  scene.style.background = wallpaper ? wallpaper.color : '#2a2a44';
+  floorEl.style.background = floor ? floor.color : '#a9764f';
+  floorEl.textContent = '';
+
+  furnLayer.innerHTML = '';
+  room.furniture.forEach(itemId => {
+    const item = LearningHub.getRoomItemById(itemId);
+    if (!item) return;
+    const span = document.createElement('span');
+    span.className = 'room-furn-item';
+    span.textContent = item.emoji;
+    span.title = item.name;
+    span.onclick = () => {
+      LearningHub.toggleFurniture(itemId);
+      renderRoomScene();
+      renderRoomSlots();
+    };
+    furnLayer.appendChild(span);
+  });
+}
+
+function renderRoomSlots() {
+  const wrap = document.getElementById('room-slots');
+  wrap.innerHTML = '';
+
+  // 벽지 / 바닥: 보유한 것만 스와치로 표시, 클릭 시 즉시 적용
+  [
+    { slot: 'wallpaper', label: '벽지', setter: LearningHub.setWallpaper },
+    { slot: 'floor', label: '바닥', setter: LearningHub.setFloor },
+  ].forEach(({ slot, label, setter }) => {
+    const items = LearningHub.getAllRoomItemsBySlot(slot);
+    const room = LearningHub.getRoom();
+    const current = room[slot];
+
+    const lab = document.createElement('div');
+    lab.className = 'inv-slot-label';
+    lab.textContent = label;
+    wrap.appendChild(lab);
+
+    const row = document.createElement('div');
+    row.className = 'inv-items-row';
+    items.forEach(item => {
+      const div = document.createElement('div');
+      const lockedClass = item.unlocked ? '' : ' locked';
+      div.className = 'inv-item rarity-' + item.rarity + (current === item.id ? ' equipped' : '') + lockedClass;
+      if (item.unlocked) {
+        div.style.background = item.color;
+        div.style.fontSize = '1.4rem';
+        div.textContent = item.emoji;
+        div.onclick = () => { setter(item.id); renderRoomScene(); renderRoomSlots(); };
+      } else {
+        div.textContent = '🔒';
+        div.style.fontSize = '1.2rem';
+      }
+      const nameEl = document.createElement('div');
+      nameEl.className = 'inv-item-name';
+      nameEl.textContent = item.unlocked ? item.name : '???';
+      div.appendChild(nameEl);
+      if (!item.unlocked) {
+        const hintEl = document.createElement('div');
+        hintEl.className = 'inv-item-hint';
+        hintEl.textContent = LearningHub.describeUnlock(item);
+        div.appendChild(hintEl);
+      }
+      row.appendChild(div);
+    });
+    wrap.appendChild(row);
+  });
+
+  // 가구: 보유한 것은 탭으로 배치/제거 토글, 잠긴 것은 해금조건 표시
+  const furnItems = LearningHub.getAllRoomItemsBySlot('furniture');
+  const room = LearningHub.getRoom();
+  const lab = document.createElement('div');
+  lab.className = 'inv-slot-label';
+  lab.textContent = '가구';
+  wrap.appendChild(lab);
+  const row = document.createElement('div');
+  row.className = 'inv-items-row';
+  furnItems.forEach(item => {
+    const div = document.createElement('div');
+    const placed = room.furniture.includes(item.id);
+    const lockedClass = item.unlocked ? '' : ' locked';
+    div.className = 'inv-item rarity-' + item.rarity + (placed ? ' equipped' : '') + lockedClass;
+    div.style.fontSize = '1.4rem';
+    div.textContent = item.unlocked ? item.emoji : '🔒';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'inv-item-name';
+    nameEl.textContent = item.unlocked ? item.name : '???';
+    div.appendChild(nameEl);
+    if (item.unlocked) {
+      div.onclick = () => { LearningHub.toggleFurniture(item.id); renderRoomScene(); renderRoomSlots(); };
+    } else {
+      const hintEl = document.createElement('div');
+      hintEl.className = 'inv-item-hint';
+      hintEl.textContent = LearningHub.describeUnlock(item);
+      div.appendChild(hintEl);
+    }
+    row.appendChild(div);
+  });
+  wrap.appendChild(row);
+}
+
+document.getElementById('open-room-btn')?.addEventListener('click', () => {
+  renderRoomScene();
+  renderRoomSlots();
+  document.getElementById('room-overlay').classList.add('open');
+});
+document.getElementById('close-room-btn')?.addEventListener('click', () => {
+  document.getElementById('room-overlay').classList.remove('open');
+});
+document.getElementById('room-overlay')?.addEventListener('click', (e) => {
+  if (e.target.id === 'room-overlay') e.target.classList.remove('open');
 });
 
 document.querySelectorAll('.subject-pill').forEach(pill => {
