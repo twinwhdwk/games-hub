@@ -1648,13 +1648,17 @@ function endGame(){
   const s=document.getElementById('screen');
   const win=G.battleWin;
 
-  // 학습 허브: 플레이 기록 + 학년 레벨업 평가
+  // 학습 허브: 플레이 기록 + 학년 레벨업 평가 + EXP/아이템
   let levelInfo=null;
   if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
     const correctCount=30-G.wrongList.length;
     const accuracy=correctCount/30;
     LearningHub.recordPlay('구구단',{score:G.score,correct:correctCount,total:30,grade:LearningHub.getGrade('수학')});
     levelInfo=LearningHub.evaluateLevel('수학',accuracy);
+    const expGain = correctCount*2 + (win?20:0) + (G.wrongList.length===0?10:0);
+    const expResult = LearningHub.addExp(expGain,'구구단');
+    if(G.battleWin) LearningHub.unlockAchievement('구구단','final_boss_win');
+    LearningHub.announceExpResult(expResult);
   }
 
   let wrongHtml='';

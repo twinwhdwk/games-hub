@@ -1382,6 +1382,11 @@ function showClear(){
           ? `<div style="color:#88ff88;margin-top:10px;font-size:15px;">⬆️ 레벨업! 수학 ${li.newGrade}학년 난이도로 올라갑니다!</div>`
           : `<div style="color:#ffaa88;margin-top:10px;font-size:15px;">⬇️ 수학 ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!</div>`;
       }
+      const expGain = totalRunCorrect*3 + (stageWrongs===0?15:0) + 25; // 던전클리어 보너스
+      const expResult = LearningHub.addExp(expGain,'분수계단');
+      LearningHub.unlockAchievement('분수계단','clear5');
+      if(stageStarsRecord.filter(s=>s===3).length===5) LearningHub.unlockAchievement('분수계단','perfect_clear');
+      LearningHub.announceExpResult(expResult);
     }
 
     const diffLbl = document.querySelector('.diff-btn-frac.active') ? (document.querySelector('.diff-btn-frac.active').textContent.trim().split('\n')[0] || '') : '';
@@ -1491,6 +1496,8 @@ function gameOver(){
         ? `<div style="color:#88ff88;margin-top:8px;">⬆️ 레벨업! 수학 ${li.newGrade}학년 난이도로 올라갑니다!</div>`
         : `<div style="color:#ffaa88;margin-top:8px;">⬇️ 수학 ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!</div>`;
     }
+    const expResult = LearningHub.addExp(totalRunCorrect*2,'분수계단');
+    LearningHub.announceExpResult(expResult);
   }
   document.getElementById('go-score').textContent=`점수: ${score}점 · 정답: ${totalCorrect}개${isNew?' 🎉 최고기록!':''}`;
   const goEl=document.getElementById('gameover');

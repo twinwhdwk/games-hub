@@ -347,6 +347,188 @@
     grid-column: 1 / -1;
   }
 
+  /* 캐릭터 패널 */
+  .character-panel {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    background: linear-gradient(135deg, rgba(124,124,255,0.08), rgba(168,85,247,0.05));
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .character-sprite-wrap {
+    flex-shrink: 0;
+    width: 96px;
+    height: 96px;
+    background: rgba(0,0,0,0.25);
+    border: 2px solid rgba(255,255,255,0.1);
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  #char-canvas {
+    width: 96px;
+    height: 96px;
+    image-rendering: pixelated;
+  }
+
+  .character-info {
+    flex: 1;
+    min-width: 180px;
+  }
+
+  .character-level {
+    font-size: 1rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 6px;
+  }
+
+  .character-level .lv-num {
+    color: #ffd700;
+    font-size: 1.2rem;
+  }
+
+  .exp-bar-wrap {
+    height: 10px;
+    background: rgba(255,255,255,0.08);
+    border-radius: 100px;
+    overflow: hidden;
+    margin-bottom: 6px;
+  }
+
+  .exp-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #00d4ff, #a855f7);
+    border-radius: 100px;
+    transition: width .4s ease;
+  }
+
+  .exp-label {
+    font-size: 0.72rem;
+    color: #8892a4;
+  }
+
+  .character-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  /* 인벤토리 모달 */
+  #inventory-overlay {
+    position: fixed; inset: 0; background: rgba(5,5,15,0.92); backdrop-filter: blur(6px);
+    display: none; align-items: center; justify-content: center; z-index: 9998;
+  }
+  #inventory-overlay.open { display: flex; }
+
+  .inv-box {
+    background: linear-gradient(160deg,#181830,#0c0c1c);
+    border: 1px solid #3a3a66;
+    border-radius: 20px;
+    padding: 28px;
+    width: 92%;
+    max-width: 480px;
+    max-height: 85vh;
+    overflow-y: auto;
+  }
+
+  .inv-title {
+    font-size: 1.2rem;
+    font-weight: 900;
+    color: #fff;
+    margin-bottom: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .inv-close {
+    cursor: pointer;
+    color: #8892a4;
+    font-size: 1.2rem;
+    padding: 4px 10px;
+    border-radius: 8px;
+  }
+  .inv-close:hover { color: #fff; background: rgba(255,255,255,0.08); }
+
+  .inv-preview {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 18px;
+  }
+
+  .inv-preview canvas {
+    width: 120px; height: 120px;
+    image-rendering: pixelated;
+    background: rgba(0,0,0,0.25);
+    border-radius: 14px;
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+
+  .inv-slot-label {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #c4cde0;
+    margin: 14px 0 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .inv-items-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .inv-item {
+    width: 56px;
+    height: 56px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    border: 2px solid rgba(255,255,255,0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .inv-item canvas { width: 40px; height: 40px; image-rendering: pixelated; }
+  .inv-item.equipped { border-color: #ffd700; box-shadow: 0 0 12px rgba(255,215,0,0.4); }
+  .inv-item.rarity-rare { border-color: #60a5fa; }
+  .inv-item.rarity-epic { border-color: #a855f7; }
+  .inv-item.rarity-legendary { border-color: #fbbf24; }
+  .inv-item-name {
+    position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
+    font-size: 0.6rem; color: #8892a4; white-space: nowrap;
+  }
+
+  /* 레벨업/아이템 획득 토스트 */
+  #lh-toast-wrap {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center;
+  }
+  .lh-toast {
+    background: linear-gradient(135deg,#1e1e3a,#2a1a4a);
+    border: 1px solid #ffd700;
+    border-radius: 12px;
+    padding: 10px 20px;
+    color: #ffd700;
+    font-weight: 800;
+    font-size: 0.9rem;
+    box-shadow: 0 0 24px rgba(255,215,0,0.3);
+    animation: lhToastIn .3s ease-out, lhToastOut .3s ease-in 2.7s forwards;
+    white-space: nowrap;
+  }
+  @keyframes lhToastIn { from{opacity:0; transform:translateY(-12px);} to{opacity:1; transform:translateY(0);} }
+  @keyframes lhToastOut { from{opacity:1;} to{opacity:0; transform:translateY(-12px);} }
+
   footer {
     text-align: center;
     margin-top: 60px;
@@ -363,6 +545,30 @@
 <div class="container">
 
   <div class="profile-bar" id="profile-bar"></div>
+
+  <div class="character-panel" id="character-panel" style="display:none;">
+    <div class="character-sprite-wrap">
+      <canvas id="char-canvas" width="128" height="128"></canvas>
+    </div>
+    <div class="character-info">
+      <div class="character-level">Lv.<span class="lv-num" id="char-level">1</span> <span id="char-name"></span></div>
+      <div class="exp-bar-wrap"><div class="exp-bar-fill" id="char-exp-fill" style="width:0%"></div></div>
+      <div class="exp-label" id="char-exp-label">EXP 0 / 100</div>
+    </div>
+    <div class="character-actions">
+      <div class="profile-btn" id="open-inventory-btn">🎒 캐릭터 꾸미기</div>
+    </div>
+  </div>
+
+  <div id="inventory-overlay">
+    <div class="inv-box">
+      <div class="inv-title">🎒 캐릭터 꾸미기 <span class="inv-close" id="close-inventory-btn">✕</span></div>
+      <div class="inv-preview"><canvas id="inv-preview-canvas" width="128" height="128"></canvas></div>
+      <div id="inv-slots"></div>
+    </div>
+  </div>
+
+  <div id="lh-toast-wrap"></div>
 
   <header>
     <div class="logo">🎓 학습 게임 허브</div>
@@ -616,7 +822,77 @@ function renderAll() {
       el.style.display = 'none';
     }
   });
+  renderCharacterPanel();
 }
+
+// ── 캐릭터 패널 ───────────────────────────────────
+function renderCharacterPanel() {
+  const panel = document.getElementById('character-panel');
+  const user = LearningHub.getCurrentUser();
+  if (!user) { panel.style.display = 'none'; return; }
+  panel.style.display = 'flex';
+  const c = LearningHub.getCharacter();
+  const need = LearningHub.LEVEL_EXP(c.level);
+  document.getElementById('char-level').textContent = c.level;
+  document.getElementById('char-name').textContent = user.name;
+  document.getElementById('char-exp-fill').style.width = Math.min(100, (c.exp / need) * 100) + '%';
+  document.getElementById('char-exp-label').textContent = `EXP ${c.exp} / ${need}`;
+  LearningHub.renderCurrentCharacter(document.getElementById('char-canvas'), 8);
+}
+
+// ── 인벤토리 / 꾸미기 모달 ──────────────────────────
+const SLOT_LABELS = { body:'피부', hair:'머리', outfit:'옷', hat:'모자', weapon:'무기/도구', pet:'펫' };
+const SLOT_ORDER = ['body','hair','outfit','hat','weapon','pet'];
+
+function renderInventory() {
+  const c = LearningHub.getCharacter();
+  if (!c) return;
+  LearningHub.renderCharacter(document.getElementById('inv-preview-canvas'), c.equipped, 8);
+  const wrap = document.getElementById('inv-slots');
+  wrap.innerHTML = '';
+  SLOT_ORDER.forEach(slot => {
+    const items = LearningHub.getInventoryBySlot(slot);
+    if (!items.length) return;
+    const label = document.createElement('div');
+    label.className = 'inv-slot-label';
+    label.textContent = SLOT_LABELS[slot] || slot;
+    wrap.appendChild(label);
+    const row = document.createElement('div');
+    row.className = 'inv-items-row';
+    items.forEach(item => {
+      const div = document.createElement('div');
+      div.className = 'inv-item rarity-' + item.rarity + (c.equipped[slot] === item.id ? ' equipped' : '');
+      const cv = document.createElement('canvas');
+      cv.width = 32; cv.height = 32;
+      div.appendChild(cv);
+      const nameEl = document.createElement('div');
+      nameEl.className = 'inv-item-name';
+      nameEl.textContent = item.name;
+      div.appendChild(nameEl);
+      // 아이템 단독 미리보기: 해당 슬롯만 채워서 렌더
+      const previewEquip = Object.assign({body:'body_basic',hair:'hair_brown',outfit:'outfit_basic',hat:'hat_none',weapon:'weapon_none',pet:'pet_none'}, {[slot]: item.id});
+      LearningHub.renderCharacter(cv, previewEquip, 2);
+      div.onclick = () => {
+        LearningHub.equipItem(slot, item.id);
+        renderInventory();
+        renderCharacterPanel();
+      };
+      row.appendChild(div);
+    });
+    wrap.appendChild(row);
+  });
+}
+
+document.getElementById('open-inventory-btn')?.addEventListener('click', () => {
+  renderInventory();
+  document.getElementById('inventory-overlay').classList.add('open');
+});
+document.getElementById('close-inventory-btn')?.addEventListener('click', () => {
+  document.getElementById('inventory-overlay').classList.remove('open');
+});
+document.getElementById('inventory-overlay')?.addEventListener('click', (e) => {
+  if (e.target.id === 'inventory-overlay') e.target.classList.remove('open');
+});
 
 document.querySelectorAll('.subject-pill').forEach(pill => {
   pill.addEventListener('click', () => {
