@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🪄 빈칸 마법사</title>
+<script src="shared.js"></script>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: radial-gradient(ellipse at top, #2a1a4a 0%, #06070f 70%);
+  color:#fff; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  min-height:100vh; display:flex; align-items:center; justify-content:center;
+  overflow-x:hidden; padding:12px;
+}
+#app { width:100%; max-width:520px; }
+
+.card {
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 20px; padding: 24px; backdrop-filter: blur(10px);
+}
+
+.title {
+  font-size: clamp(24px,6vw,34px); font-weight: 900; text-align: center;
+  background: linear-gradient(135deg,#c084fc,#00d4ff,#ffd166);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom: 6px;
+}
+.subtitle { text-align:center; color:#8892a4; font-size:0.85rem; margin-bottom:18px; }
+
+#profile-badge { text-align:center; font-size:0.8rem; color:#88ccff; margin-bottom:14px; }
+#profile-badge b { color:#ffd700; }
+.review-tag { display:inline-block; margin-left:6px; font-size:0.7rem; color:#ffd166;
+  background:rgba(255,209,102,0.12); border:1px solid rgba(255,209,102,0.35); border-radius:8px; padding:2px 8px; }
+
+/* 과목 선택 */
+.subject-grid { display:flex; flex-direction:column; gap:10px; margin-bottom:18px; }
+.subject-btn { display:flex; align-items:center; gap:14px; background: rgba(255,255,255,0.05);
+  border: 2px solid rgba(255,255,255,0.08); border-radius: 14px; padding: 14px 16px; cursor:pointer; transition:.15s; }
+.subject-btn:hover, .subject-btn.selected { border-color:#c084fc; background:rgba(192,132,252,0.1); }
+.subject-icon { font-size:2rem; }
+.subject-info { flex:1; }
+.subject-name { font-weight:800; font-size:1.05rem; }
+.subject-grade { font-size:0.75rem; color:#8892a4; margin-top:2px; }
+
+.start-btn { display:block; width:100%; padding:14px; border:none; border-radius:14px;
+  background:linear-gradient(135deg,#c084fc,#00d4ff); color:#06070f; font-weight:900;
+  font-size:1.05rem; cursor:pointer; letter-spacing:1px; }
+.start-btn:hover { filter:brightness(1.1); }
+.start-btn:disabled { opacity:.4; cursor:not-allowed; }
+
+/* 퀴즈 화면 */
+#quiz-screen { display:none; }
+.quiz-top { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:0.85rem; color:#c4cde0; }
+.unit-tag { display:inline-block; font-size:0.7rem; font-weight:700; color:#c084fc;
+  background:rgba(192,132,252,0.12); border:1px solid rgba(192,132,252,0.35); border-radius:100px; padding:3px 10px; margin-bottom:14px; }
+.review-badge { display:inline-block; font-size:0.7rem; font-weight:700; color:#ffd166;
+  background:rgba(255,209,102,0.12); border:1px solid rgba(255,209,102,0.35); border-radius:100px; padding:3px 10px; margin-bottom:14px; margin-left:6px; }
+
+.sentence-box {
+  font-size:clamp(18px,5vw,24px); font-weight:800; line-height:1.7; text-align:center;
+  margin-bottom:24px; min-height:80px; display:flex; align-items:center; justify-content:center;
+}
+.blank-slot {
+  display:inline-block; min-width:60px; border-bottom:3px solid #c084fc; color:#c084fc;
+  padding:0 8px; text-align:center;
+}
+
+/* 영어 스펠링 표시 */
+.word-display {
+  font-size:clamp(28px,8vw,44px); font-weight:900; letter-spacing:6px; text-align:center;
+  margin-bottom:8px; font-family:monospace;
+}
+.word-meaning { text-align:center; color:#8892a4; font-size:0.9rem; margin-bottom:24px; }
+.word-display .letter-blank { color:#c084fc; border-bottom:3px solid #c084fc; }
+
+.choices { display:flex; flex-direction:column; gap:10px; }
+.choice-btn { text-align:center; padding:14px 16px; border-radius:12px;
+  background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.08);
+  color:#fff; font-size:1.05rem; font-weight:700; cursor:pointer; transition:.12s; }
+.choice-btn:hover { border-color:#c084fc; background:rgba(192,132,252,0.1); }
+.choice-btn.correct { border-color:#4ade80; background:rgba(74,222,128,0.18); }
+.choice-btn.wrong { border-color:#ff6b6b; background:rgba(255,107,107,0.18); }
+.choice-btn.disabled { pointer-events:none; opacity:.7; }
+
+/* 결과 화면 */
+#result-screen { display:none; text-align:center; }
+.result-emoji { font-size:3.5rem; margin-bottom:8px; }
+.result-score { font-size:2rem; font-weight:900; margin-bottom:4px; }
+.result-sub { color:#8892a4; font-size:0.9rem; margin-bottom:14px; }
+.level-msg { font-size:0.95rem; font-weight:700; margin-bottom:14px; }
+.level-msg.up { color:#4ade80; }
+.level-msg.down { color:#ff9a76; }
+
+.btn-row { display:flex; gap:10px; }
+.btn-row .start-btn { flex:1; }
+.secondary-btn { flex:1; padding:14px; border:2px solid rgba(255,255,255,0.15); border-radius:14px;
+  background:transparent; color:#c4cde0; font-weight:800; font-size:0.95rem; cursor:pointer; }
+
+a.back-link { display:block; text-align:center; margin-top:14px; color:#8892a4; font-size:0.8rem; text-decoration:none; }
+a.back-link:hover { color:#fff; }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div class="card">
+    <div class="title">🪄 빈칸 마법사</div>
+    <div class="subtitle">국어 맞춤법과 영어 스펠링을 채워보자!</div>
+    <div id="profile-badge"></div>
+
+    <!-- 시작 화면 -->
+    <div id="start-screen">
+      <div class="subject-grid" id="subject-grid"></div>
+      <button class="start-btn" id="start-btn" disabled>시작하려면 과목을 선택하세요</button>
+    </div>
+
+    <!-- 퀴즈 화면 -->
+    <div id="quiz-screen">
+      <div class="quiz-top">
+        <span id="quiz-progress">1 / 10</span>
+        <span id="quiz-score">점수: 0</span>
+      </div>
+      <div id="unit-row"></div>
+      <div id="question-area"></div>
+      <div class="choices" id="choices"></div>
+    </div>
+
+    <!-- 결과 화면 -->
+    <div id="result-screen">
+      <div class="result-emoji" id="result-emoji">🎉</div>
+      <div class="result-score" id="result-score">8 / 10</div>
+      <div class="result-sub" id="result-sub"></div>
+      <div class="level-msg" id="level-msg"></div>
+      <div class="btn-row">
+        <button class="secondary-btn" id="retry-btn">다시 도전</button>
+        <button class="start-btn" id="home-btn">과목 선택</button>
+      </div>
+    </div>
+
+    <a class="back-link" href="index.html">← 학습 게임 허브로 돌아가기</a>
+  </div>
+</div>
+
+<script>
+const SUBJECTS = [
+  { key:'국어', icon:'📖', desc:'문장 속 올바른 표현을 골라 빈칸을 채워요' },
+  { key:'영어', icon:'🔤', desc:'단어의 빈 글자를 채워 스펠링을 완성해요' },
+];
+
+let BANK = null;
+let session = null;
+
+async function loadBank() {
+  if (BANK) return BANK;
+  const res = await fetch('data/blank_bank.json');
+  BANK = await res.json();
+  return BANK;
+}
+
+function renderProfileBadge() {
+  const el = document.getElementById('profile-badge');
+  if (typeof LearningHub === 'undefined' || !LearningHub.getCurrentUser()) {
+    el.innerHTML = '';
+    return;
+  }
+  const u = LearningHub.getCurrentUser();
+  el.innerHTML = `👤 <b>${LearningHub.escapeHtml(u.name)}</b>님, 빈칸을 채워볼까요?`;
+}
+
+function getQKey(subject, item) {
+  return subject === '국어' ? item.sentence : item.word;
+}
+
+function renderSubjectGrid() {
+  const grid = document.getElementById('subject-grid');
+  grid.innerHTML = '';
+  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
+  SUBJECTS.forEach(s => {
+    const grade = user ? LearningHub.getGrade(s.key) : 3;
+    const reviewN = user ? LearningHub.getReviewCount('빈칸마법사', s.key) : 0;
+    const btn = document.createElement('div');
+    btn.className = 'subject-btn';
+    btn.dataset.subject = s.key;
+    btn.innerHTML = `
+      <div class="subject-icon">${s.icon}</div>
+      <div class="subject-info">
+        <div class="subject-name">${s.key}</div>
+        <div class="subject-grade">${s.desc} · 현재 ${LearningHub ? LearningHub.gradeLabel(grade) : grade+'학년'}${reviewN>0?` <span class="review-tag">📝 복습 ${reviewN}개</span>`:''}</div>
+      </div>
+    `;
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.subject-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      const startBtn = document.getElementById('start-btn');
+      startBtn.disabled = false;
+      startBtn.textContent = `${s.icon} ${s.key} 빈칸 채우기 시작!`;
+      startBtn.dataset.subject = s.key;
+    });
+    grid.appendChild(btn);
+  });
+}
+
+function buildQuestions(subject) {
+  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
+  const grade = user ? LearningHub.getGrade(subject) : 3;
+  const pool = BANK[subject].filter(q => q.grade <= grade);
+  const source = pool.length >= 6 ? pool : BANK[subject];
+  let shuffled = source.slice().sort(() => Math.random() - 0.5);
+  let questions = shuffled.slice(0, Math.min(10, shuffled.length));
+
+  if (user) {
+    const review = LearningHub.getReviewQueue('빈칸마법사', subject, 3);
+    review.forEach(rq => {
+      if (!rq) return;
+      const key = subject === '국어' ? rq.sentence : rq.word;
+      const match = BANK[subject].find(item => getQKey(subject, item) === key);
+      if (match) {
+        questions = questions.filter(item => getQKey(subject, item) !== key);
+        questions.splice(Math.min(1, questions.length), 0, Object.assign({}, match, { _review: true }));
+      }
+    });
+    questions = questions.slice(0, 10);
+  }
+  return questions;
+}
+
+function startQuiz(subject) {
+  const questions = buildQuestions(subject);
+  session = { subject, questions, idx: 0, score: 0, correct: 0 };
+  document.getElementById('start-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('quiz-screen').style.display = 'block';
+  showQuestion();
+}
+
+function showQuestion() {
+  const q = session.questions[session.idx];
+  document.getElementById('quiz-progress').textContent = `${session.idx+1} / ${session.questions.length}`;
+  document.getElementById('quiz-score').textContent = `점수: ${session.score}`;
+
+  const unitRow = document.getElementById('unit-row');
+  unitRow.innerHTML = `<span class="unit-tag">${LearningHub.escapeHtml(session.subject)} · ${LearningHub.escapeHtml(q.unit)} · ${q.grade}학년</span>` +
+    (q._review ? '<span class="review-badge">📝 복습 문제</span>' : '');
+
+  const area = document.getElementById('question-area');
+  let correctText, choices;
+
+  if (session.subject === '국어') {
+    const parts = q.sentence.split('___');
+    area.innerHTML = `<div class="sentence-box">${parts[0]}<span class="blank-slot">　　</span>${parts[1]||''}</div>`;
+    correctText = q.answer;
+    choices = q.choices;
+  } else {
+    // 영어: 단어에서 blankIdx 위치를 빈칸으로 표시
+    const letters = q.word.split('');
+    const blankIdx = q.blankIdx[0];
+    correctText = letters[blankIdx];
+    const display = letters.map((ch, i) => i === blankIdx ? '<span class="letter-blank">_</span>' : ch).join('');
+    area.innerHTML = `<div class="word-display">${display}</div><div class="word-meaning">뜻: ${LearningHub.escapeHtml(q.meaning)}</div>`;
+    choices = q.choices;
+  }
+
+  const choicesEl = document.getElementById('choices');
+  choicesEl.innerHTML = '';
+  const order = choices.map((c,i) => i).sort(() => Math.random()-0.5);
+  order.forEach(origIdx => {
+    const btn = document.createElement('button');
+    btn.className = 'choice-btn';
+    btn.textContent = choices[origIdx];
+    btn.addEventListener('click', () => selectAnswer(choices[origIdx], correctText, btn));
+    choicesEl.appendChild(btn);
+  });
+}
+
+function selectAnswer(chosen, correctText, btnEl) {
+  const q = session.questions[session.idx];
+  const correct = chosen === correctText;
+  const allBtns = document.querySelectorAll('.choice-btn');
+  allBtns.forEach(b => b.classList.add('disabled'));
+  allBtns.forEach(b => { if (b.textContent === correctText) b.classList.add('correct'); });
+  if (!correct) btnEl.classList.add('wrong');
+
+  if (correct) {
+    session.score += 10;
+    session.correct += 1;
+  }
+
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const qKey = getQKey(session.subject, q);
+    LearningHub.recordAnswer({
+      gameId: '빈칸마법사', subject: session.subject, qKey: qKey,
+      data: q, correct: correct
+    });
+  }
+
+  setTimeout(() => {
+    session.idx += 1;
+    if (session.idx < session.questions.length) {
+      showQuestion();
+    } else {
+      finishQuiz();
+    }
+  }, 900);
+}
+
+function finishQuiz() {
+  document.getElementById('quiz-screen').style.display = 'none';
+  document.getElementById('result-screen').style.display = 'block';
+
+  const total = session.questions.length;
+  const accuracy = session.correct / total;
+
+  document.getElementById('result-emoji').textContent =
+    accuracy >= 0.9 ? '🏆' : accuracy >= 0.7 ? '🎉' : accuracy >= 0.4 ? '💪' : '📚';
+  document.getElementById('result-score').textContent = `${session.correct} / ${total}  (점수 ${session.score})`;
+  document.getElementById('result-sub').textContent =
+    accuracy >= 0.9 ? '완벽한 빈칸 마법사!' :
+    accuracy >= 0.7 ? '훌륭해요! 조금만 더 연습하면 만점!' :
+    accuracy >= 0.4 ? '좋아요! 틀린 문제는 곧 다시 만나게 될 거예요.' :
+    '괜찮아요, 천천히 다시 도전해봐요!';
+
+  const levelMsgEl = document.getElementById('level-msg');
+  levelMsgEl.textContent = '';
+  levelMsgEl.className = 'level-msg';
+
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    LearningHub.recordPlay('빈칸마법사', { score: session.score, correct: session.correct, total, grade: LearningHub.getGrade(session.subject) });
+    const li = LearningHub.evaluateLevel(session.subject, accuracy, { upThreshold: 0.8, downThreshold: 0.4 });
+    if (li.changed) {
+      if (li.direction === 'up') {
+        levelMsgEl.textContent = `⬆️ 레벨업! ${session.subject} ${li.newGrade}학년 난이도로 올라갑니다!`;
+        levelMsgEl.classList.add('up');
+      } else {
+        levelMsgEl.textContent = `⬇️ ${session.subject} ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!`;
+        levelMsgEl.classList.add('down');
+      }
+    }
+    const expGain = session.correct * 4 + (accuracy === 1 ? 15 : 0);
+    const expResult = LearningHub.addExp(expGain, '빈칸마법사');
+    if (accuracy === 1) LearningHub.unlockAchievement('빈칸마법사', 'perfect_' + session.subject);
+    LearningHub.announceExpResult(expResult);
+  }
+
+  renderProfileBadge();
+}
+
+document.getElementById('start-btn').addEventListener('click', (e) => {
+  const subject = e.target.dataset.subject;
+  if (!subject) return;
+  startQuiz(subject);
+});
+
+document.getElementById('retry-btn').addEventListener('click', () => {
+  startQuiz(session.subject);
+});
+
+document.getElementById('home-btn').addEventListener('click', () => {
+  document.getElementById('result-screen').style.display = 'none';
+  document.getElementById('start-screen').style.display = 'block';
+  renderSubjectGrid();
+  renderProfileBadge();
+});
+
+(async function init() {
+  await loadBank();
+  renderSubjectGrid();
+  renderProfileBadge();
+  if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
+    LearningHub.injectLoginModal(() => { renderSubjectGrid(); renderProfileBadge(); });
+  }
+})();
+</script>
+</body>
+</html>

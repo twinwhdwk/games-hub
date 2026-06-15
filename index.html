@@ -357,6 +357,15 @@
                 radial-gradient(ellipse at bottom right, #1a0a14, transparent 70%);
   }
 
+  .card-blank {
+    --accent: #c084fc;
+    --glow: rgba(192,132,252,0.4);
+  }
+  .card-blank .card-bg {
+    background: radial-gradient(ellipse at top left, #3b0764, transparent 70%),
+                radial-gradient(ellipse at bottom right, #0f0a1f, transparent 70%);
+  }
+
   .empty-state {
     text-align: center;
     color: #5a6378;
@@ -770,6 +779,29 @@
             <span class="feature-chip">⏱ 시간/시도 측정</span>
             <span class="feature-chip">🎯 학년별 난이도</span>
             <span class="feature-chip review-chip review-count" data-gameid="짝꿍찾기">복습 0개</span>
+          </div>
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>
+    </a>
+
+    <!-- 빈칸마법사 게임 -->
+    <a class="game-card card-blank" data-subjects="국어,영어" data-gameid="빈칸마법사" href="빈칸마법사.html">
+      <div class="card-bg"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">🪄</div>
+        <div class="card-content">
+          <div class="card-tag-row">
+            <div class="card-tag">국어 · 영어</div>
+          </div>
+          <div class="card-title">빈칸 마법사</div>
+          <div class="card-desc">문장 속 빈칸에 맞는 표현을 고르거나 영어 단어의 빠진 글자를 채워 스펠링을 완성해요. 맞춤법과 어휘력을 동시에!</div>
+          <div class="card-features">
+            <span class="feature-chip">✏️ 맞춤법</span>
+            <span class="feature-chip">🔤 스펠링</span>
+            <span class="feature-chip">🎯 학년별 난이도</span>
+            <span class="feature-chip review-chip review-count" data-gameid="빈칸마법사">복습 0개</span>
           </div>
           <div class="card-play-btn">게임 시작 →</div>
         </div>

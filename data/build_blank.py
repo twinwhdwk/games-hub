@@ -1,0 +1,48 @@
+import json
+
+bank = {
+  "국어": [
+    # 맞춤법: 문장에서 빈칸에 들어갈 올바른 표현
+    {"grade":3,"unit":"맞춤법","sentence":"내일부터 ___ 동안 방학이에요.","answer":"며칠","choices":["며칠","몇일","멫일"]},
+    {"grade":3,"unit":"맞춤법","sentence":"오늘은 ___ 더운 것 같아요.","answer":"왠지","choices":["왠지","웬지","왜지"]},
+    {"grade":3,"unit":"맞춤법","sentence":"이 일은 ___ 하기 어려워요.","answer":"왠지","choices":["왠지","웬지","왠 지"]},
+    {"grade":3,"unit":"맞춤법","sentence":"엄마, 밥 ___ 주세요.","answer":"주세요","choices":["주세요","줘세요","주셓요"]},
+    {"grade":4,"unit":"맞춤법","sentence":"숙제를 다 ___ 놀러 나갔다.","answer":"마치고","choices":["마치고","맞히고","맏히고"]},
+    {"grade":4,"unit":"맞춤법","sentence":"문제를 ___ 사람이 1등이다.","answer":"맞힌","choices":["맞힌","맞춘","맏힌"]},
+    {"grade":4,"unit":"맞춤법","sentence":"옷이 몸에 잘 ___.","answer":"맞다","choices":["맞다","맏다","맡다"]},
+    {"grade":4,"unit":"맞춤법","sentence":"이 일을 ___ 책임은 나에게 있다.","answer":"맡은","choices":["맡은","맞은","맏은"]},
+    {"grade":5,"unit":"맞춤법","sentence":"드디어 시험이 ___.","answer":"끝났다","choices":["끝났다","끝낫다","끋났다"]},
+    {"grade":5,"unit":"맞춤법","sentence":"약속 시간에 ___ 와줘서 고마워.","answer":"맞춰","choices":["맞춰","맏춰","맞쳐"]},
+    {"grade":5,"unit":"맞춤법","sentence":"이번 시험에서 좋은 결과가 ___.","answer":"나왔으면","choices":["나왔으면","낳았으면","나았으면"]},
+    {"grade":5,"unit":"맞춤법","sentence":"감기에 걸려서 빨리 ___ 좋겠어.","answer":"나았으면","choices":["나았으면","낳았으면","나왔으면"]},
+    {"grade":6,"unit":"맞춤법","sentence":"드디어 일이 ___.","answer":"되었다","choices":["되었다","됬다","됐었다"]},
+    {"grade":6,"unit":"맞춤법","sentence":"이렇게 하면 ___?","answer":"될까","choices":["될까","됄까","됼까"]},
+    {"grade":6,"unit":"맞춤법","sentence":"그는 ___ 사람이다.","answer":"훌륭한","choices":["훌륭한","훌늉한","훌룡한"]},
+    {"grade":3,"unit":"맞춤법","sentence":"하늘에 ___ 떠 있다.","answer":"구름이","choices":["구름이","구릠이","구늠이"]},
+    {"grade":4,"unit":"맞춤법","sentence":"동생과 ___ 놀았다.","answer":"같이","choices":["같이","갗이","같히"]},
+    {"grade":4,"unit":"맞춤법","sentence":"이 음식은 ___ 맛있다.","answer":"정말","choices":["정말","졈말","정만"]},
+    {"grade":5,"unit":"맞춤법","sentence":"비가 와서 ___ 못 갔다.","answer":"학교에","choices":["학교에","학교의","학교애"]},
+    {"grade":6,"unit":"맞춤법","sentence":"___ 사실을 알게 되었다.","answer":"놀라운","choices":["놀라운","놀라온","놀랍은"]},
+  ],
+  "영어": [
+    # 영어 단어 스펠링 빈칸 (가운데 글자 빈칸)
+    {"grade":3,"unit":"과일","word":"APPLE","meaning":"사과","blankIdx":[1],"choices":["P","B","Q"]},
+    {"grade":3,"unit":"과일","word":"BANANA","meaning":"바나나","blankIdx":[1],"choices":["A","E","O"]},
+    {"grade":3,"unit":"과일","word":"GRAPE","meaning":"포도","blankIdx":[2],"choices":["A","E","I"]},
+    {"grade":3,"unit":"동물","word":"TIGER","meaning":"호랑이","blankIdx":[1],"choices":["I","E","A"]},
+    {"grade":3,"unit":"동물","word":"RABBIT","meaning":"토끼","blankIdx":[2],"choices":["B","P","D"]},
+    {"grade":3,"unit":"색깔","word":"YELLOW","meaning":"노란색","blankIdx":[1],"choices":["E","A","I"]},
+    {"grade":4,"unit":"날씨","word":"CLOUDY","meaning":"흐린","blankIdx":[2],"choices":["O","A","E"]},
+    {"grade":4,"unit":"날씨","word":"WINDY","meaning":"바람부는","blankIdx":[1],"choices":["I","E","A"]},
+    {"grade":4,"unit":"동사","word":"JUMP","meaning":"뛰다","blankIdx":[1],"choices":["U","O","A"]},
+    {"grade":4,"unit":"동사","word":"SWIM","meaning":"수영하다","blankIdx":[2],"choices":["I","E","A"]},
+    {"grade":5,"unit":"방향","word":"NORTH","meaning":"북쪽","blankIdx":[1],"choices":["O","A","U"]},
+    {"grade":5,"unit":"방향","word":"SOUTH","meaning":"남쪽","blankIdx":[2],"choices":["U","O","A"]},
+    {"grade":5,"unit":"신체","word":"SHOULDER","meaning":"어깨","blankIdx":[2],"choices":["O","A","E"]},
+    {"grade":6,"unit":"학교","word":"LIBRARY","meaning":"도서관","blankIdx":[1],"choices":["I","E","A"]},
+    {"grade":6,"unit":"학교","word":"SCIENCE","meaning":"과학","blankIdx":[1],"choices":["C","S","K"]},
+    {"grade":6,"unit":"숫자","word":"EIGHT","meaning":"8(여덟)","blankIdx":[1],"choices":["I","E","A"]},
+  ],
+}
+
+print(json.dumps(bank, ensure_ascii=False, indent=1))
