@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>🏯 한국사 시간탐험대</title>
+<script src="shared.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#0a0814; font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; overflow:hidden; width:100vw; height:100vh; display:flex; align-items:center; justify-content:center; }
@@ -25,6 +26,12 @@ body { background:#0a0814; font-family:'Malgun Gothic','Apple SD Gothic Neo',san
 .era-icon { font-size:2.2rem; }
 .era-name { color:#ffe680; font-size:0.85rem; font-weight:700; margin-top:8px; }
 .era-range { color:#556; font-size:0.72rem; margin-top:3px; }
+#profile-badge { font-size:13px; color:#88ccff; margin-top:14px; text-align:center; pointer-events:none; }
+#profile-badge b { color:#ffe680; }
+.review-tag-h { display:inline-block; margin-left:8px; font-size:11px; color:#ffd166; background:rgba(255,209,102,0.15); border:1px solid rgba(255,209,102,0.4); border-radius:8px; padding:2px 8px; }
+.level-msg-h { font-size:0.95rem; font-weight:700; margin-top:10px; }
+.level-msg-h.up { color:#88ff88; }
+.level-msg-h.down { color:#ffaa88; }
 .big-btn { pointer-events:all; cursor:pointer; margin-top:24px; padding:14px 44px; border-radius:50px; border:none; font-size:1.05rem; font-weight:800; letter-spacing:1px; transition:all .2s; }
 .btn-gold { background:linear-gradient(135deg,#ffe680,#ff9d00); color:#1a0a00; }
 .btn-gold:hover { transform:scale(1.05); box-shadow:0 0 24px rgba(255,180,0,0.5); }
@@ -66,6 +73,7 @@ body { background:#0a0814; font-family:'Malgun Gothic','Apple SD Gothic Neo',san
 <div class="screen" id="start-screen">
   <div class="title-glow">🏯 한국사 시간탐험대</div>
   <div class="subtitle">초등 6학년 · 시대를 넘나드는 역사 퀴즈</div>
+  <div id="profile-badge"></div>
   <div class="era-grid">
     <div class="era-btn" onclick="startEra(0)">
       <div class="era-icon">🏺</div>
@@ -117,6 +125,7 @@ body { background:#0a0814; font-family:'Malgun Gothic','Apple SD Gothic Neo',san
   <div class="score-big" id="final-score">0점</div>
   <div class="grade" id="final-grade"></div>
   <div class="result-detail" id="result-detail"></div>
+  <div class="level-msg-h" id="level-msg-h"></div>
   <div style="display:flex;gap:14px;margin-top:28px">
     <button class="big-btn btn-gold" onclick="retryEra()">다시 도전</button>
     <button class="big-btn btn-back" onclick="goHome()">시대 선택</button>
@@ -200,7 +209,7 @@ const QUESTIONS = [
 ];
 
 // ─── 게임 상태 ─────────────────────────────────────────────────
-let state = { era:-1, questions:[], idx:0, score:0, lives:3, combo:0, timer:0, timerMax:20, timerInterval:null, answered:false };
+let state = { era:-1, questions:[], idx:0, score:0, lives:3, combo:0, timer:0, timerMax:20, timerInterval:null, answered:false, totalAnswered:0, totalCorrect:0 };
 
 // ─── Canvas 배경 ────────────────────────────────────────────────
 const canvas = document.getElementById('gameCanvas');
@@ -281,8 +290,24 @@ function startEra(eraIdx) {
   let pool = eraIdx===-1 ? [...QUESTIONS] : QUESTIONS.filter(q=>q.era===eraIdx);
   // 섞기
   for(let i=pool.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [pool[i],pool[j]]=[pool[j],pool[i]]; }
-  state.questions = pool.slice(0, eraIdx===-1 ? 20 : 8);
-  state.idx=0; state.score=0; state.lives=3; state.combo=0;
+  let selected = pool.slice(0, eraIdx===-1 ? 20 : 8);
+
+  // 학습허브: 오답노트 복습문제 주입 (최대 3개)
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    const review = LearningHub.getReviewQueue('한국사탐험','사회',3)
+      .filter(rq => eraIdx===-1 || rq.era===eraIdx);
+    review.forEach(rq=>{
+      const match = QUESTIONS.find(item=>item.q===rq.q);
+      if(match){
+        selected = selected.filter(item=>item.q!==match.q);
+        selected.splice(Math.min(1,selected.length), 0, match);
+      }
+    });
+    selected = selected.slice(0, eraIdx===-1 ? 20 : 8);
+  }
+
+  state.questions = selected;
+  state.idx=0; state.score=0; state.lives=3; state.combo=0; state.totalAnswered=0; state.totalCorrect=0;
   updateHUD();
   bgColor = eraIdx===-1 ? '#0a0814' : ERAS[eraIdx].bg;
   show('quiz-screen');
@@ -351,6 +376,12 @@ function answer(btn, chosen, correct) {
     spawnParticles(cx,cy,'#ff3c3c',20);
     shakeScreen();
   }
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    const qObj=state.questions[state.idx];
+    LearningHub.recordAnswer({gameId:'한국사탐험',subject:'사회',qKey:qObj.q,data:{q:qObj.q,era:qObj.era},correct:chosen===correct});
+  }
+  state.totalAnswered++;
+  if(chosen===correct) state.totalCorrect++;
   updateHUD();
   if(state.lives<=0) { setTimeout(()=>{ clearInterval(state.timerInterval); endGame(); },900); return; }
   state.idx++;
@@ -362,6 +393,11 @@ function timeOut() {
   state.answered=true;
   state.combo=0; state.lives--;
   playWrong();
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
+    const qObj=state.questions[state.idx];
+    LearningHub.recordAnswer({gameId:'한국사탐험',subject:'사회',qKey:qObj.q,data:{q:qObj.q,era:qObj.era},correct:false});
+  }
+  state.totalAnswered++;
   const allBtns=document.querySelectorAll('.choice-btn');
   allBtns.forEach(b=>{ b.disabled=true; if(b.textContent===state.questions[state.idx].a) b.classList.add('correct'); });
   updateHUD();
@@ -417,17 +453,62 @@ function endGame() {
   const prev=parseInt(localStorage.getItem(key)||'0');
   if(state.score>prev) localStorage.setItem(key,state.score);
 
+  // 학습 허브: 플레이 기록 + 레벨평가 + EXP
+  const levelMsgEl = document.getElementById('level-msg-h');
+  levelMsgEl.textContent=''; levelMsgEl.className='level-msg-h';
+  if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser() && state.totalAnswered>0){
+    const accuracy = state.totalCorrect/state.totalAnswered;
+    LearningHub.recordPlay('한국사탐험',{score:state.score,correct:state.totalCorrect,total:state.totalAnswered,grade:LearningHub.getGrade('사회')});
+    const li = LearningHub.evaluateLevel('사회',accuracy,{upThreshold:0.8,downThreshold:0.4});
+    if(li.changed){
+      if(li.direction==='up'){
+        levelMsgEl.textContent=`⬆️ 레벨업! 사회 ${li.newGrade}학년 난이도로 올라갑니다!`;
+        levelMsgEl.classList.add('up');
+      } else {
+        levelMsgEl.textContent=`⬇️ 사회 ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!`;
+        levelMsgEl.classList.add('down');
+      }
+    }
+    const expGain = state.totalCorrect*3 + (state.lives===3?15:0);
+    const expResult = LearningHub.addExp(expGain,'한국사탐험');
+    if(state.era===-1 && state.lives>0) LearningHub.unlockAchievement('한국사탐험','all_eras_clear');
+    LearningHub.announceExpResult(expResult);
+  }
+
   spawnParticles(window.innerWidth/2, window.innerHeight/2, '#ffe680', 40);
   playCombo();
 }
 
 function retryEra() { startEra(state.era); }
-function goHome()   { bgColor='#0a0814'; show('start-screen'); }
+function goHome()   { bgColor='#0a0814'; show('start-screen'); renderProfileBadgeH(); }
 
 function shuffle(arr) {
   const a=[...arr];
   for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; }
   return a;
+}
+
+// 학습 허브: 프로필 뱃지 및 로그인
+function renderProfileBadgeH(){
+  const el=document.getElementById('profile-badge');
+  if(!el) return;
+  if(typeof LearningHub==='undefined' || !LearningHub.getCurrentUser()){
+    el.innerHTML='';
+    return;
+  }
+  const u=LearningHub.getCurrentUser();
+  const grade=LearningHub.getGrade('사회');
+  const reviewN=LearningHub.getReviewCount('한국사탐험','사회');
+  el.innerHTML=`👤 <b>${LearningHub.escapeHtml(u.name)}</b> · 사회 ${LearningHub.gradeLabel(grade)}`+
+    (reviewN>0?`<span class="review-tag-h">📝 복습문제 ${reviewN}개 포함</span>`:'');
+}
+
+if(typeof LearningHub!=='undefined'){
+  if(!LearningHub.getCurrentUser()){
+    LearningHub.injectLoginModal(()=>{ renderProfileBadgeH(); });
+  } else {
+    renderProfileBadgeH();
+  }
 }
 </script>
 <style>
