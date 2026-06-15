@@ -615,6 +615,7 @@
       <div class="character-level">Lv.<span class="lv-num" id="char-level">1</span> <span id="char-name"></span></div>
       <div class="exp-bar-wrap"><div class="exp-bar-fill" id="char-exp-fill" style="width:0%"></div></div>
       <div class="exp-label" id="char-exp-label">EXP 0 / 100</div>
+      <div id="streak-badge" style="font-size:0.75rem;color:#ffd32a;margin-top:4px;font-weight:700;">🔥 1일 연속</div>
     </div>
     <div class="character-actions">
       <div class="profile-btn" id="open-inventory-btn">🎒 캐릭터 꾸미기</div>
@@ -1227,7 +1228,29 @@ document.querySelectorAll('.subject-pill').forEach(pill => {
 renderProfileBar();
 renderAll();
 if (!LearningHub.getCurrentUser()) {
-  LearningHub.injectLoginModal(() => { renderProfileBar(); renderAll(); });
+  LearningHub.injectLoginModal(() => {
+    renderProfileBar();
+    renderAll();
+    _runStreak();
+  });
+} else {
+  _runStreak();
+}
+
+function _runStreak() {
+  const result = LearningHub.checkStreak();
+  if (!result) return;
+  // 연속 출석 배지 업데이트
+  const el = document.getElementById('streak-badge');
+  if (el) el.textContent = `🔥 ${result.streak}일 연속`;
+  // 새 아이템 해금 알림
+  if (result.isNew && result.newItems.length > 0) {
+    setTimeout(() => {
+      result.newItems.forEach(item => {
+        LearningHub.showToast(`🎁 새 아이템 해금! ${item.name} (${result.streak}일 연속 접속)`);
+      });
+    }, 800);
+  }
 }
 </script>
 </body>
