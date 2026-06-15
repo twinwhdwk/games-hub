@@ -395,8 +395,11 @@
       #lh-login-btn:hover { filter:brightness(1.15); }
       #lh-login-users { margin-top:18px; display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
       .lh-user-chip { padding:6px 14px; border-radius:100px; background:rgba(255,255,255,0.06); border:1px solid #3a3a66;
-        color:#c4cde0; font-size:0.82rem; cursor:pointer; transition:.15s; }
+        color:#c4cde0; font-size:0.82rem; cursor:pointer; transition:.15s; display:inline-flex; align-items:center; gap:6px; }
       .lh-user-chip:hover { border-color:#7c7cff; color:#fff; background:rgba(124,124,255,0.15); }
+      .lh-user-chip .lh-user-del { color:#8892a4; font-weight:900; padding:0 2px; border-radius:50%; line-height:1; }
+      .lh-user-chip .lh-user-del:hover { color:#ff6b6b; }
+      .lh-login-hint { margin-top:10px; font-size:0.7rem; color:#666f8c; }
     `;
     document.head.appendChild(style);
     document.body.appendChild(overlay);
@@ -407,10 +410,33 @@
       users.slice(0, 8).forEach(name => {
         const chip = document.createElement('div');
         chip.className = 'lh-user-chip';
-        chip.textContent = '👤 ' + name;
-        chip.onclick = () => { switchUser(name); finish(); };
+        const label = document.createElement('span');
+        label.textContent = '👤 ' + name;
+        label.onclick = () => { switchUser(name); finish(); };
+        chip.appendChild(label);
+        const del = document.createElement('span');
+        del.className = 'lh-user-del';
+        del.textContent = '✕';
+        del.title = '프로필 삭제';
+        del.onclick = (e) => {
+          e.stopPropagation();
+          if (del.dataset.confirm === '1') {
+            deleteUser(name);
+            chip.remove();
+          } else {
+            del.dataset.confirm = '1';
+            del.textContent = '삭제?';
+            chip.style.borderColor = '#ff6b6b';
+            setTimeout(() => { del.dataset.confirm = ''; del.textContent = '✕'; chip.style.borderColor = '#3a3a66'; }, 2500);
+          }
+        };
+        chip.appendChild(del);
         wrap.appendChild(chip);
       });
+      const hint = document.createElement('div');
+      hint.className = 'lh-login-hint';
+      hint.textContent = '✕를 두 번 누르면 해당 프로필이 삭제돼요';
+      overlay.querySelector('.lh-login-box').appendChild(hint);
     }
 
     function finish() {
