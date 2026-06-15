@@ -510,8 +510,9 @@
 
   .inv-items-row {
     display: flex;
-    gap: 8px;
+    gap: 8px 8px;
     flex-wrap: wrap;
+    margin-bottom: 28px;
   }
 
   .inv-item {
@@ -534,6 +535,16 @@
   .inv-item-name {
     position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%);
     font-size: 0.6rem; color: #8892a4; white-space: nowrap;
+  }
+  .inv-item.locked {
+    cursor: default; opacity: 0.5; filter: grayscale(1);
+  }
+  .inv-item.locked .lock-icon {
+    position: absolute; top: -4px; right: -4px; font-size: 0.85rem;
+  }
+  .inv-item-hint {
+    position: absolute; bottom: -32px; left: 50%; transform: translateX(-50%);
+    font-size: 0.55rem; color: #ffd166; white-space: nowrap;
   }
 
   /* 레벨업/아이템 획득 토스트 */
@@ -950,7 +961,7 @@ function renderInventory() {
   const wrap = document.getElementById('inv-slots');
   wrap.innerHTML = '';
   SLOT_ORDER.forEach(slot => {
-    const items = LearningHub.getInventoryBySlot(slot);
+    const items = LearningHub.getAllItemsBySlot(slot);
     if (!items.length) return;
     const label = document.createElement('div');
     label.className = 'inv-slot-label';
@@ -960,22 +971,44 @@ function renderInventory() {
     row.className = 'inv-items-row';
     items.forEach(item => {
       const div = document.createElement('div');
-      div.className = 'inv-item rarity-' + item.rarity + (c.equipped[slot] === item.id ? ' equipped' : '');
+      const lockedClass = item.unlocked ? '' : ' locked';
+      div.className = 'inv-item rarity-' + item.rarity + (c.equipped[slot] === item.id ? ' equipped' : '') + lockedClass;
       const cv = document.createElement('canvas');
       cv.width = 32; cv.height = 32;
       div.appendChild(cv);
       const nameEl = document.createElement('div');
       nameEl.className = 'inv-item-name';
-      nameEl.textContent = item.name;
+      nameEl.textContent = item.unlocked ? item.name : '???';
       div.appendChild(nameEl);
-      // 아이템 단독 미리보기: 해당 슬롯만 채워서 렌더
-      const previewEquip = Object.assign({body:'body_basic',hair:'hair_brown',outfit:'outfit_basic',hat:'hat_none',weapon:'weapon_none',pet:'pet_none'}, {[slot]: item.id});
-      LearningHub.renderCharacter(cv, previewEquip, 2);
-      div.onclick = () => {
-        LearningHub.equipItem(slot, item.id);
-        renderInventory();
-        renderCharacterPanel();
-      };
+      if (!item.unlocked) {
+        const lockIcon = document.createElement('div');
+        lockIcon.className = 'lock-icon';
+        lockIcon.textContent = '🔒';
+        div.appendChild(lockIcon);
+        const hintEl = document.createElement('div');
+        hintEl.className = 'inv-item-hint';
+        hintEl.textContent = LearningHub.describeUnlock(item);
+        div.appendChild(hintEl);
+      }
+      // 아이템 단독 미리보기: 해당 슬롯만 채워서 렌더 (잠긴 아이템은 스포일러 방지를 위해 숨김)
+      if (item.unlocked) {
+        const previewEquip = Object.assign({body:'body_basic',hair:'hair_brown',outfit:'outfit_basic',hat:'hat_none',weapon:'weapon_none',pet:'pet_none'}, {[slot]: item.id});
+        LearningHub.renderCharacter(cv, previewEquip, 2);
+      } else {
+        const ctx = cv.getContext('2d');
+        ctx.font = '20px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.fillText('?', 16, 18);
+      }
+      if (item.unlocked) {
+        div.onclick = () => {
+          LearningHub.equipItem(slot, item.id);
+          renderInventory();
+          renderCharacterPanel();
+        };
+      }
       row.appendChild(div);
     });
     wrap.appendChild(row);

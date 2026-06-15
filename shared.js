@@ -571,6 +571,45 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
     return c.inventory.map(getItemById).filter(it => it && it.slot === slot);
   }
 
+  /**
+   * 슬롯의 모든 아이템(잠금 포함)을 반환. 각 항목에 unlocked:bool 추가.
+   */
+  function getAllItemsBySlot(slot) {
+    const c = getCharacter();
+    const owned = new Set(c ? c.inventory : []);
+    return ITEM_CATALOG.filter(it => it.slot === slot).map(it => Object.assign({}, it, { unlocked: owned.has(it.id) }));
+  }
+
+  const ACHIEVEMENT_LABELS = {
+    '분수계단_clear5': '분수 계단 5스테이지 클리어',
+    '분수계단_perfect_clear': '분수 계단 퍼펙트 클리어',
+    '구구단_final_boss_win': '구구단 최종보스 승리',
+    '영단어정벌_perfect_stage': '영단어정벌 퍼펙트 스테이지',
+    '한국사탐험_all_eras_clear': '한국사탐험 전시대 클리어',
+    '지식탐험_perfect_사회': '지식탐험 사회 만점',
+    '지식탐험_perfect_과학': '지식탐험 과학 만점',
+    '지식탐험_perfect_국어': '지식탐험 국어 만점',
+    '짝꿍찾기_perfect_국어': '짝꿍찾기 국어 만점',
+    '짝꿍찾기_perfect_영어': '짝꿍찾기 영어 만점',
+    '짝꿍찾기_perfect_과학': '짝꿍찾기 과학 만점',
+    '짝꿍찾기_perfect_사회': '짝꿍찾기 사회 만점',
+    '빈칸마법사_perfect_국어': '빈칸마법사 국어 만점',
+    '빈칸마법사_perfect_영어': '빈칸마법사 영어 만점',
+  };
+
+  /**
+   * 잠긴 아이템의 해금조건을 사람이 읽을 수 있는 문구로 반환
+   */
+  function describeUnlock(item) {
+    if (!item.unlock) return '';
+    if (item.unlock.type === 'level') return `Lv.${item.unlock.value} 달성 시 해금`;
+    if (item.unlock.type === 'achievement') {
+      const key = `${item.unlock.game}_${item.unlock.value}`;
+      return (ACHIEVEMENT_LABELS[key] || `${item.unlock.game} 업적 달성`) + ' 시 해금';
+    }
+    return '';
+  }
+
   // ---------------------------------------------------------
   // 픽셀 스프라이트 렌더링 (canvas, 16x16 grid)
   // ---------------------------------------------------------
@@ -640,7 +679,7 @@ const ITEM_CATALOG = [{"id": "hair_brown", "name": "짧은머리(브라운)", "s
     // 캐릭터/아이템/EXP
     ITEM_CATALOG, SPRITE_DATA, LEVEL_EXP,
     getCharacter, addExp, unlockAchievement, equipItem,
-    getInventoryBySlot, getItemById,
+    getInventoryBySlot, getAllItemsBySlot, describeUnlock, getItemById,
     renderCharacter, renderCurrentCharacter,
     showToast, announceExpResult, injectBackLink
   };
