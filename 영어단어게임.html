@@ -853,7 +853,10 @@ function submitAnswer(choiceIdx){
     else if(state.combo===5)showAchievement('⚡','5연속! 스피드 마스터!');
     else if(state.combo===10)showAchievement('👑','10연속! 영어 정복왕!');
     else if(state.combo===15)showAchievement('🏆','15연속! 전설의 마스터!');
-    else if(state.combo===20)showAchievement('✨','20연속! 수양대군을 초월했다!');
+    else if(state.combo===20){
+      showAchievement('✨','20연속! 수양대군을 초월했다!');
+      if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()) LearningHub.unlockAchievement('영단어정벌','combo20');
+    }
     if(enemies.length>0)enemies.pop();
     state.wordIdx++;setTimeout(loadQuestion,800);
   }else{
