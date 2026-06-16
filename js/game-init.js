@@ -1,81 +1,62 @@
 /**
- * @file js/game-init.js
- * 모든 게임 페이지 공통 초기화 패턴을 단일 함수로 제공
+ * @file js/game-init.js  v2.0
+ * 게임 페이지 표준 초기화. shared.js 로드 후 사용.
  *
- * 사용법:
- *   <script src="../shared.js"></script>
- *   <script src="../js/game-init.js"></script>
- *   <script>
- *     GameInit.start('지식탐험', function() {
- *       // 로그인 완료 & 데이터 로드 후 게임 시작
- *       startGame();
- *     });
- *   </script>
+ * 사용:
+ *   GameInit.start('게임ID', onStartFn, { backLink, requireLogin, checkStreak });
+ *   GameInit.finish('게임ID', expAmount);
  */
-
 'use strict';
-
 (function(global) {
 
+const GameInit = {
   /**
-   * 게임 페이지 표준 초기화
-   * @param {string} gameId  - GAME_REGISTRY 의 id (오답 뱃지, 복습 큐에 사용)
-   * @param {Function} onStart - 로그인+데이터 준비 완료 후 호출
-   * @param {Object} [opts]
-   * @param {boolean} [opts.backLink=true]    - 뒤로가기 버튼 자동 삽입
-   * @param {boolean} [opts.requireLogin=true] - 비로그인 시 로그인 모달 표시
-   * @param {boolean} [opts.checkStreak=true] - 출석 체크 자동 실행
+   * @param {string}   gameId
+   * @param {Function} onStart  - 데이터 + 로그인 완료 후 호출
+   * @param {object}   opts
+   *   backLink:     {boolean} 뒤로가기 버튼 자동 삽입 (default: true)
+   *   requireLogin: {boolean} 비로그인 시 모달 (default: true)
+   *   checkStreak:  {boolean} 출석 체크 (default: true)
    */
-  function start(gameId, onStart, opts) {
-    opts = Object.assign({ backLink: true, requireLogin: true, checkStreak: true }, opts || {});
+  start(gameId, onStart, opts = {}) {
+    opts = Object.assign({ backLink: true, requireLogin: true, checkStreak: true }, opts);
 
+    // 데이터 준비 후 실행
     const lh = global.LearningHub;
     if (!lh) { console.error('[GameInit] shared.js 가 로드되지 않았습니다'); return; }
 
-    // 뒤로가기 링크
-    if (opts.backLink) lh.injectBackLink();
+    lh.onReady(() => {
+      if (opts.backLink && global.Modal) Modal.injectBackLink();
 
-    // 데이터 + 로그인 준비 완료 후 시작
-    lh.onReady(function() {
-      if (opts.requireLogin && !lh.getCurrentUser()) {
-        lh.injectLoginModal(function() {
-          _afterLogin(gameId, onStart, opts);
-        });
+      const proceed = () => {
+        if (opts.checkStreak && global.Streak && global.User?.current()) {
+          const r = Streak.check();
+          if (r?.isNew && r.newItems?.length && global.Toast) {
+            setTimeout(() => r.newItems.forEach(it => Toast.show(`🎁 ${it.name} 해금!`, { type:'success' })), 800);
+          }
+        }
+        if (typeof onStart === 'function') onStart();
+      };
+
+      if (opts.requireLogin && global.User && !User.current()) {
+        Modal.requireLogin(proceed);
       } else {
-        _afterLogin(gameId, onStart, opts);
+        proceed();
       }
     });
-  }
-
-  function _afterLogin(gameId, onStart, opts) {
-    const lh = global.LearningHub;
-    if (opts.checkStreak && lh.getCurrentUser()) {
-      const result = lh.checkStreak();
-      if (result && result.isNew && result.newItems.length) {
-        setTimeout(function() {
-          result.newItems.forEach(function(item) {
-            lh.showToast('🎁 ' + item.name + ' 해금!');
-          });
-        }, 1000);
-      }
-    }
-    if (typeof onStart === 'function') onStart();
-  }
+  },
 
   /**
-   * 게임 종료 시 EXP/복습 결과 처리 표준 패턴
-   * @param {string} gameId
-   * @param {number} exp
-   * @param {string} source
+   * 게임 종료 시 EXP 지급 + 토스트
+   * @returns expResult 또는 null
    */
-  function finish(gameId, exp, source) {
-    const lh = global.LearningHub;
-    if (!lh || !lh.getCurrentUser()) return;
-    const result = lh.addExp(exp, source || gameId);
-    lh.announceExpResult(result);
+  finish(gameId, exp, source) {
+    if (!global.Items || !global.User?.current()) return null;
+    const result = Items.addExp(exp || 0, source || gameId);
+    if (global.Toast) Toast.announceExp(result);
     return result;
-  }
+  },
+};
 
-  global.GameInit = { start, finish };
-
+global.GameInit = GameInit;
 })(window);
