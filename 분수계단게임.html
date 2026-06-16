@@ -14,6 +14,7 @@
 <script src="js/game/data-loader.js"></script>
 <script src="js/game/quiz-engine.js"></script>
 <script src="shared.js"></script>
+<link rel="stylesheet" href="js/ui/theme.css">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; display:flex; flex-direction:column; align-items:center; justify-content:center; height:100vh; font-family:'맑은 고딕',sans-serif; overflow:hidden; user-select:none; }
@@ -1894,12 +1895,9 @@ buildStage(1, true);
 
 // 학습 허브: 로그인 확인 및 프로필 뱃지 표시
 if(typeof LearningHub!=='undefined'){
-  LearningHub.injectBackLink();
-  if(!LearningHub.getCurrentUser()){
-    LearningHub.injectLoginModal(()=>{ renderLHProfileBadge(); loadStageStarBadges(); });
-  } else {
-    renderLHProfileBadge();
-  }
+GameInit.start('분수계단', function() {
+  renderLHProfileBadge(); loadStageStarBadges();
+});
 }
 </script>
 </body>

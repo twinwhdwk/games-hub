@@ -15,6 +15,7 @@
 <script src="js/game/quiz-engine.js"></script>
 <script src="js/game-registry.js"></script>
 <script src="shared.js"></script>
+<link rel="stylesheet" href="js/ui/theme.css">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
 
@@ -386,7 +387,6 @@ html, body {
 <!-- 맵 뷰포트 -->
 <div id="map-viewport">
 <div id="map-canvas">
-
 <!-- SVG 항로선 레이어 -->
 <svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" xmlns="http://www.w3.org/2000/svg">
   <!-- 초등→중등 항로 -->
@@ -400,6 +400,12 @@ html, body {
   <path d="M 450,800 L 600,840" stroke="rgba(46,204,113,0.15)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
   <path d="M 600,840 L 750,800" stroke="rgba(46,204,113,0.15)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
 </svg>
+
+
+<!-- 대륙 컨테이너 (GameRegistry 기반 동적 생성) -->
+<div id="region-elem" class="region" style="left:100px;top:400px;"></div>
+<div id="region-mid"  class="region" style="left:1050px;top:300px;"></div>
+<div id="region-high" class="region" style="left:1900px;top:300px;"></div>
 
 <!-- ══════════════════════════════════════════════
      🟢 초등 대륙 (Elementary Island — 왼쪽)
@@ -673,6 +679,7 @@ html, body {
   </a>
 </div>
 
+<!-- 장식
 <!-- 장식 구름들 -->
 <div class="cloud" style="left:950px;top:200px;width:200px;height:60px;"></div>
 <div class="cloud" style="left:1700px;top:150px;width:160px;height:50px;animation-delay:-10s;"></div>
@@ -685,6 +692,7 @@ html, body {
   background:radial-gradient(ellipse,#162e1a,#0a1a0c);border-radius:50%;opacity:0.5;"></div>
 <div style="position:absolute;left:1780px;top:680px;width:35px;height:20px;
   background:radial-gradient(ellipse,#1a1030,#0f0820);border-radius:50%;opacity:0.5;"></div>
+
 
 </div><!-- end map-canvas -->
 </div><!-- end map-viewport -->
@@ -852,7 +860,7 @@ document.getElementById('minimap').addEventListener('click', e => {
 const tooltip = document.getElementById('tooltip');
 let ttTimeout;
 
-document.querySelectorAll('.game-node[data-name]').forEach(node => {
+function bindTooltipToNode(node) {
   node.addEventListener('mouseenter', e => {
     clearTimeout(ttTimeout);
     document.getElementById('tt-icon').textContent = node.dataset.icon || '';
@@ -872,7 +880,7 @@ document.querySelectorAll('.game-node[data-name]').forEach(node => {
     ttTimeout = setTimeout(() => tooltip.classList.remove('visible'), 200);
   });
   node.addEventListener('mousemove', e => positionTooltip(e.clientX, e.clientY));
-});
+}
 
 function positionTooltip(x, y) {
   const tw = 240, th = 160;
@@ -881,6 +889,72 @@ function positionTooltip(x, y) {
   if (top + th > window.innerHeight) top = window.innerHeight - th - 10;
   tooltip.style.left = left + 'px';
   tooltip.style.top  = top  + 'px';
+}
+
+// ══════════════════════════════════════════════
+// WORLDMAP DYNAMIC NODE RENDERING (GameRegistry)
+// ══════════════════════════════════════════════
+const CONTINENT_STYLE = {
+  elementary:{ elId:'region-elem', bg:'#1a3d20', color:'#2ecc71', nameColor:'#7defa8', label:'🌿 에메랄드 제도', sub:'Elementary Kingdom',      tierLabel:'초등학교', w:900, h:700 },
+  middle:    { elId:'region-mid',  bg:'#0d2040', color:'#3498db', nameColor:'#74b9ff', label:'🌊 사파이어 군도', sub:'Middle School Archipelago', tierLabel:'중등학교', w:700, h:600 },
+  high:      { elId:'region-high', bg:'#1a0a2e', color:'#9b59b6', nameColor:'#d2a8ff', label:'🌌 크리스탈 제국', sub:'High School Empire',        tierLabel:'고등학교', w:600, h:600 },
+};
+
+function renderWorldmapNodes() {
+  if (typeof GameRegistry === 'undefined') return;
+
+  Object.entries(CONTINENT_STYLE).forEach(([tier, st]) => {
+    const region = document.getElementById(st.elId);
+    if (!region) return;
+    const games = GameRegistry.byTier(tier);
+    const c = st.color;
+
+    let html = `
+      <div style="position:absolute;left:50px;top:60px;width:${st.w-100}px;height:${st.h-140}px;
+        background:radial-gradient(ellipse at 50% 50%,${st.bg} 0%,transparent 85%);
+        border-radius:45% 55% 50% 50%/50% 45% 55% 50%;filter:blur(2px);"></div>
+      <div style="position:absolute;left:70px;top:80px;width:${st.w-140}px;height:${st.h-160}px;
+        border-radius:45% 55% 50% 50%/50% 45% 55% 50%;border:1px solid ${c}18;"></div>
+      <div class="continent-label" style="left:${Math.round((st.w-360)/2)}px;top:20px;width:360px;">
+        <div class="tier-badge" style="color:${c};border-color:${c};background:${c}18;">${st.tierLabel}</div>
+        <div class="tier-name" style="color:${st.nameColor};">${st.label}</div>
+        <div class="tier-sub">${st.sub}</div>
+      </div>`;
+
+    games.forEach(game => {
+      const wm = game.worldmap || {};
+      const x=wm.x||200, y=wm.y||200, sz=wm.size||66, gc=wm.color||c;
+      const sn = game.name.length>9 ? game.name.slice(0,9)+'…' : game.name;
+      html += `
+      <a class="game-node" href="${game.url}"
+         data-name="${game.name}" data-sub="${game.subjects.join('·')}"
+         data-icon="${game.icon}" data-desc="${game.desc}" data-gameid="${game.id}"
+         style="left:${x}px;top:${y}px;">
+        <div class="node-ring" style="border-color:${gc};"></div>
+        <div class="node-island" style="width:${sz}px;height:${sz}px;
+          background:radial-gradient(135deg,${gc}cc,${gc}44);color:#fff;border:2px solid ${gc}55;">
+          <span class="node-emoji">${game.icon}</span>
+        </div>
+        <div class="review-badge" id="rb-${game.id}"></div>
+        <div class="node-label">
+          <span class="node-name">${sn}</span>
+          <span class="node-sub">${game.subjects.slice(0,2).join('·')}</span>
+        </div>
+      </a>`;
+    });
+
+    if (games.length < 5 && tier !== 'elementary') {
+      html += `<div style="position:absolute;left:60px;top:490px;width:420px;
+        background:${c}08;border:1px solid ${c}18;border-radius:12px;padding:10px 16px;text-align:center;">
+        <div style="font-size:.72rem;color:${st.nameColor};font-weight:700;">✨ 더 많은 게임이 추가될 예정이에요!</div>
+      </div>`;
+    }
+
+    region.innerHTML = html;
+    region.style.width  = st.w + 'px';
+    region.style.height = st.h + 'px';
+    region.querySelectorAll('.game-node[data-name]').forEach(bindTooltipToNode);
+  });
 }
 
 // ══════════════════════════════════════════════
@@ -934,13 +1008,24 @@ function updateHubData() {
 // INIT
 // ══════════════════════════════════════════════
 window.addEventListener('resize', () => { clampTransform(); applyTransform(); });
-initView();
-updateHubData();
 
-// 로그인 유도
-if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
-  LearningHub.injectLoginModal(() => updateHubData());
-}
+LearningHub.onReady(() => {
+  initView();
+  renderWorldmapNodes();
+  updateHubData();
+
+  if (!LearningHub.getCurrentUser()) {
+    LearningHub.injectLoginModal(() => updateHubData());
+  } else {
+    LearningHub.checkStreak();
+  }
+
+  // EventBus: 로그인/레벨업 시 뱃지 갱신
+  if (typeof Bus !== 'undefined') {
+    Bus.on('user:login',    () => updateHubData());
+    Bus.on('game:finished', () => updateHubData());
+  }
+});
 </script>
 </body>
 </html>

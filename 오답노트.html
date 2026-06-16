@@ -14,6 +14,7 @@
 <script src="js/game/data-loader.js"></script>
 <script src="js/game/quiz-engine.js"></script>
 <script src="shared.js"></script>
+<link rel="stylesheet" href="js/ui/theme.css">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -178,11 +179,8 @@ let quizIdx = 0;
 let answered = false;
 
 function init() {
-  if (!LearningHub.getCurrentUser()) {
-    LearningHub.injectLoginModal(init);
-    return;
-  }
-  LearningHub.injectBackLink();
+  // GameInit.start에서 로그인 보장됨
+  
   renderTabs();
   selectSubject(null); // 전체
 }
@@ -364,7 +362,12 @@ document.getElementById('next-btn').onclick = () => {
 
 document.getElementById('start-quiz-btn').onclick = startQuiz;
 
-init();
+GameInit.start('오답노트', init, { checkStreak: false });
+
+// EventBus: 오답 마스터 시 목록 새로고침
+if (typeof Bus !== 'undefined') {
+  Bus.on('wrong:mastered', () => { if (typeof renderWrongList === 'function') renderWrongList(); });
+}
 </script>
 </body>
 </html>

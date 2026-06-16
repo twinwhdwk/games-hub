@@ -15,6 +15,7 @@
 <script src="js/game/quiz-engine.js"></script>
 <script src="shared.js"></script>
 <script src="js/game-init.js"></script>
+<link rel="stylesheet" href="js/ui/theme.css">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -399,13 +400,9 @@ document.getElementById('home-btn').addEventListener('click', () => {
 
 (async function init() {
   await loadBank();
-  if (typeof LearningHub !== 'undefined') LearningHub.injectBackLink();
   renderSubjectGrid();
   renderProfileBadge();
-  if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
-    LearningHub.injectLoginModal(() => { renderSubjectGrid(); renderProfileBadge(); });
-  }
-})();
-</script>
-</body>
-</html>
+  if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser())  GameInit.start('짝꿍찾기', function() {
+    renderSubjectGrid();
+    renderProfileBadge();
+  });

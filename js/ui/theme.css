@@ -1,0 +1,173 @@
+/**
+ * @file js/ui/theme.css
+ * 플랫폼 공통 CSS 변수 및 유틸리티 클래스
+ * 모든 게임 HTML에서 <link rel="stylesheet" href="js/ui/theme.css"> 로 로드
+ */
+
+:root {
+  /* ── 컬러 팔레트 ─────────────────────────── */
+  --bg-deep:    #06070f;
+  --bg-dark:    #0a0b18;
+  --bg-mid:     #0f1020;
+  --bg-card:    rgba(255,255,255,.04);
+  --bg-card-hover: rgba(255,255,255,.07);
+
+  --border:     rgba(255,255,255,.08);
+  --border-mid: rgba(255,255,255,.12);
+  --border-strong: rgba(255,255,255,.2);
+
+  --text:       #e0e6ff;
+  --text-mid:   #8892a4;
+  --text-dim:   #475569;
+  --text-white: #ffffff;
+
+  /* 티어 색상 */
+  --elem:  #2ecc71;
+  --mid:   #3498db;
+  --high:  #9b59b6;
+
+  /* 과목 색상 */
+  --math:    #f39c12;
+  --english: #e74c3c;
+  --korean:  #27ae60;
+  --social:  #2980b9;
+  --science: #8e44ad;
+
+  /* 등급 */
+  --grade-s: #ffd700;
+  --grade-a: #c0c0c0;
+  --rarity-common:    rgba(255,255,255,.5);
+  --rarity-rare:      #60a5fa;
+  --rarity-epic:      #a855f7;
+  --rarity-legendary: #fbbf24;
+
+  /* 의미색 */
+  --success: #22c55e;
+  --danger:  #ef4444;
+  --warn:    #f59e0b;
+  --info:    #6366f1;
+
+  /* 공간 */
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 22px;
+  --r-pill: 100px;
+
+  /* 그림자 */
+  --shadow-sm: 0 2px 8px rgba(0,0,0,.3);
+  --shadow-md: 0 4px 20px rgba(0,0,0,.5);
+  --shadow-lg: 0 8px 40px rgba(0,0,0,.6);
+}
+
+/* ── 기본 리셋 ─────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  background: var(--bg-deep);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── 공통 카드 ─────────────────────────────── */
+.lh-card {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px;
+}
+.lh-card:hover { background: var(--bg-card-hover); }
+
+/* ── 4지선다 선택지 ────────────────────────── */
+.lh-choice {
+  display: block; width: 100%;
+  padding: 13px 14px; border-radius: var(--r-md);
+  background: var(--bg-card); border: 2px solid var(--border);
+  color: var(--text); font-size: .9rem; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+  text-align: left; transition: .12s;
+  word-break: keep-all; line-height: 1.4; min-height: 50px;
+}
+.lh-choice:hover:not(:disabled) {
+  border-color: var(--info); background: rgba(99,102,241,.1); color: var(--text-white);
+}
+.lh-choice.correct { background: rgba(34,197,94,.12); border-color: var(--success); color: #4ade80; }
+.lh-choice.wrong   { background: rgba(239,68,68,.12);  border-color: var(--danger);  color: #f87171; }
+.lh-choice:disabled { cursor: default; }
+
+/* ── 피드백 ────────────────────────────────── */
+.lh-feedback {
+  padding: 11px 14px; border-radius: var(--r-sm);
+  font-size: .85rem; font-weight: 700; line-height: 1.4;
+}
+.lh-feedback.correct { background: rgba(34,197,94,.1); color: #4ade80; border: 1px solid rgba(34,197,94,.2); }
+.lh-feedback.wrong   { background: rgba(239,68,68,.1);  color: #f87171; border: 1px solid rgba(239,68,68,.2); }
+
+/* ── 버튼 ──────────────────────────────────── */
+.lh-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 12px 24px; border-radius: var(--r-pill); border: none;
+  font-size: .92rem; font-weight: 900; cursor: pointer;
+  font-family: inherit; transition: .15s; text-decoration: none;
+}
+.lh-btn-primary {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+}
+.lh-btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(99,102,241,.4); }
+.lh-btn-secondary {
+  background: var(--bg-card); border: 1.5px solid var(--border-mid);
+  color: var(--text);
+}
+.lh-btn-secondary:hover { border-color: var(--border-strong); color: var(--text-white); }
+
+/* ── HUD 박스 ──────────────────────────────── */
+.lh-hud {
+  display: grid; gap: 8px;
+  margin-bottom: 12px;
+}
+.lh-hud-4 { grid-template-columns: repeat(4,1fr); }
+.lh-hud-3 { grid-template-columns: repeat(3,1fr); }
+.lh-hb {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 8px 4px; text-align: center;
+}
+.lh-hb .v { font-size: 1.1rem; font-weight: 900; color: var(--text-white); line-height: 1.1; }
+.lh-hb .l { font-size: .58rem; color: var(--text-mid); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+
+/* ── 진행바 ────────────────────────────────── */
+.lh-progress {
+  background: var(--bg-card); border-radius: 100px; height: 5px; overflow: hidden;
+}
+.lh-progress-fill {
+  height: 100%; border-radius: 100px;
+  background: linear-gradient(90deg, var(--info), #a855f7);
+  transition: width .3s;
+}
+
+/* ── 결과 화면 ─────────────────────────────── */
+.lh-result {
+  text-align: center; padding: 28px 16px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--r-xl);
+}
+.lh-result-grade {
+  font-size: 4rem; font-weight: 900; margin: 10px 0;
+  background: linear-gradient(135deg, var(--info), #a855f7);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.lh-result-stat { color: var(--text-mid); font-size: .85rem; margin-bottom: 5px; }
+
+/* ── 배지 ──────────────────────────────────── */
+.lh-badge {
+  display: inline-block; padding: 3px 9px; border-radius: var(--r-pill);
+  font-size: .67rem; font-weight: 700; border: 1px solid;
+}
+.lh-badge-elem   { color: var(--elem);  border-color: rgba(46,204,113,.4);  background: rgba(46,204,113,.08);  }
+.lh-badge-mid    { color: var(--mid);   border-color: rgba(52,152,219,.4);  background: rgba(52,152,219,.08);  }
+.lh-badge-high   { color: var(--high);  border-color: rgba(155,89,182,.4);  background: rgba(155,89,182,.08);  }
+.lh-badge-grade  { color: #67e8f9; border-color: rgba(103,232,249,.3); background: rgba(103,232,249,.05); }
+
+/* ── 페이지 래퍼 ───────────────────────────── */
+.lh-page { max-width: 620px; margin: 0 auto; padding: 14px 14px 80px; }

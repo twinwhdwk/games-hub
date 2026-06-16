@@ -13,7 +13,9 @@
 <script src="js/ui/modal.js"></script>
 <script src="js/game/data-loader.js"></script>
 <script src="js/game/quiz-engine.js"></script>
+<script src="js/game-registry.js"></script>
 <script src="shared.js"></script>
+<link rel="stylesheet" href="js/ui/theme.css">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body {
@@ -172,16 +174,9 @@ a.back-link:hover { color:#fff; }
 </div>
 
 <script>
-const GAME_META = {
-  '구구단':       { icon:'🤖', name:'트랜스포머 구구단 대작전' },
-  '분수계단':     { icon:'🧙', name:'분수 계단 탈출' },
-  '영단어정벌':   { icon:'⚔️', name:'수양대군의 영어 정벌' },
-  '한국사탐험':   { icon:'🏯', name:'한국사 시간탐험대' },
-  '총알피하기':   { icon:'🚀', name:'총알 피하기' },
-  '지식탐험':     { icon:'🧭', name:'지식 탐험대' },
-  '짝꿍찾기':     { icon:'🃏', name:'짝꿍 찾기' },
-  '빈칸마법사':   { icon:'🪄', name:'빈칸 마법사' },
-};
+const GAME_META = (typeof GameRegistry !== 'undefined')
+  ? Object.fromEntries(GameRegistry.all().map(g => [g.id, { name:g.name, icon:g.icon, tier:g.tier, subjects:g.subjects }]))
+  : {};
 
 const SUBJECT_ICONS = { '수학':'📐', '영어':'🔤', '국어':'📖', '사회':'🏛', '과학':'🔬' };
 
@@ -423,23 +418,27 @@ function renderAll() {
   renderGameStats();
 }
 
-document.getElementById('login-btn').addEventListener('click', () => {
+document.getElementById('login-btn')?.addEventListener('click', () => {
   LearningHub.injectLoginModal(() => renderAll());
 });
 
-LearningHub.onReady(() => {
-  LearningHub.injectBackLink();
+GameInit.start('성장일지', () => {
   renderAll();
 
-  // EventBus 실시간 구독 — 레벨업·학년변경 시 자동 갱신
+  // EventBus 실시간 구독
   if (typeof Bus !== 'undefined') {
     Bus.on('level:up',      () => { renderCharacter(); renderRecentItems(); });
     Bus.on('grade:changed', () => { renderSubjectGrades(); renderStudyStatus(); });
     Bus.on('streak:updated',() => renderStudyStatus());
     Bus.on('item:unlocked', () => { renderCharacter(); renderRecentItems(); });
     Bus.on('user:login',    () => renderAll());
+    Bus.on('user:logout',   () => renderAll());
+    Bus.on('game:finished',    () => { renderGameStats(); renderStudyStatus(); });
+    Bus.on('answer:recorded',  () => { renderStudyStatus(); });
+    Bus.on('wrong:mastered',   () => { renderStudyStatus(); });
+    Bus.on('exp:gained',       () => { renderCharacter(); });
   }
-});
+}, { backLink: true, requireLogin: false, checkStreak: true });
 </script>
 </body>
 </html>

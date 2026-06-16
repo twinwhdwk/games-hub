@@ -14,6 +14,7 @@
 <script src="js/game/data-loader.js"></script>
 <script src="js/game/quiz-engine.js"></script>
 <script src="shared.js"></script>
+<link rel="stylesheet" href="js/ui/theme.css">
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { background:#000; overflow:hidden; font-family:'Arial Black',Arial,sans-serif; }
@@ -1805,7 +1806,6 @@ updateAllDiffTable();
 
 // 학습 허브: 로그인 확인 및 학년 기반 추천 난이도 초기화
 if(typeof LearningHub!=='undefined'){
-  LearningHub.injectBackLink();
   function applyHubProfile(){
     const user=LearningHub.getCurrentUser();
     if(user){
@@ -1815,11 +1815,7 @@ if(typeof LearningHub!=='undefined'){
     }
     renderProfileBadge();
   }
-  if(!LearningHub.getCurrentUser()){
-    LearningHub.injectLoginModal(applyHubProfile);
-  } else {
-    applyHubProfile();
-  }
+  GameInit.start('구구단', applyHubProfile);
 }
 
 // ═══════════════════════════════════════════

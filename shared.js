@@ -100,7 +100,7 @@ function _buildAdapter() {
   const lh = {
     // 메타
     onReady,
-    SUBJECTS:    ['수학','영어','국어','사회','과학'],
+    get SUBJECTS() { return (global.Grade?.SUBJECTS) || ['수학','영어','국어','사회','과학']; },
     MIN_GRADE: 3, MAX_GRADE: 6,
     get TIER_GRADES()      { return G()?.TIER_GRADES || {}; },
     get ITEM_CATALOG()     { return I()?._data?.catalog     || []; },
