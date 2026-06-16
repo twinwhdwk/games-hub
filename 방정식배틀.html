@@ -6,171 +6,151 @@
 <title>⚡ 방정식 배틀</title>
 <script src="shared.js"></script>
 <script src="js/game-init.js"></script>
+<script src="js/battle-engine.js"></script>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background: #0a0a1a; color: #e0e6ff; min-height: 100vh; }
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:#08081a; color:#e0e6ff; min-height:100vh; overflow-x:hidden; }
+#wrap { max-width:640px; margin:0 auto; padding:12px 14px 80px; }
 
-/* ─ 배경 ─ */
-#bg-grid {
-  position:fixed; inset:0; z-index:0;
-  background-image: linear-gradient(rgba(100,120,255,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(100,120,255,0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
-}
-.glow-orb {
-  position:fixed; border-radius:50%; filter:blur(80px); pointer-events:none; z-index:0;
-}
+/* HUD */
+#hud { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+.hb { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:8px 4px; text-align:center; }
+.hb .v { font-size:1.2rem; font-weight:900; color:#fff; line-height:1.1; }
+.hb .l { font-size:0.58rem; color:#666f8c; letter-spacing:1px; margin-top:2px; }
 
-/* ─ 레이아웃 ─ */
-#game-wrap { position:relative; z-index:1; max-width:600px; margin:0 auto; padding:16px 16px 80px; }
-
-/* ─ HUD ─ */
-#hud {
-  display:flex; align-items:center; justify-content:space-between;
-  padding:10px 16px; background:rgba(255,255,255,0.04);
-  border:1px solid rgba(255,255,255,0.08); border-radius:14px; margin-bottom:16px;
-}
-.hud-stat { text-align:center; }
-.hud-stat .val { font-size:1.4rem; font-weight:900; color:#fff; }
-.hud-stat .lbl { font-size:0.65rem; color:#666f8c; text-transform:uppercase; letter-spacing:1px; }
-
-/* ─ 진행바 ─ */
-#stage-bar-wrap { background:rgba(255,255,255,0.07); border-radius:100px; height:6px; margin-bottom:20px; }
-#stage-bar { height:100%; border-radius:100px; background:linear-gradient(90deg,#6366f1,#8b5cf6); transition:width .4s; }
-
-/* ─ 캐릭터 vs 적 ─ */
-#battle-scene {
-  display:flex; align-items:center; justify-content:space-between;
-  gap:12px; margin-bottom:20px;
-}
-.fighter {
-  flex:1; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08);
-  border-radius:16px; padding:14px 10px; text-align:center;
-}
-.fighter-icon { font-size:2.6rem; margin-bottom:6px; }
-.fighter-name { font-size:0.72rem; color:#8892a4; font-weight:700; }
-.hp-bar-wrap { background:rgba(255,255,255,0.08); border-radius:100px; height:8px; margin-top:8px; }
-.hp-bar { height:100%; border-radius:100px; transition:width .3s; }
-#hero-hp-bar { background:linear-gradient(90deg,#22c55e,#4ade80); }
-#enemy-hp-bar { background:linear-gradient(90deg,#ef4444,#f97316); }
-.hp-text { font-size:0.72rem; color:#8892a4; margin-top:4px; }
-
-.vs-badge {
-  font-size:1rem; font-weight:900; color:#ffd700;
-  text-shadow:0 0 20px rgba(255,215,0,0.5);
-  flex-shrink:0;
+/* 전투 캔버스 */
+#battle-canvas {
+  width:100%; aspect-ratio:16/7; border-radius:16px;
+  border:1.5px solid rgba(99,102,241,0.3);
+  display:block; margin-bottom:12px;
+  box-shadow:0 0 40px rgba(99,102,241,0.15), inset 0 0 60px rgba(0,0,0,0.5);
 }
 
-/* ─ 문제 박스 ─ */
-#question-box {
-  background:rgba(99,102,241,0.08); border:1.5px solid rgba(99,102,241,0.3);
-  border-radius:18px; padding:20px; margin-bottom:16px;
-  transition: border-color .2s;
+/* 스테이지 이름 */
+#stage-label {
+  text-align:center; font-size:0.75rem; color:#818cf8; font-weight:700;
+  letter-spacing:2px; text-transform:uppercase; margin-bottom:8px;
 }
-#q-unit { font-size:0.7rem; color:#818cf8; font-weight:700; letter-spacing:1px; margin-bottom:6px; }
-#q-grade-badge {
-  display:inline-block; padding:2px 8px; border-radius:6px;
-  background:rgba(139,92,246,0.2); color:#a78bfa; font-size:0.68rem; font-weight:700;
-  margin-bottom:8px;
-}
-#q-text { font-size:1.15rem; font-weight:800; color:#fff; line-height:1.5; }
 
-/* ─ 선택지 ─ */
-#choices { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+/* HP 바들 */
+#hp-bars { display:flex; gap:10px; align-items:center; margin-bottom:14px; }
+.hp-side { flex:1; }
+.hp-name { font-size:0.72rem; font-weight:800; color:#9ca3af; margin-bottom:4px; }
+.hp-name.enemy { text-align:right; color:#f87171; }
+.hp-bar-wrap { background:rgba(255,255,255,0.08); border-radius:100px; height:10px; overflow:hidden; }
+.hp-bar { height:100%; border-radius:100px; transition:width .4s cubic-bezier(.34,1.56,.64,1); }
+#hero-bar { background:linear-gradient(90deg,#22c55e,#86efac); }
+#enemy-bar { background:linear-gradient(90deg,#ef4444,#fca5a5); float:right; }
+.hp-val { font-size:0.68rem; color:#6b7280; margin-top:3px; }
+.hp-val.enemy { text-align:right; }
+.vs-sep { color:#ffd700; font-size:1.1rem; font-weight:900; flex-shrink:0; }
+
+/* 문제 카드 */
+#q-card {
+  background:rgba(255,255,255,0.04); border:1.5px solid rgba(99,102,241,0.3);
+  border-radius:16px; padding:18px; margin-bottom:12px;
+  transition:border-color .2s;
+}
+#q-card.correct-border { border-color:#22c55e; box-shadow:0 0 20px rgba(34,197,94,0.2); }
+#q-card.wrong-border { border-color:#ef4444; box-shadow:0 0 20px rgba(239,68,68,0.15); }
+#q-meta { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.q-badge {
+  padding:3px 9px; border-radius:100px; font-size:0.65rem; font-weight:700;
+  border:1px solid;
+}
+#q-text { font-size:1.1rem; font-weight:800; line-height:1.5; color:#fff; }
+
+/* 선택지 */
+#choices { display:grid; grid-template-columns:1fr 1fr; gap:9px; margin-bottom:12px; }
 .choice {
-  padding:14px 12px; border-radius:12px;
-  background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.09);
-  color:#c4cde0; font-size:0.9rem; font-weight:700; cursor:pointer;
-  text-align:left; transition:.12s; font-family:inherit;
-  min-height:54px; word-break:keep-all; line-height:1.4;
+  padding:13px 12px; border-radius:12px; background:rgba(255,255,255,0.05);
+  border:2px solid rgba(255,255,255,0.09); color:#c4cde0;
+  font-size:0.88rem; font-weight:700; cursor:pointer; font-family:inherit;
+  text-align:left; transition:.12s; min-height:52px; word-break:keep-all; line-height:1.4;
 }
-.choice:hover:not(:disabled) { border-color:#6366f1; background:rgba(99,102,241,0.12); color:#fff; }
+.choice:hover:not(:disabled) { border-color:#6366f1; color:#fff; background:rgba(99,102,241,0.1); }
 .choice.correct { background:rgba(34,197,94,0.15); border-color:#22c55e; color:#4ade80; }
 .choice.wrong   { background:rgba(239,68,68,0.15); border-color:#ef4444; color:#f87171; }
 .choice:disabled { cursor:default; }
 
-/* ─ 피드백 ─ */
+/* 피드백 */
 #feedback {
-  min-height:48px; text-align:center; font-size:0.95rem; font-weight:700;
-  padding:12px; border-radius:12px; margin-bottom:14px; display:none;
+  padding:11px 14px; border-radius:11px; font-size:0.88rem; font-weight:700;
+  margin-bottom:10px; display:none; line-height:1.4;
 }
-#feedback.correct { background:rgba(34,197,94,0.1); color:#4ade80; }
-#feedback.wrong   { background:rgba(239,68,68,0.1); color:#f87171; }
-
-/* ─ 다음 버튼 ─ */
+#feedback.ok { background:rgba(34,197,94,.1); color:#4ade80; border:1px solid rgba(34,197,94,.2); }
+#feedback.ng { background:rgba(239,68,68,.1); color:#f87171; border:1px solid rgba(239,68,68,.2); }
 #next-btn {
-  width:100%; padding:16px; border-radius:14px;
-  background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none;
-  color:#fff; font-size:1.05rem; font-weight:900; cursor:pointer;
-  display:none; font-family:inherit; transition:.15s;
+  width:100%; padding:15px; border-radius:13px; border:none;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff;
+  font-size:1rem; font-weight:900; cursor:pointer; display:none; font-family:inherit;
+  transition:.15s;
 }
-#next-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,0.4); }
+#next-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(99,102,241,.4); }
 
-/* ─ 결과 화면 ─ */
-#result-screen {
-  display:none; text-align:center; padding:32px 20px;
-  background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:20px;
+/* 결과 화면 */
+#result {
+  display:none; text-align:center; padding:32px 16px;
+  background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08);
+  border-radius:20px;
 }
-#result-screen h2 { font-size:2rem; margin-bottom:8px; }
-.result-grade {
-  font-size:3rem; font-weight:900; margin:16px 0;
-  background:linear-gradient(135deg,#ffd700,#f59e0b);
+#result h2 { font-size:1.8rem; margin-bottom:6px; }
+.rg {
+  font-size:4.5rem; font-weight:900; margin:10px 0;
+  background:linear-gradient(135deg,#6366f1,#a855f7);
   -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
 }
-.result-stat { font-size:0.9rem; color:#8892a4; margin-bottom:6px; }
-.restart-btn {
-  margin-top:20px; padding:14px 32px; border-radius:100px;
-  background:linear-gradient(135deg,#6366f1,#8b5cf6); border:none;
-  color:#fff; font-size:1rem; font-weight:900; cursor:pointer; font-family:inherit;
+.rs { color:#8892a4; font-size:0.88rem; margin-bottom:5px; }
+.rb {
+  margin-top:18px; padding:13px 28px; border-radius:100px; border:none;
+  background:linear-gradient(135deg,#6366f1,#8b5cf6); color:#fff;
+  font-size:0.92rem; font-weight:900; cursor:pointer; font-family:inherit; margin:6px;
 }
+.rb.sec { background:rgba(255,255,255,0.08); color:#c4cde0; }
 
-/* ─ 대미지 플래시 ─ */
-@keyframes dmgFlash {
-  0%   { transform:scale(1); }
-  30%  { transform:scale(0.9) rotate(-3deg); }
-  60%  { transform:scale(1.05); }
-  100% { transform:scale(1); }
+/* 스킬 이름 팝업 */
+#skill-pop {
+  position:fixed; top:50%; left:50%; transform:translate(-50%,-50%);
+  font-size:1.5rem; font-weight:900; color:#ffd700;
+  text-shadow:0 0 20px rgba(255,215,0,.8);
+  pointer-events:none; opacity:0; transition:opacity .1s;
+  z-index:100; white-space:nowrap;
 }
-.dmg-anim { animation:dmgFlash .4s ease; }
-@keyframes correctFlash { 0%,100%{box-shadow:none} 50%{box-shadow:0 0 24px rgba(34,197,94,.6)} }
-.correct-flash { animation:correctFlash .4s ease; }
 </style>
 </head>
 <body>
-<div id="bg-grid"></div>
-<div class="glow-orb" style="width:300px;height:300px;top:-100px;left:-100px;background:rgba(99,102,241,0.15);"></div>
-<div class="glow-orb" style="width:250px;height:250px;bottom:-80px;right:-80px;background:rgba(139,92,246,0.12);"></div>
-
-<div id="game-wrap">
+<div id="wrap">
   <div id="hud">
-    <div class="hud-stat"><div class="val" id="hud-stage">1</div><div class="lbl">스테이지</div></div>
-    <div class="hud-stat"><div class="val" id="hud-correct">0</div><div class="lbl">정답</div></div>
-    <div class="hud-stat"><div class="val" id="hud-streak">0</div><div class="lbl">연속</div></div>
-    <div class="hud-stat"><div class="val" id="hud-grade">중1</div><div class="lbl">학년</div></div>
+    <div class="hb"><div class="v" id="h-stage">1</div><div class="l">스테이지</div></div>
+    <div class="hb"><div class="v" id="h-q">0</div><div class="l">문제</div></div>
+    <div class="hb"><div class="v" id="h-ok" style="color:#4ade80">0</div><div class="l">정답</div></div>
+    <div class="hb"><div class="v" id="h-sk" style="color:#ffd700">0</div><div class="l">연속</div></div>
   </div>
 
-  <div id="stage-bar-wrap"><div id="stage-bar" style="width:0%"></div></div>
+  <div id="stage-label">⚔️ 스테이지 1 — 고블린 소굴</div>
 
-  <div id="battle-scene">
-    <div class="fighter" id="hero-fighter">
-      <canvas id="hero-canvas" width="80" height="80" style="image-rendering:pixelated;"></canvas>
-      <div class="fighter-name">탐험가</div>
-      <div class="hp-bar-wrap"><div class="hp-bar" id="hero-hp-bar" style="width:100%"></div></div>
-      <div class="hp-text" id="hero-hp-text">HP 100</div>
+  <canvas id="battle-canvas" width="640" height="280"></canvas>
+
+  <div id="hp-bars">
+    <div class="hp-side">
+      <div class="hp-name" id="hero-name">탐험가</div>
+      <div class="hp-bar-wrap"><div class="hp-bar" id="hero-bar" style="width:100%"></div></div>
+      <div class="hp-val" id="hero-hp-val">100 / 100</div>
     </div>
-    <div class="vs-badge">⚡ VS</div>
-    <div class="fighter" id="enemy-fighter">
-      <div class="fighter-icon" id="enemy-icon">🧮</div>
-      <div class="fighter-name" id="enemy-name">방정식 괴물</div>
-      <div class="hp-bar-wrap"><div class="hp-bar" id="enemy-hp-bar" style="width:100%"></div></div>
-      <div class="hp-text" id="enemy-hp-text">HP 100</div>
+    <div class="vs-sep">⚡</div>
+    <div class="hp-side">
+      <div class="hp-name enemy" id="enemy-name-label">고블린</div>
+      <div class="hp-bar-wrap"><div class="hp-bar" id="enemy-bar" style="width:100%;float:right"></div></div>
+      <div class="hp-val enemy" id="enemy-hp-val">80 / 80</div>
     </div>
   </div>
 
-  <div id="question-box">
-    <div id="q-grade-badge">중1</div>
-    <div id="q-unit">방정식</div>
-    <div id="q-text">문제 로딩중...</div>
+  <div id="q-card">
+    <div id="q-meta">
+      <span class="q-badge" style="color:#818cf8;border-color:rgba(129,140,248,.4)">수학</span>
+      <span class="q-badge" id="q-grade-badge" style="color:#67e8f9;border-color:rgba(103,232,249,.3)">중1</span>
+    </div>
+    <div id="q-text">문제 로딩 중...</div>
   </div>
 
   <div id="choices">
@@ -181,221 +161,259 @@ body { font-family: 'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background
   </div>
 
   <div id="feedback"></div>
-  <button id="next-btn" onclick="nextQuestion()">다음 문제 →</button>
+  <button id="next-btn" onclick="nextQ()">다음 문제 →</button>
 
-  <div id="result-screen">
-    <h2 id="result-emoji">🏆</h2>
-    <div class="result-grade" id="result-grade-letter">S</div>
-    <div class="result-stat" id="result-stat1"></div>
-    <div class="result-stat" id="result-stat2"></div>
-    <div class="result-stat" id="result-stat3"></div>
-    <button class="restart-btn" onclick="restartGame()">다시 도전</button>
-    <button class="restart-btn" style="margin-left:10px;background:rgba(255,255,255,0.1);color:#c4cde0;" onclick="location.href='index.html'">허브로</button>
+  <div id="result">
+    <h2 id="r-em">🏆</h2>
+    <div class="rg" id="r-g">S</div>
+    <div class="rs" id="r-s1"></div>
+    <div class="rs" id="r-s2"></div>
+    <div class="rs" id="r-s3"></div>
+    <button class="rb" onclick="restart()">⚔️ 다시 도전</button>
+    <button class="rb sec" onclick="location.href='index.html'">← 허브</button>
   </div>
 </div>
 
+<div id="skill-pop"></div>
+
 <script>
+'use strict';
 const GAME_ID = '방정식배틀';
 const TOTAL_Q = 20;
-const ENEMIES = [
-  { icon:'🧮', name:'계산 고블린',   hp:80  },
-  { icon:'📐', name:'도형 악당',     hp:90  },
-  { icon:'🔢', name:'숫자 마왕',     hp:100 },
-  { icon:'∞',  name:'무한 괴물',     hp:120 },
-  { icon:'🧛', name:'이차 뱀파이어', hp:150 },
-];
+const STAGE_NAMES = ['고블린 소굴','해골 동굴','마법사 탑','슬라임 왕궁','드래곤 소굴'];
 
 let allQ = [], queue = [], qIdx = 0;
-let heroHP = 100, enemyHP = 100, enemyMaxHP = 100;
-let correct = 0, wrong = 0, streak = 0, enemyIdx = 0;
-let answered = false;
-let currentGrade = 7;
+let heroHP = 100, heroMaxHP = 100;
+let enemyHP = 0, enemyMaxHP = 0;
+let stageIdx = 0;
+let ok = 0, bad = 0, streak = 0, bestStreak = 0;
+let answered = false, curGrade = 7;
+let engine = null;
 
-function gradeLabel(g) {
-  if (g <= 9) return `중${g-6}`;
-  return `고${g-9}`;
+function gl(g) { return g<=9 ? `중${g-6}` : `고${g-9}`; }
+
+// ── 초기화 ───────────────────────────────────────────────
+async function init() {
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    curGrade = Math.max(7, Math.min(9, LearningHub.getGrade('수학')));
+  }
+  await loadQ();
+  queue = pickQ();
+  setupEngine();
+  spawnMonster(0);
+  showQ();
 }
 
-async function loadQuestions() {
+async function loadQ() {
   const res = await fetch('data/question_bank.json');
   const bank = await res.json();
-  allQ = [];
-  ['수학'].forEach(subj => {
-    (bank[subj] || []).forEach(q => {
-      if (q.grade >= 7 && q.grade <= 9) allQ.push({...q, subject: subj});
-    });
+  allQ = (bank['수학']||[]).filter(q => q.grade >= 7 && q.grade <= 9)
+    .sort(() => Math.random() - 0.5);
+}
+
+function pickQ() {
+  const pool = allQ.filter(q => Math.abs(q.grade - curGrade) <= 1);
+  return [...pool].sort(() => Math.random()-.5).slice(0, TOTAL_Q);
+}
+
+// ── Battle Engine 설정 ───────────────────────────────────
+function setupEngine() {
+  const canvas = document.getElementById('battle-canvas');
+  engine = new BattleEngine(canvas, { bgColor:'#06061a', groundY:0.75, heroX:0.2, enemyX:0.72 });
+
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const c = LearningHub.getCharacter();
+    if (c) engine.setHero(c.equipped);
+  }
+
+  engine.on('attackEnd', () => {
+    // 공격 완료 → 다음 버튼 표시
+    document.getElementById('next-btn').style.display = 'block';
   });
-  // 학년 가중치 섞기
-  allQ.sort(() => Math.random() - 0.5);
-  return allQ;
+  engine.on('monsterDead', () => {
+    // 다음 스테이지
+    stageIdx++;
+    if (stageIdx < BattleEngine.MONSTERS.length && qIdx < queue.length) {
+      setTimeout(() => spawnMonster(stageIdx), 800);
+    }
+  });
 }
 
-function pickQuestions() {
-  const g = currentGrade;
-  const pool = allQ.filter(q => Math.abs(q.grade - g) <= 1);
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, TOTAL_Q);
+function spawnMonster(idx) {
+  const m = BattleEngine.MONSTERS[idx % BattleEngine.MONSTERS.length];
+  const stageBonus = Math.floor(idx / BattleEngine.MONSTERS.length);
+  enemyMaxHP = m.hp + stageBonus * 30;
+  enemyHP = enemyMaxHP;
+  engine.setMonster({ ...m, hpPct: 1 });
+  updateEnemy(m.name, enemyHP, enemyMaxHP);
+  document.getElementById('h-stage').textContent = idx + 1;
+  document.getElementById('stage-label').textContent =
+    `⚔️ 스테이지 ${idx+1} — ${STAGE_NAMES[idx % STAGE_NAMES.length]}`;
 }
 
-function showQuestion() {
+// ── 문제 표시 ────────────────────────────────────────────
+function showQ() {
   answered = false;
+  if (qIdx >= queue.length) { endGame(); return; }
   const q = queue[qIdx];
-  if (!q) { endGame(); return; }
-
-  // UI 업데이트
-  document.getElementById('q-grade-badge').textContent = gradeLabel(q.grade) + '학년';
-  document.getElementById('q-unit').textContent = q.unit || '';
+  document.getElementById('q-grade-badge').textContent = gl(q.grade) + '학년';
   document.getElementById('q-text').textContent = q.q;
-
   const btns = document.querySelectorAll('.choice');
-  btns.forEach((btn, i) => {
-    btn.textContent = q.choices[i] || '';
-    btn.className = 'choice';
-    btn.disabled = false;
+  btns.forEach((b,i) => {
+    b.textContent = (q.choices[i]||'');
+    b.className = 'choice'; b.disabled = false;
   });
-
+  document.getElementById('q-card').className = 'q-card';
   document.getElementById('feedback').style.display = 'none';
   document.getElementById('next-btn').style.display = 'none';
-
-  // 진행바
-  const pct = (qIdx / TOTAL_Q) * 100;
-  document.getElementById('stage-bar').style.width = pct + '%';
-  document.getElementById('hud-grade').textContent = gradeLabel(currentGrade);
+  document.getElementById('h-q').textContent = qIdx + 1;
 }
 
-function choose(idx) {
-  if (answered) return;
+// ── 선택 ─────────────────────────────────────────────────
+function choose(i) {
+  if (answered || !engine) return;
   answered = true;
   const q = queue[qIdx];
-  const isCorrect = idx === q.answer;
-  const btns = document.querySelectorAll('.choice');
-  btns.forEach(b => b.disabled = true);
-  btns[q.answer].classList.add('correct');
-  if (!isCorrect) btns[idx].classList.add('wrong');
+  const isOk = i === q.answer;
+
+  document.querySelectorAll('.choice').forEach((b,j) => {
+    b.disabled = true;
+    if (j === q.answer) b.classList.add('correct');
+    else if (j === i && !isOk) b.classList.add('wrong');
+  });
 
   // 오답 기록
   if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
     LearningHub.recordAnswer({
-      gameId: GAME_ID, subject: q.subject || '수학',
-      qKey: q.q.slice(0, 40),
-      data: { q: q.q, choices: q.choices, answer: q.answer, unit: q.unit, grade: q.grade },
-      correct: isCorrect
+      gameId:GAME_ID, subject:'수학', qKey:q.q.slice(0,40),
+      data:{ q:q.q, choices:q.choices, answer:q.answer, unit:q.unit, grade:q.grade },
+      correct:isOk,
     });
   }
 
-  if (isCorrect) {
-    correct++; streak++;
-    const dmg = 10 + streak * 2;
-    enemyHP = Math.max(0, enemyHP - dmg);
-    showFeedback(true, `✅ 정답! 적에게 ${dmg} 데미지!`);
-    document.getElementById('enemy-fighter').classList.add('dmg-anim');
-    setTimeout(() => document.getElementById('enemy-fighter').classList.remove('dmg-anim'), 400);
-    if (enemyHP <= 0) spawnNextEnemy();
-  } else {
-    wrong++; streak = 0;
-    heroHP = Math.max(0, heroHP - 15);
-    showFeedback(false, `❌ 오답! 적의 공격! (정답: ${q.choices[q.answer]})`);
-    document.getElementById('hero-fighter').classList.add('dmg-anim');
-    setTimeout(() => document.getElementById('hero-fighter').classList.remove('dmg-anim'), 400);
-    if (heroHP <= 0) { endGame(true); return; }
-  }
-
-  updateHP();
-  document.getElementById('hud-correct').textContent = correct;
-  document.getElementById('hud-streak').textContent = streak;
-  document.getElementById('next-btn').style.display = 'block';
   qIdx++;
 
-  // 학년 자동 조절
-  if (qIdx % 5 === 0 && typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    const acc = correct / qIdx;
-    const result = LearningHub.evaluateLevel('수학', acc, { minGrade: 7, maxGrade: 9 });
-    currentGrade = LearningHub.getGrade('수학');
-    if (result.changed) {
-      LearningHub.showToast(result.direction === 'up' ? '⬆️ 레벨 업! 더 어려운 문제 도전!' : '⬇️ 쉬운 문제로 조정');
+  if (isOk) {
+    ok++; streak++; bestStreak = Math.max(bestStreak, streak);
+    document.getElementById('h-ok').textContent = ok;
+    document.getElementById('h-sk').textContent = streak;
+    document.getElementById('q-card').className = 'q-card correct-border';
+
+    // 데미지 계산
+    const dmg = Math.floor(12 + streak * 3 + Math.random() * 8);
+    enemyHP = Math.max(0, enemyHP - dmg);
+
+    // 스킬 선택
+    const skill = streak >= 4 ? 'magic' : streak >= 2 ? 'slash' : 'punch';
+    if (streak >= 3) showSkillPop(streak >= 5 ? '💥 SUPER COMBO!' : `🔥 ${streak} COMBO!`);
+
+    setFeedback(true, `✅ 정답! ${dmg} 데미지 (${streak > 1 ? streak+'연속 콤보!' : ''})`);
+
+    // 캐릭터 공격 → 애니 끝나면 next 버튼 (engine.on('attackEnd') 에서 처리)
+    const monDef = BattleEngine.MONSTERS[stageIdx % BattleEngine.MONSTERS.length];
+    engine.setMonster({ ...monDef, hpPct: enemyHP / enemyMaxHP });
+    engine.playHeroAttack(skill);
+
+    updateEnemy(null, enemyHP, enemyMaxHP);
+
+    if (enemyHP <= 0) {
+      engine.playMonsterDeath();
+      setFeedback(true, `✅ 정답! 🎉 몬스터 처치! (${dmg} 데미지)`);
     }
+
+  } else {
+    bad++; streak = 0;
+    document.getElementById('h-sk').textContent = 0;
+    document.getElementById('q-card').className = 'q-card wrong-border';
+
+    const heroDmg = 18;
+    heroHP = Math.max(0, heroHP - heroDmg);
+    updateHero(heroHP, heroMaxHP);
+    engine.playMonsterAttack();
+    engine.playHeroDamage(heroDmg);
+    setFeedback(false, `❌ 오답! 적의 반격! -${heroDmg} HP (정답: ${q.choices[q.answer]})`);
+
+    setTimeout(() => { document.getElementById('next-btn').style.display = 'block'; }, 600);
+
+    if (heroHP <= 0) { setTimeout(endGame, 700); return; }
+  }
+
+  // 5문제마다 학년 조정
+  if (qIdx % 5 === 0 && typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const acc = ok / qIdx;
+    const r = LearningHub.evaluateLevel('수학', acc, {minGrade:7, maxGrade:9});
+    curGrade = LearningHub.getGrade('수학');
+    if (r.changed) LearningHub.showToast(r.direction==='up' ? '⬆️ 레벨업! 더 강한 문제!' : '⬇️ 난이도 조정');
   }
 }
 
-function showFeedback(ok, msg) {
+function nextQ() { showQ(); }
+
+function setFeedback(isOk, msg) {
   const el = document.getElementById('feedback');
-  el.textContent = msg;
-  el.className = 'feedback ' + (ok ? 'correct' : 'wrong');
-  el.style.display = 'block';
+  el.textContent = msg; el.className = isOk ? 'ok' : 'ng'; el.style.display = 'block';
 }
 
-function updateHP() {
-  const hPct = (heroHP / 100) * 100;
-  const ePct = (enemyHP / enemyMaxHP) * 100;
-  document.getElementById('hero-hp-bar').style.width = hPct + '%';
-  document.getElementById('enemy-hp-bar').style.width = ePct + '%';
-  document.getElementById('hero-hp-text').textContent = `HP ${heroHP}`;
-  document.getElementById('enemy-hp-text').textContent = `HP ${enemyHP}`;
+// ── HP 업데이트 ──────────────────────────────────────────
+function updateHero(hp, max) {
+  document.getElementById('hero-bar').style.width = Math.max(0, hp/max*100) + '%';
+  document.getElementById('hero-hp-val').textContent = `${hp} / ${max}`;
+}
+function updateEnemy(name, hp, max) {
+  if (name) document.getElementById('enemy-name-label').textContent = name;
+  document.getElementById('enemy-bar').style.width = Math.max(0, hp/max*100) + '%';
+  document.getElementById('enemy-hp-val').textContent = `${hp} / ${max}`;
 }
 
-function spawnNextEnemy() {
-  enemyIdx = (enemyIdx + 1) % ENEMIES.length;
-  const e = ENEMIES[enemyIdx];
-  enemyHP = e.hp;
-  enemyMaxHP = e.hp;
-  document.getElementById('enemy-icon').textContent = e.icon;
-  document.getElementById('enemy-name').textContent = e.name;
-  document.getElementById('hud-stage').textContent = enemyIdx + 1;
+// ── 스킬 팝업 ────────────────────────────────────────────
+function showSkillPop(text) {
+  const el = document.getElementById('skill-pop');
+  el.textContent = text;
+  el.style.opacity = '1';
+  setTimeout(() => { el.style.opacity = '0'; }, 900);
 }
 
-function nextQuestion() {
-  if (qIdx >= queue.length) { endGame(); return; }
-  showQuestion();
-}
-
-function endGame(defeated) {
-  document.getElementById('question-box').style.display = 'none';
+// ── 게임 종료 ────────────────────────────────────────────
+function endGame() {
+  document.getElementById('q-card').style.display = 'none';
   document.getElementById('choices').style.display = 'none';
   document.getElementById('feedback').style.display = 'none';
   document.getElementById('next-btn').style.display = 'none';
-  document.getElementById('result-screen').style.display = 'block';
+  document.getElementById('hp-bars').style.display = 'none';
+  document.getElementById('stage-label').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
 
-  const total = correct + wrong;
-  const acc = total > 0 ? correct / total : 0;
-  const grade = acc >= 0.9 ? 'S' : acc >= 0.75 ? 'A' : acc >= 0.6 ? 'B' : acc >= 0.4 ? 'C' : 'D';
-  const emojis = { S:'🏆', A:'🥇', B:'🥈', C:'🥉', D:'😅' };
-
-  document.getElementById('result-emoji').textContent = defeated ? '💀' : emojis[grade];
-  document.getElementById('result-grade-letter').textContent = defeated ? 'GAME\nOVER' : grade;
-  document.getElementById('result-stat1').textContent = `정답 ${correct} / ${total}문제 (${Math.round(acc*100)}%)`;
-  document.getElementById('result-stat2').textContent = `최대 연속 정답: ${streak}`;
-  document.getElementById('result-stat3').textContent = `현재 학년: ${gradeLabel(currentGrade)}`;
+  const total = ok + bad, acc = total ? ok/total : 0;
+  const defeated = heroHP <= 0;
+  const g = defeated ? 'D' : acc>=.9?'S':acc>=.75?'A':acc>=.6?'B':acc>=.4?'C':'D';
+  const em = {S:'🏆',A:'🥇',B:'🥈',C:'🥉',D:'💀'};
+  document.getElementById('r-em').textContent = em[g] || '🎮';
+  document.getElementById('r-g').textContent = g;
+  document.getElementById('r-s1').textContent = `정답 ${ok}/${total} (${Math.round(acc*100)}%)`;
+  document.getElementById('r-s2').textContent = `최대 연속 콤보: ${bestStreak}`;
+  document.getElementById('r-s3').textContent = `클리어 스테이지: ${stageIdx}`;
 
   if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    const exp = correct * 8 + (streak > 3 ? 20 : 0);
+    const exp = ok*10 + stageIdx*15 + (bestStreak>=5?30:0);
     GameInit.finish(GAME_ID, exp, '방정식배틀');
-    LearningHub.evaluateLevel('수학', acc, { minGrade: 7, maxGrade: 9 });
+    LearningHub.evaluateLevel('수학', acc, {minGrade:7, maxGrade:9});
   }
+  if (engine) { engine.playStageClear(); }
 }
 
-function restartGame() {
-  heroHP = 100; enemyHP = 100; correct = 0; wrong = 0; streak = 0; qIdx = 0; enemyIdx = 0;
-  queue = pickQuestions();
-  document.getElementById('question-box').style.display = 'block';
+function restart() {
+  heroHP = 100; ok = 0; bad = 0; streak = 0; bestStreak = 0; qIdx = 0; stageIdx = 0;
+  queue = pickQ();
+  document.getElementById('q-card').style.display = 'block';
   document.getElementById('choices').style.display = 'grid';
-  document.getElementById('result-screen').style.display = 'none';
-  updateHP(); showQuestion();
+  document.getElementById('hp-bars').style.display = 'flex';
+  document.getElementById('stage-label').style.display = 'block';
+  document.getElementById('result').style.display = 'none';
+  updateHero(heroHP, heroMaxHP);
+  spawnMonster(0); showQ();
 }
 
-// ── 초기화 ──
-GameInit.start(GAME_ID, async () => {
-  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    currentGrade = LearningHub.getGrade('수학');
-    if (currentGrade < 7) currentGrade = 7;
-    if (currentGrade > 9) currentGrade = 9;
-    const c = LearningHub.getCharacter();
-    if (c) LearningHub.renderCharacter(document.getElementById('hero-canvas'), c.equipped, 5);
-  }
-  await loadQuestions();
-  queue = pickQuestions();
-  updateHP();
-  showQuestion();
-}, { checkStreak: true });
+GameInit.start(GAME_ID, init, { checkStreak:true });
 </script>
 </body>
 </html>

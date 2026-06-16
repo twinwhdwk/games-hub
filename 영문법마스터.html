@@ -6,6 +6,7 @@
 <title>🔤 영문법 마스터</title>
 <script src="shared.js"></script>
 <script src="js/game-init.js"></script>
+<script src="js/battle-engine.js"></script>
 <style>
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:#0b0f1a; color:#e0e6ff; min-height:100vh; }
@@ -87,6 +88,7 @@ body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:
 </head>
 <body>
 <div id="wrap">
+  <canvas id="battle-canvas" width="560" height="160" style="width:100%;border-radius:12px;border:1px solid rgba(6,182,212,0.2);display:block;margin-bottom:10px;"></canvas>
   <div id="hud">
     <div class="hud-box"><div class="v" id="h-q">0</div><div class="l">문제</div></div>
     <div class="hud-box"><div class="v" id="h-ok">0</div><div class="l">정답</div></div>
@@ -183,9 +185,14 @@ function choose(i) {
 
   if (isOk) {
     ok++; streak++; bestStreak = Math.max(bestStreak, streak);
+    if (_engine) {
+      const skill = streak >= 3 ? 'magic' : 'slash';
+      _engine.playHeroAttack(skill);
+    }
     setFeedback(true, '✅ 정답!' + (streak >= 3 ? ` 🔥 ${streak}연속!` : ''));
   } else {
     bad++; streak = 0;
+    if (_engine) _engine.playMonsterAttack();
     setFeedback(false, `❌ 오답! 정답: ${q.choices[q.answer]}`);
   }
 
@@ -234,12 +241,26 @@ function restart() {
   show();
 }
 
+let _engine = null;
+
+function _setupBattle() {
+  const canvas = document.getElementById('battle-canvas');
+  if (!canvas || !window.BattleEngine) return;
+  _engine = new BattleEngine(canvas, { bgColor:'#06101a', groundY:0.78, heroX:0.2, enemyX:0.7 });
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const c = LearningHub.getCharacter();
+    if (c) _engine.setHero(c.equipped);
+  }
+  _engine.setMonster({ ...BattleEngine.MONSTERS[0], hpPct:1 });
+}
+
 GameInit.start(GAME_ID, async () => {
   if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
     curGrade = Math.max(7, Math.min(9, LearningHub.getGrade('영어')));
   }
   await load();
   queue = pick();
+  _setupBattle();
   show();
 });
 </script>

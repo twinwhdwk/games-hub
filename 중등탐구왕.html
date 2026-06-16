@@ -6,6 +6,7 @@
 <title>🔭 중등 탐구왕</title>
 <script src="shared.js"></script>
 <script src="js/game-init.js"></script>
+<script src="js/battle-engine.js"></script>
 <style>
 *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
 body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:#0c0c18; color:#e0e6ff; min-height:100vh; }
@@ -105,6 +106,7 @@ body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:
 
   <!-- 게임 화면 -->
   <div id="game" style="display:none;">
+    <canvas id="battle-canvas" width="600" height="160" style="width:100%;border-radius:12px;border:1px solid rgba(16,185,129,0.2);display:none;margin-bottom:10px;"></canvas>
     <div id="hud">
       <div class="hb"><div class="v" id="h-q">1</div><div class="l">문제</div></div>
       <div class="hb"><div class="v" id="h-ok">0</div><div class="l">정답</div></div>
@@ -175,6 +177,21 @@ function pick(subj) {
   return [...pool].sort(() => Math.random()-.5).slice(0, TOTAL);
 }
 
+let _engine = null;
+
+function _setupBattle(subj) {
+  const canvas = document.getElementById('battle-canvas');
+  if (!canvas || !window.BattleEngine) return;
+  canvas.style.display = 'block';
+  _engine = new BattleEngine(canvas, { bgColor:'#060c10', groundY:0.76, heroX:0.2, enemyX:0.7 });
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const c = LearningHub.getCharacter();
+    if (c) _engine.setHero(c.equipped);
+  }
+  const mIdx = subj==='과학' ? 4 : subj==='사회' ? 3 : 1;
+  _engine.setMonster({ ...BattleEngine.MONSTERS[mIdx % BattleEngine.MONSTERS.length], hpPct:1 });
+}
+
 function startGame(subj) {
   curSubj = subj;
   if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
@@ -185,6 +202,7 @@ function startGame(subj) {
   document.getElementById('subject-select').style.display = 'none';
   document.getElementById('result').style.display = 'none';
   document.getElementById('game').style.display = 'block';
+  _setupBattle(subj);
   showQ();
 }
 
@@ -246,11 +264,15 @@ function choose(i) {
 
   if (isOk) {
     ok++; sk++; bestSk = Math.max(bestSk, sk);
+    if (_engine) _engine.playHeroAttack(sk >= 3 ? 'magic' : 'slash');
     setFb(true, '✅ 정답!' + (sk>=3 ? ` 🔥 ${sk}연속!`:''));
   } else if (i === -1) {
-    sk = 0; setFb(false, `⏰ 시간 초과! 정답: ${q.choices[q.answer]}`);
+    sk = 0;
+    if (_engine) _engine.playMonsterAttack(); setFb(false, `⏰ 시간 초과! 정답: ${q.choices[q.answer]}`);
   } else {
-    sk = 0; setFb(false, `❌ 오답! 정답: ${q.choices[q.answer]}`);
+    sk = 0;
+    if (_engine) _engine.playMonsterAttack();
+    setFb(false, `❌ 오답! 정답: ${q.choices[q.answer]}`);
   }
   document.getElementById('h-ok').textContent = ok;
   document.getElementById('h-sk').textContent = sk;
