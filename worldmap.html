@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🗺️ 탐험가 세계지도 — 학습 게임 허브</title>
+<script src="shared.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+
+:root {
+  --ocean: #0a1628;
+  --ocean-mid: #0d1f3c;
+  --ocean-light: #1a3a5c;
+  --parchment: #f4e4bc;
+  --parchment-dark: #c9a96e;
+  --ink: #2c1810;
+  --gold: #f0c040;
+  --gold-light: #ffd700;
+  --red: #c0392b;
+  --green-elem: #2ecc71;
+  --blue-mid: #3498db;
+  --purple-high: #9b59b6;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+html, body {
+  width:100%; height:100%; overflow:hidden;
+  font-family: 'Noto Sans KR', 'Malgun Gothic', sans-serif;
+  background: var(--ocean);
+  color: var(--parchment);
+  user-select: none;
+}
+
+/* ── OCEAN BACKGROUND ── */
+#ocean-bg {
+  position:fixed; inset:0; z-index:0;
+  background:
+    radial-gradient(ellipse at 20% 50%, #0d2545 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, #091d3a 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, #0a1f40 0%, transparent 50%),
+    linear-gradient(180deg, #060e1c 0%, #0a1628 40%, #071428 100%);
+}
+
+/* 파도 애니메이션 */
+.wave-layer {
+  position:fixed; inset:0; z-index:1;
+  background-image: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 38px,
+    rgba(255,255,255,0.012) 38px,
+    rgba(255,255,255,0.012) 40px
+  );
+  animation: waveDrift 20s linear infinite;
+}
+@keyframes waveDrift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 0 80px; }
+}
+
+/* 나침반 격자 */
+.grid-layer {
+  position:fixed; inset:0; z-index:1;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+  background-size: 80px 80px;
+}
+
+/* ── TOP HUD ── */
+#hud {
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  display:flex; align-items:center; justify-content:space-between;
+  padding:12px 20px;
+  background: linear-gradient(180deg, rgba(6,14,28,0.95) 0%, transparent 100%);
+  backdrop-filter: blur(8px);
+}
+.hud-title {
+  font-size:clamp(14px,3.5vw,20px); font-weight:900;
+  background: linear-gradient(135deg, var(--gold-light), var(--parchment));
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+  letter-spacing: 1px;
+}
+.hud-right { display:flex; gap:10px; align-items:center; }
+.hud-btn {
+  padding:7px 14px; border-radius:100px;
+  background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.15);
+  color:var(--parchment); font-size:0.78rem; font-weight:700; cursor:pointer;
+  text-decoration:none; transition:.15s;
+  font-family: inherit;
+}
+.hud-btn:hover { background:rgba(255,255,255,0.15); border-color:var(--gold); color:var(--gold); }
+#streak-hud { color:var(--gold); font-size:0.78rem; font-weight:800; }
+
+/* ── WORLD MAP VIEWPORT ── */
+#map-viewport {
+  position:fixed; inset:0; z-index:10;
+  cursor:grab; overflow:hidden;
+}
+#map-viewport.dragging { cursor:grabbing; }
+#map-canvas {
+  position:absolute; transform-origin:0 0;
+  width:2400px; height:1600px;
+}
+
+/* ── REGION BASE ── */
+.region {
+  position:absolute;
+}
+
+/* 대륙 외형 */
+.continent-shape {
+  position:absolute;
+  border-radius:40% 50% 45% 35% / 40% 35% 50% 45%;
+  filter: drop-shadow(0 8px 30px rgba(0,0,0,0.6));
+}
+
+/* ── CONTINENT LABELS ── */
+.continent-label {
+  position:absolute; text-align:center; pointer-events:none;
+}
+.continent-label .tier-badge {
+  display:inline-block;
+  padding:6px 18px; border-radius:100px;
+  font-size:clamp(10px,1.5vw,13px); font-weight:900;
+  letter-spacing:2px; text-transform:uppercase;
+  border:2px solid;
+}
+.continent-label .tier-name {
+  font-size:clamp(18px,3vw,28px); font-weight:900;
+  margin-top:4px; line-height:1.1;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+}
+.continent-label .tier-sub {
+  font-size:clamp(10px,1.5vw,12px); opacity:0.7; margin-top:3px;
+}
+
+/* ── GAME NODES ── */
+.game-node {
+  position:absolute; cursor:pointer;
+  transition: transform .2s cubic-bezier(.34,1.56,.64,1);
+}
+.game-node:hover { transform:scale(1.15) !important; }
+.game-node:hover .node-ring { opacity:1; }
+
+.node-island {
+  position:relative; border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  flex-direction:column;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.2);
+  transition: box-shadow .2s;
+}
+.game-node:hover .node-island {
+  box-shadow: 0 8px 40px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.3),
+              0 0 30px currentColor;
+}
+
+.node-emoji { font-size:1.6em; line-height:1; }
+.node-label {
+  position:absolute; bottom:-32px; left:50%; transform:translateX(-50%);
+  white-space:nowrap; text-align:center;
+}
+.node-label .node-name {
+  font-size:clamp(9px,1.2vw,12px); font-weight:800; color:var(--parchment);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.9);
+  display:block;
+}
+.node-label .node-sub {
+  font-size:clamp(8px,1vw,10px); opacity:0.65; color:var(--parchment-dark);
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+}
+
+/* 복습 뱃지 */
+.review-badge {
+  position:absolute; top:-6px; right:-6px;
+  background:#e74c3c; color:#fff;
+  border-radius:50%; width:20px; height:20px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:10px; font-weight:900; border:2px solid var(--ocean);
+  display:none;
+}
+
+/* 링 애니메이션 */
+.node-ring {
+  position:absolute; inset:-8px; border-radius:50%;
+  border:2px solid; opacity:0;
+  animation:ringPulse 2s ease-in-out infinite;
+}
+@keyframes ringPulse {
+  0%,100% { transform:scale(1); opacity:0; }
+  50% { transform:scale(1.15); opacity:0.6; }
+}
+
+/* ── SPECIAL NODES (성장일지, 오답노트) ── */
+.special-node {
+  position:absolute; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center;
+  transition:transform .2s cubic-bezier(.34,1.56,.64,1);
+}
+.special-node:hover { transform:scale(1.1); }
+.special-icon {
+  width:52px; height:52px; border-radius:14px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:24px;
+  background:rgba(255,255,255,0.08); border:2px solid rgba(255,255,255,0.2);
+  box-shadow:0 4px 16px rgba(0,0,0,0.4);
+}
+.special-label { font-size:10px; font-weight:800; color:var(--parchment); margin-top:6px; text-shadow:0 1px 4px rgba(0,0,0,0.9); }
+
+/* ── SEA ROUTES (항로선) ── */
+.sea-route {
+  position:absolute; pointer-events:none;
+  stroke-dasharray:10 6; stroke-dashoffset:0;
+  animation:routeDash 20s linear infinite;
+}
+@keyframes routeDash { to { stroke-dashoffset:-200; } }
+
+/* ── TOOLTIP ── */
+#tooltip {
+  position:fixed; z-index:200; pointer-events:none;
+  background:rgba(10,22,40,0.96);
+  border:1.5px solid var(--gold);
+  border-radius:16px; padding:14px 18px;
+  max-width:240px; opacity:0; transition:opacity .15s;
+  backdrop-filter:blur(12px);
+  box-shadow:0 8px 32px rgba(0,0,0,0.6);
+}
+#tooltip.visible { opacity:1; }
+.tt-icon { font-size:2rem; text-align:center; margin-bottom:6px; }
+.tt-name { font-size:1rem; font-weight:900; color:var(--gold-light); }
+.tt-sub  { font-size:0.72rem; color:var(--parchment-dark); margin-top:2px; }
+.tt-desc { font-size:0.78rem; color:var(--parchment); margin-top:8px; line-height:1.5; }
+.tt-review { font-size:0.72rem; color:#e74c3c; margin-top:6px; font-weight:700; }
+.tt-action {
+  margin-top:10px; padding:7px 14px; border-radius:8px;
+  background:var(--gold); color:var(--ink); font-weight:900;
+  font-size:0.8rem; text-align:center;
+}
+
+/* ── MINI MAP ── */
+#minimap {
+  position:fixed; bottom:20px; right:20px; z-index:100;
+  width:140px; height:90px; border-radius:10px;
+  background:rgba(6,14,28,0.85); border:1px solid rgba(255,255,255,0.15);
+  overflow:hidden; cursor:pointer;
+}
+#minimap-canvas { width:100%; height:100%; }
+#minimap-viewport {
+  position:absolute; border:2px solid var(--gold);
+  border-radius:4px; pointer-events:none;
+  transition:all .1s;
+}
+
+/* ── ZOOM CONTROLS ── */
+#zoom-ctrl {
+  position:fixed; bottom:120px; right:20px; z-index:100;
+  display:flex; flex-direction:column; gap:6px;
+}
+.zoom-btn {
+  width:36px; height:36px; border-radius:8px;
+  background:rgba(6,14,28,0.85); border:1px solid rgba(255,255,255,0.2);
+  color:var(--parchment); font-size:1.2rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  font-weight:900; font-family:inherit; transition:.15s;
+}
+.zoom-btn:hover { background:rgba(255,255,255,0.15); border-color:var(--gold); color:var(--gold); }
+
+/* ── COMPASS ── */
+#compass {
+  position:fixed; bottom:20px; left:20px; z-index:100;
+  width:64px; height:64px;
+}
+#compass svg { width:100%; height:100%; animation:compassSpin 30s linear infinite; }
+
+/* ── LEGEND ── */
+#legend {
+  position:fixed; top:70px; left:16px; z-index:100;
+  background:rgba(6,14,28,0.88); border:1px solid rgba(255,255,255,0.12);
+  border-radius:12px; padding:12px 14px; backdrop-filter:blur(8px);
+}
+.legend-title { font-size:0.7rem; font-weight:900; color:var(--gold); letter-spacing:1px; text-transform:uppercase; margin-bottom:8px; }
+.legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; font-size:0.72rem; color:var(--parchment-dark); }
+.legend-dot { width:12px; height:12px; border-radius:50%; flex-shrink:0; }
+
+/* 물결 dots */
+.ocean-dot {
+  position:absolute; border-radius:50%;
+  background:rgba(255,255,255,0.06);
+  animation:floatDot 6s ease-in-out infinite;
+}
+@keyframes floatDot { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+
+/* 구름 효과 */
+.cloud {
+  position:absolute; pointer-events:none;
+  background:rgba(255,255,255,0.04);
+  border-radius:50%;
+  animation:cloudFloat 25s ease-in-out infinite;
+}
+@keyframes cloudFloat { 0%,100%{transform:translateX(0)} 50%{transform:translateX(30px)} }
+
+@keyframes compassSpin {
+  0% { transform:rotate(0deg); }
+  100% { transform:rotate(360deg); }
+}
+</style>
+</head>
+<body>
+
+<div id="ocean-bg"></div>
+<div class="wave-layer"></div>
+<div class="grid-layer"></div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="hud-title">🗺️ 탐험가 세계지도</div>
+  <div class="hud-right">
+    <span id="streak-hud"></span>
+    <a href="index.html" class="hud-btn">← 허브</a>
+    <a href="성장일지.html" class="hud-btn">📔 성장일지</a>
+    <a href="오답노트.html" class="hud-btn">📝 오답노트</a>
+  </div>
+</div>
+
+<!-- 범례 -->
+<div id="legend">
+  <div class="legend-title">범례</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div>초등학교</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#3498db"></div>중등학교</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9b59b6"></div>고등학교</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#e74c3c; border-radius:3px;"></div>오답 대기</div>
+</div>
+
+<!-- 나침반 -->
+<div id="compass">
+  <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="32" cy="32" r="30" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+    <circle cx="32" cy="32" r="22" stroke="rgba(240,192,64,0.3)" stroke-width="1"/>
+    <polygon points="32,8 35,30 32,34 29,30" fill="#c0392b"/>
+    <polygon points="32,56 35,34 32,30 29,34" fill="rgba(255,255,255,0.5)"/>
+    <polygon points="8,32 30,29 34,32 30,35" fill="rgba(255,255,255,0.5)"/>
+    <polygon points="56,32 34,29 30,32 34,35" fill="rgba(255,255,255,0.5)"/>
+    <circle cx="32" cy="32" r="4" fill="#f0c040"/>
+    <text x="32" y="6" text-anchor="middle" fill="#f0c040" font-size="7" font-weight="900">N</text>
+    <text x="32" y="62" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="6">S</text>
+    <text x="5" y="34" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="6">W</text>
+    <text x="60" y="34" text-anchor="middle" fill="rgba(255,255,255,0.5)" font-size="6">E</text>
+  </svg>
+</div>
+
+<!-- 줌 컨트롤 -->
+<div id="zoom-ctrl">
+  <button class="zoom-btn" id="btn-zoom-in">+</button>
+  <button class="zoom-btn" id="btn-zoom-out">−</button>
+  <button class="zoom-btn" id="btn-zoom-fit" title="전체보기">⊡</button>
+</div>
+
+<!-- 미니맵 -->
+<div id="minimap">
+  <canvas id="minimap-canvas" width="140" height="90"></canvas>
+  <div id="minimap-viewport"></div>
+</div>
+
+<!-- 툴팁 -->
+<div id="tooltip">
+  <div class="tt-icon" id="tt-icon"></div>
+  <div class="tt-name" id="tt-name"></div>
+  <div class="tt-sub" id="tt-sub"></div>
+  <div class="tt-desc" id="tt-desc"></div>
+  <div class="tt-review" id="tt-review"></div>
+  <div class="tt-action">탭하여 입장 →</div>
+</div>
+
+<!-- 맵 뷰포트 -->
+<div id="map-viewport">
+<div id="map-canvas">
+
+<!-- SVG 항로선 레이어 -->
+<svg style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none;" xmlns="http://www.w3.org/2000/svg">
+  <!-- 초등→중등 항로 -->
+  <path class="sea-route" d="M 900,750 Q 1100,600 1350,700" stroke="rgba(240,192,64,0.25)" stroke-width="2" fill="none"/>
+  <!-- 중등→고등 항로 -->
+  <path class="sea-route" d="M 1650,700 Q 1850,600 2050,750" stroke="rgba(240,192,64,0.25)" stroke-width="2" fill="none"/>
+  <!-- 섬 내부 연결선들 (초등) -->
+  <path d="M 400,650 L 550,580" stroke="rgba(46,204,113,0.15)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+  <path d="M 550,580 L 700,640" stroke="rgba(46,204,113,0.15)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+  <path d="M 700,640 L 800,700" stroke="rgba(46,204,113,0.15)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+  <path d="M 450,800 L 600,840" stroke="rgba(46,204,113,0.15)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+  <path d="M 600,840 L 750,800" stroke="rgba(46,204,113,0.15)" stroke-width="1.5" stroke-dasharray="5 4" fill="none"/>
+</svg>
+
+<!-- ══════════════════════════════════════════════
+     🟢 초등 대륙 (Elementary Island — 왼쪽)
+══════════════════════════════════════════════ -->
+<div class="region" id="region-elem" style="left:100px;top:400px;">
+
+  <!-- 대륙 배경 -->
+  <div style="position:absolute; width:900px; height:700px;">
+    <!-- 섬 여러 개 -->
+    <div style="position:absolute;left:60px;top:80px;width:780px;height:520px;
+      background:radial-gradient(ellipse at 40% 45%, #1a3d20 0%, #0f2a14 60%, transparent 80%);
+      border-radius:55% 45% 50% 40% / 50% 45% 55% 40%;
+      filter:blur(2px) drop-shadow(0 0 40px rgba(46,204,113,0.15));"></div>
+
+    <!-- 해안선 디테일 -->
+    <div style="position:absolute;left:80px;top:100px;width:740px;height:480px;
+      background:radial-gradient(ellipse at 42% 48%, rgba(46,204,113,0.08) 0%, transparent 65%);
+      border-radius:55% 45% 50% 40% / 50% 45% 55% 40%;
+      border:1px solid rgba(46,204,113,0.12);"></div>
+
+    <!-- 산봉우리 텍스처 -->
+    <div style="position:absolute;left:200px;top:200px;width:160px;height:80px;
+      background:rgba(46,204,113,0.06); border-radius:50% 50% 0 0; filter:blur(8px);"></div>
+    <div style="position:absolute;left:500px;top:150px;width:120px;height:60px;
+      background:rgba(46,204,113,0.06); border-radius:50% 50% 0 0; filter:blur(6px);"></div>
+  </div>
+
+  <!-- 대륙 이름 -->
+  <div class="continent-label" style="left:200px;top:30px;width:380px;">
+    <div class="tier-badge" style="color:#2ecc71;border-color:#2ecc71;background:rgba(46,204,113,0.1);">초등학교</div>
+    <div class="tier-name" style="color:#7defa8;">🌿 에메랄드 제도</div>
+    <div class="tier-sub">Elementary Kingdom</div>
+  </div>
+
+  <!-- 게임 노드들 -->
+  <!-- 구구단 -->
+  <a class="game-node" href="구구단게임.html"
+     data-name="트랜스포머 구구단" data-sub="수학 · 구구단" data-icon="🤖"
+     data-desc="우주군단과 싸우며 구구단을 마스터! 보스전 3번, 30문제" data-gameid="구구단"
+     style="left:120px;top:260px;">
+    <div class="node-ring" style="border-color:#f39c12;"></div>
+    <div class="node-island" style="width:72px;height:72px;background:radial-gradient(135deg,#e67e22,#c0392b);color:#f39c12;">
+      <span class="node-emoji">🤖</span>
+    </div>
+    <div class="review-badge" id="rb-구구단"></div>
+    <div class="node-label"><span class="node-name">구구단 대작전</span><span class="node-sub">📐 수학</span></div>
+  </a>
+
+  <!-- 분수계단 -->
+  <a class="game-node" href="분수계단게임.html"
+     data-name="분수 계단 탈출" data-sub="수학 · 분수/소수" data-icon="🧊"
+     data-desc="5개 관문의 계단을 올라라! 4지선다 분수 퀴즈" data-gameid="분수계단"
+     style="left:300px;top:180px;">
+    <div class="node-ring" style="border-color:#3498db;"></div>
+    <div class="node-island" style="width:68px;height:68px;background:radial-gradient(135deg,#2980b9,#1a5276);color:#74b9ff;">
+      <span class="node-emoji">🧊</span>
+    </div>
+    <div class="review-badge" id="rb-분수계단"></div>
+    <div class="node-label"><span class="node-name">분수 계단 탈출</span><span class="node-sub">📐 수학</span></div>
+  </a>
+
+  <!-- 짝꿍찾기 -->
+  <a class="game-node" href="짝꿍찾기.html"
+     data-name="짝꿍 찾기" data-sub="국어·영어·과학·사회" data-icon="🃏"
+     data-desc="카드를 뒤집어 짝을 찾아라! 4개 과목 101쌍" data-gameid="짝꿍찾기"
+     style="left:500px;top:240px;">
+    <div class="node-ring" style="border-color:#e84393;"></div>
+    <div class="node-island" style="width:64px;height:64px;background:radial-gradient(135deg,#c0392b,#8e44ad);color:#ff8cc8;">
+      <span class="node-emoji">🃏</span>
+    </div>
+    <div class="review-badge" id="rb-짝꿍찾기"></div>
+    <div class="node-label"><span class="node-name">짝꿍 찾기</span><span class="node-sub">📖 국어·영어</span></div>
+  </a>
+
+  <!-- 빈칸마법사 -->
+  <a class="game-node" href="빈칸마법사.html"
+     data-name="빈칸 마법사" data-sub="국어·영어" data-icon="🪄"
+     data-desc="빈 칸을 채워라! 맞춤법·스펠링 51문항" data-gameid="빈칸마법사"
+     style="left:680px;top:310px;">
+    <div class="node-ring" style="border-color:#a855f7;"></div>
+    <div class="node-island" style="width:62px;height:62px;background:radial-gradient(135deg,#6c3483,#4a235a);color:#c084fc;">
+      <span class="node-emoji">🪄</span>
+    </div>
+    <div class="review-badge" id="rb-빈칸마법사"></div>
+    <div class="node-label"><span class="node-name">빈칸 마법사</span><span class="node-sub">📖 국어·영어</span></div>
+  </a>
+
+  <!-- 역사탐험 -->
+  <a class="game-node" href="역사탐험게임.html"
+     data-name="한국사 시간탐험대" data-sub="사회·역사" data-icon="🏯"
+     data-desc="6개 시대를 넘나들며 한국사를 정복! 49문항" data-gameid="한국사탐험"
+     style="left:200px;top:440px;">
+    <div class="node-ring" style="border-color:#f39c12;"></div>
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#7f5b0a,#5d4037);color:#fbbf24;">
+      <span class="node-emoji">🏯</span>
+    </div>
+    <div class="review-badge" id="rb-한국사탐험"></div>
+    <div class="node-label"><span class="node-name">한국사 탐험대</span><span class="node-sub">🏛 사회</span></div>
+  </a>
+
+  <!-- 지식탐험 -->
+  <a class="game-node" href="지식탐험.html"
+     data-name="지식 탐험대" data-sub="사회·과학·국어·영어·수학" data-icon="🧭"
+     data-desc="5개 과목 209문항! 학년에 맞게 자동 조절" data-gameid="지식탐험"
+     style="left:450px;top:480px;">
+    <div class="node-ring" style="border-color:#2ecc71;"></div>
+    <div class="node-island" style="width:78px;height:78px;background:radial-gradient(135deg,#1a7a2a,#145a1a);color:#2ecc71;border:2px solid rgba(46,204,113,0.4);">
+      <span class="node-emoji">🧭</span>
+    </div>
+    <div class="review-badge" id="rb-지식탐험"></div>
+    <div class="node-label"><span class="node-name">지식 탐험대</span><span class="node-sub">전 과목</span></div>
+  </a>
+
+  <!-- 총알피하기 -->
+  <a class="game-node" href="총알피하기.html"
+     data-name="총알 피하기" data-sub="과학·역사·국어·수학·지리" data-icon="🚀"
+     data-desc="총알을 피하며 퀴즈 풀기! 209개 문제 아케이드" data-gameid="총알피하기"
+     style="left:650px;top:510px;">
+    <div class="node-ring" style="border-color:#e74c3c;"></div>
+    <div class="node-island" style="width:64px;height:64px;background:radial-gradient(135deg,#c0392b,#922b21);color:#ff6b6b;">
+      <span class="node-emoji">🚀</span>
+    </div>
+    <div class="review-badge" id="rb-총알피하기"></div>
+    <div class="node-label"><span class="node-name">총알 피하기</span><span class="node-sub">🔬 과학·역사</span></div>
+  </a>
+
+  <!-- 영어단어 -->
+  <a class="game-node" href="영어단어게임.html"
+     data-name="수양대군의 영어 정벌" data-sub="영어 어휘·구동사·형용사" data-icon="⚔️"
+     data-desc="12스테이지 타워디펜스 영어 전쟁! 구동사 포함" data-gameid="영단어정벌"
+     style="left:100px;top:480px;">
+    <div class="node-ring" style="border-color:#e74c3c;"></div>
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#922b21,#6e2414);color:#ff8a80;">
+      <span class="node-emoji">⚔️</span>
+    </div>
+    <div class="review-badge" id="rb-영단어정벌"></div>
+    <div class="node-label"><span class="node-name">영어 정벌</span><span class="node-sub">🔤 영어</span></div>
+  </a>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     🔵 중등 대륙 (Middle Island — 가운데)
+══════════════════════════════════════════════ -->
+<div class="region" id="region-mid" style="left:1050px;top:300px;">
+
+  <div style="position:absolute; width:700px; height:600px;">
+    <div style="position:absolute;left:50px;top:60px;width:600px;height:460px;
+      background:radial-gradient(ellipse at 50% 50%, #0d2040 0%, #071528 70%, transparent 90%);
+      border-radius:40% 60% 55% 45% / 45% 55% 45% 55%;
+      filter:blur(2px) drop-shadow(0 0 40px rgba(52,152,219,0.2));"></div>
+    <div style="position:absolute;left:70px;top:80px;width:560px;height:420px;
+      border-radius:40% 60% 55% 45% / 45% 55% 45% 55%;
+      border:1px solid rgba(52,152,219,0.15);"></div>
+  </div>
+
+  <div class="continent-label" style="left:150px;top:20px;width:320px;">
+    <div class="tier-badge" style="color:#3498db;border-color:#3498db;background:rgba(52,152,219,0.1);">중등학교</div>
+    <div class="tier-name" style="color:#74b9ff;">🌊 사파이어 군도</div>
+    <div class="tier-sub">Middle School Archipelago</div>
+  </div>
+
+  <!-- Coming Soon 노드들 (중등은 추후 개발) -->
+  <div class="game-node" onclick="alert('🚧 중등 과정은 곧 업데이트됩니다!')"
+     style="left:160px;top:220px;opacity:0.6;">
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#1a3a6a,#0f2545);color:#74b9ff;border:2px dashed rgba(52,152,219,0.4);">
+      <span class="node-emoji">📐</span>
+    </div>
+    <div class="node-label"><span class="node-name">수학 심화</span><span class="node-sub">🔒 준비중</span></div>
+  </div>
+
+  <div class="game-node" onclick="alert('🚧 중등 과정은 곧 업데이트됩니다!')"
+     style="left:360px;top:160px;opacity:0.6;">
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#1a3a6a,#0f2545);color:#74b9ff;border:2px dashed rgba(52,152,219,0.4);">
+      <span class="node-emoji">🔬</span>
+    </div>
+    <div class="node-label"><span class="node-name">과학 탐구</span><span class="node-sub">🔒 준비중</span></div>
+  </div>
+
+  <div class="game-node" onclick="alert('🚧 중등 과정은 곧 업데이트됩니다!')"
+     style="left:280px;top:370px;opacity:0.6;">
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#1a3a6a,#0f2545);color:#74b9ff;border:2px dashed rgba(52,152,219,0.4);">
+      <span class="node-emoji">🌏</span>
+    </div>
+    <div class="node-label"><span class="node-name">역사·지리</span><span class="node-sub">🔒 준비중</span></div>
+  </div>
+
+  <div class="game-node" onclick="alert('🚧 중등 과정은 곧 업데이트됩니다!')"
+     style="left:460px;top:300px;opacity:0.6;">
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#1a3a6a,#0f2545);color:#74b9ff;border:2px dashed rgba(52,152,219,0.4);">
+      <span class="node-emoji">📝</span>
+    </div>
+    <div class="node-label"><span class="node-name">국어 문학</span><span class="node-sub">🔒 준비중</span></div>
+  </div>
+
+  <!-- 중등 Coming Soon 배너 -->
+  <div style="position:absolute;left:100px;top:490px;width:450px;
+    background:rgba(52,152,219,0.08); border:1px solid rgba(52,152,219,0.2);
+    border-radius:12px; padding:12px 16px; text-align:center;">
+    <div style="font-size:0.8rem;color:#74b9ff;font-weight:700;">🚧 중등 콘텐츠 개발중...</div>
+    <div style="font-size:0.7rem;color:rgba(116,185,255,0.6);margin-top:4px;">초등 과목을 마스터하면 해금됩니다</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     🟣 고등 대륙 (High School — 오른쪽)
+══════════════════════════════════════════════ -->
+<div class="region" id="region-high" style="left:1900px;top:300px;">
+
+  <div style="position:absolute; width:600px; height:600px;">
+    <div style="position:absolute;left:30px;top:50px;width:540px;height:460px;
+      background:radial-gradient(ellipse at 50% 50%, #1a0a2e 0%, #100520 70%, transparent 90%);
+      border-radius:45% 55% 50% 50% / 50% 45% 55% 50%;
+      filter:blur(2px) drop-shadow(0 0 50px rgba(155,89,182,0.25));"></div>
+    <div style="position:absolute;left:50px;top:70px;width:500px;height:420px;
+      border-radius:45% 55% 50% 50% / 50% 45% 55% 50%;
+      border:1px solid rgba(155,89,182,0.2);"></div>
+  </div>
+
+  <div class="continent-label" style="left:100px;top:10px;width:320px;">
+    <div class="tier-badge" style="color:#9b59b6;border-color:#9b59b6;background:rgba(155,89,182,0.1);">고등학교</div>
+    <div class="tier-name" style="color:#d2a8ff;">🌌 크리스탈 제국</div>
+    <div class="tier-sub">High School Empire</div>
+  </div>
+
+  <div class="game-node" onclick="alert('🚧 고등 과정은 곧 업데이트됩니다!')"
+     style="left:130px;top:200px;opacity:0.5;">
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#2d0f4a,#1a0830);color:#d2a8ff;border:2px dashed rgba(155,89,182,0.4);">
+      <span class="node-emoji">∫</span>
+    </div>
+    <div class="node-label"><span class="node-name">수학 I·II</span><span class="node-sub">🔒 준비중</span></div>
+  </div>
+
+  <div class="game-node" onclick="alert('🚧 고등 과정은 곧 업데이트됩니다!')"
+     style="left:320px;top:160px;opacity:0.5;">
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#2d0f4a,#1a0830);color:#d2a8ff;border:2px dashed rgba(155,89,182,0.4);">
+      <span class="node-emoji">⚛️</span>
+    </div>
+    <div class="node-label"><span class="node-name">물리·화학</span><span class="node-sub">🔒 준비중</span></div>
+  </div>
+
+  <div class="game-node" onclick="alert('🚧 고등 과정은 곧 업데이트됩니다!')"
+     style="left:220px;top:380px;opacity:0.5;">
+    <div class="node-island" style="width:66px;height:66px;background:radial-gradient(135deg,#2d0f4a,#1a0830);color:#d2a8ff;border:2px dashed rgba(155,89,182,0.4);">
+      <span class="node-emoji">🌐</span>
+    </div>
+    <div class="node-label"><span class="node-name">영어 심화</span><span class="node-sub">🔒 준비중</span></div>
+  </div>
+
+  <!-- 고등 배너 -->
+  <div style="position:absolute;left:60px;top:490px;width:420px;
+    background:rgba(155,89,182,0.08); border:1px solid rgba(155,89,182,0.2);
+    border-radius:12px; padding:12px 16px; text-align:center;">
+    <div style="font-size:0.8rem;color:#d2a8ff;font-weight:700;">✨ 고등 콘텐츠 개발중...</div>
+    <div style="font-size:0.7rem;color:rgba(210,168,255,0.5);margin-top:4px;">중등 과정 완료 후 해금됩니다</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════
+     특별 장소들 (성장일지, 오답노트, 베이스캠프)
+══════════════════════════════════════════════ -->
+<!-- 탐험 기지 (상단) -->
+<div style="position:absolute;left:560px;top:120px;">
+  <a class="special-node" href="성장일지.html">
+    <div class="special-icon" style="background:linear-gradient(135deg,rgba(255,215,0,0.15),rgba(255,165,0,0.1));border-color:rgba(255,215,0,0.4);">📔</div>
+    <div class="special-label">성장 일지</div>
+  </a>
+</div>
+<div style="position:absolute;left:680px;top:120px;">
+  <a class="special-node" href="오답노트.html">
+    <div class="special-icon" style="background:linear-gradient(135deg,rgba(231,76,60,0.15),rgba(192,57,43,0.1));border-color:rgba(231,76,60,0.4);">📝</div>
+    <div class="special-label">오답 노트</div>
+  </a>
+</div>
+<div style="position:absolute;left:800px;top:120px;">
+  <a class="special-node" href="index.html#room">
+    <div class="special-icon" style="background:linear-gradient(135deg,rgba(46,204,113,0.15),rgba(39,174,96,0.1));border-color:rgba(46,204,113,0.4);">🏕️</div>
+    <div class="special-label">베이스캠프</div>
+  </a>
+</div>
+
+<!-- 장식 구름들 -->
+<div class="cloud" style="left:950px;top:200px;width:200px;height:60px;"></div>
+<div class="cloud" style="left:1700px;top:150px;width:160px;height:50px;animation-delay:-10s;"></div>
+<div class="cloud" style="left:350px;top:100px;width:140px;height:45px;animation-delay:-5s;"></div>
+
+<!-- 작은 장식 섬들 -->
+<div style="position:absolute;left:980px;top:700px;width:40px;height:25px;
+  background:radial-gradient(ellipse,#1a3520,#0f2010);border-radius:50%;opacity:0.6;"></div>
+<div style="position:absolute;left:1020px;top:720px;width:25px;height:15px;
+  background:radial-gradient(ellipse,#162e1a,#0a1a0c);border-radius:50%;opacity:0.5;"></div>
+<div style="position:absolute;left:1780px;top:680px;width:35px;height:20px;
+  background:radial-gradient(ellipse,#1a1030,#0f0820);border-radius:50%;opacity:0.5;"></div>
+
+</div><!-- end map-canvas -->
+</div><!-- end map-viewport -->
+
+<script>
+// ══════════════════════════════════════════════
+// MAP ENGINE
+// ══════════════════════════════════════════════
+const viewport = document.getElementById('map-viewport');
+const canvas = document.getElementById('map-canvas');
+
+const MAP_W = 2400, MAP_H = 1600;
+let scale = 1, tx = 0, ty = 0;
+let isDragging = false, startX, startY, startTx, startTy;
+let lastTouchDist = 0;
+
+function clampTransform() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const maxTx = 0, minTx = Math.min(0, vw - MAP_W * scale);
+  const maxTy = 0, minTy = Math.min(0, vh - MAP_H * scale);
+  tx = Math.max(minTx, Math.min(maxTx, tx));
+  ty = Math.max(minTy, Math.min(maxTy, ty));
+}
+
+function applyTransform() {
+  canvas.style.transform = `translate(${tx}px,${ty}px) scale(${scale})`;
+  updateMinimap();
+}
+
+function zoomTo(newScale, cx, cy) {
+  newScale = Math.max(0.3, Math.min(1.4, newScale));
+  const ratio = newScale / scale;
+  tx = cx - (cx - tx) * ratio;
+  ty = cy - (cy - ty) * ratio;
+  scale = newScale;
+  clampTransform();
+  applyTransform();
+}
+
+function fitView() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const s = Math.min(vw / MAP_W, vh / MAP_H) * 0.92;
+  scale = Math.max(0.3, Math.min(1.4, s));
+  tx = (vw - MAP_W * scale) / 2;
+  ty = (vh - MAP_H * scale) / 2;
+  clampTransform();
+  applyTransform();
+}
+
+// 초등 대륙 중심으로 시작
+function initView() {
+  const vw = window.innerWidth, vh = window.innerHeight;
+  scale = Math.min(vw/1200, vh/900, 1.0);
+  scale = Math.max(0.4, scale);
+  tx = vw/2 - 600*scale;
+  ty = vh/2 - 600*scale;
+  clampTransform();
+  applyTransform();
+}
+
+// ── 드래그 ──
+viewport.addEventListener('mousedown', e => {
+  if (e.target.closest('a,.game-node,.special-node,.zoom-btn')) return;
+  isDragging = true; viewport.classList.add('dragging');
+  startX = e.clientX; startY = e.clientY; startTx = tx; startTy = ty;
+});
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  tx = startTx + e.clientX - startX;
+  ty = startTy + e.clientY - startY;
+  clampTransform(); applyTransform();
+});
+window.addEventListener('mouseup', () => { isDragging = false; viewport.classList.remove('dragging'); });
+
+// ── 줌 (휠) ──
+viewport.addEventListener('wheel', e => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.88 : 1.14;
+  zoomTo(scale * delta, e.clientX, e.clientY);
+}, { passive:false });
+
+// ── 터치 ──
+viewport.addEventListener('touchstart', e => {
+  if (e.touches.length === 1) {
+    isDragging = true;
+    startX = e.touches[0].clientX; startY = e.touches[0].clientY;
+    startTx = tx; startTy = ty;
+  } else if (e.touches.length === 2) {
+    lastTouchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive:true });
+viewport.addEventListener('touchmove', e => {
+  e.preventDefault();
+  if (e.touches.length === 1 && isDragging) {
+    tx = startTx + e.touches[0].clientX - startX;
+    ty = startTy + e.touches[0].clientY - startY;
+    clampTransform(); applyTransform();
+  } else if (e.touches.length === 2) {
+    const d = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const cx = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+    const cy = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+    zoomTo(scale * (d / lastTouchDist), cx, cy);
+    lastTouchDist = d;
+  }
+}, { passive:false });
+viewport.addEventListener('touchend', () => { isDragging = false; });
+
+// ── 줌 버튼 ──
+document.getElementById('btn-zoom-in').onclick = () => zoomTo(scale*1.2, window.innerWidth/2, window.innerHeight/2);
+document.getElementById('btn-zoom-out').onclick = () => zoomTo(scale*0.83, window.innerWidth/2, window.innerHeight/2);
+document.getElementById('btn-zoom-fit').onclick = fitView;
+
+// ── 미니맵 ──
+const minimapCanvas = document.getElementById('minimap-canvas');
+const mmCtx = minimapCanvas.getContext('2d');
+const mmvp = document.getElementById('minimap-viewport');
+
+function updateMinimap() {
+  const mw = 140, mh = 90;
+  const rx = mw / MAP_W, ry = mh / MAP_H;
+  mmCtx.clearRect(0, 0, mw, mh);
+
+  // 대륙 표시
+  mmCtx.fillStyle = 'rgba(46,204,113,0.3)';
+  mmCtx.beginPath(); mmCtx.ellipse(52*rx*MAP_W/mw/3, 65*ry*MAP_H/mh/2, 38, 28, 0, 0, Math.PI*2); mmCtx.fill();
+
+  mmCtx.fillStyle = 'rgba(52,152,219,0.3)';
+  mmCtx.beginPath(); mmCtx.ellipse(1100*rx*MAP_W/mw/3+20, 600*ry*MAP_H/mh/2-10, 28, 22, 0, 0, Math.PI*2); mmCtx.fill();
+
+  mmCtx.fillStyle = 'rgba(155,89,182,0.3)';
+  mmCtx.beginPath(); mmCtx.ellipse(1950*rx*MAP_W/mw/3+25, 580*ry*MAP_H/mh/2-10, 24, 20, 0, 0, Math.PI*2); mmCtx.fill();
+
+  // 뷰포트 사각형
+  const vw = window.innerWidth, vh = window.innerHeight;
+  const vpX = (-tx / scale) * (mw / MAP_W);
+  const vpY = (-ty / scale) * (mh / MAP_H);
+  const vpW = (vw / scale) * (mw / MAP_W);
+  const vpH = (vh / scale) * (mh / MAP_H);
+
+  mmvp.style.left   = Math.max(0, vpX) + 'px';
+  mmvp.style.top    = Math.max(0, vpY) + 'px';
+  mmvp.style.width  = Math.min(mw, vpW) + 'px';
+  mmvp.style.height = Math.min(mh, vpH) + 'px';
+}
+
+// 미니맵 클릭
+document.getElementById('minimap').addEventListener('click', e => {
+  const rect = e.currentTarget.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / 140;
+  const my = (e.clientY - rect.top)  / 90;
+  tx = -(mx * MAP_W - window.innerWidth/2/scale) * scale;
+  ty = -(my * MAP_H - window.innerHeight/2/scale) * scale;
+  clampTransform(); applyTransform();
+});
+
+// ══════════════════════════════════════════════
+// TOOLTIP
+// ══════════════════════════════════════════════
+const tooltip = document.getElementById('tooltip');
+let ttTimeout;
+
+document.querySelectorAll('.game-node[data-name]').forEach(node => {
+  node.addEventListener('mouseenter', e => {
+    clearTimeout(ttTimeout);
+    document.getElementById('tt-icon').textContent = node.dataset.icon || '';
+    document.getElementById('tt-name').textContent = node.dataset.name || '';
+    document.getElementById('tt-sub').textContent  = node.dataset.sub  || '';
+    document.getElementById('tt-desc').textContent = node.dataset.desc || '';
+    const gameId = node.dataset.gameid;
+    const rev = (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser())
+      ? LearningHub.getReviewCount(gameId) : 0;
+    const revEl = document.getElementById('tt-review');
+    revEl.textContent = rev > 0 ? `📝 오답 ${rev}개 대기중` : '';
+    revEl.style.display = rev > 0 ? 'block' : 'none';
+    positionTooltip(e.clientX, e.clientY);
+    tooltip.classList.add('visible');
+  });
+  node.addEventListener('mouseleave', () => {
+    ttTimeout = setTimeout(() => tooltip.classList.remove('visible'), 200);
+  });
+  node.addEventListener('mousemove', e => positionTooltip(e.clientX, e.clientY));
+});
+
+function positionTooltip(x, y) {
+  const tw = 240, th = 160;
+  let left = x + 16, top = y - 20;
+  if (left + tw > window.innerWidth) left = x - tw - 16;
+  if (top + th > window.innerHeight) top = window.innerHeight - th - 10;
+  tooltip.style.left = left + 'px';
+  tooltip.style.top  = top  + 'px';
+}
+
+// ══════════════════════════════════════════════
+// LEARNING HUB 연동
+// ══════════════════════════════════════════════
+function updateHubData() {
+  if (typeof LearningHub === 'undefined' || !LearningHub.getCurrentUser()) return;
+
+  // 스트릭
+  const u = LearningHub.getCurrentUser();
+  const streak = u.streak || 1;
+  const el = document.getElementById('streak-hud');
+  if (el) el.textContent = `🔥 ${streak}일 연속`;
+
+  // 오답 뱃지
+  const gameIds = {
+    '구구단':'rb-구구단', '분수계단':'rb-분수계단', '영단어정벌':'rb-영단어정벌',
+    '한국사탐험':'rb-한국사탐험', '총알피하기':'rb-총알피하기', '지식탐험':'rb-지식탐험',
+    '짝꿍찾기':'rb-짝꿍찾기', '빈칸마법사':'rb-빈칸마법사'
+  };
+  Object.entries(gameIds).forEach(([gameId, rbId]) => {
+    const n = LearningHub.getReviewCount(gameId);
+    const badge = document.getElementById(rbId);
+    if (badge) {
+      badge.style.display = n > 0 ? 'flex' : 'none';
+      badge.textContent = n > 9 ? '9+' : n;
+    }
+  });
+
+  // checkStreak
+  LearningHub.checkStreak();
+}
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+window.addEventListener('resize', () => { clampTransform(); applyTransform(); });
+initView();
+updateHubData();
+
+// 로그인 유도
+if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
+  LearningHub.injectLoginModal(() => updateHubData());
+}
+</script>
+</body>
+</html>
