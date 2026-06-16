@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🔤 영문법 마스터</title>
+<script src="shared.js"></script>
+<script src="js/game-init.js"></script>
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:#0b0f1a; color:#e0e6ff; min-height:100vh; }
+#wrap { max-width:580px; margin:0 auto; padding:16px 16px 80px; }
+
+/* HUD */
+#hud { display:flex; gap:10px; margin-bottom:14px; }
+.hud-box {
+  flex:1; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08);
+  border-radius:12px; padding:10px 6px; text-align:center;
+}
+.hud-box .v { font-size:1.3rem; font-weight:900; color:#fff; }
+.hud-box .l { font-size:0.6rem; color:#666f8c; letter-spacing:1px; text-transform:uppercase; }
+
+/* 스테이지 진행바 */
+#prog-wrap { background:rgba(255,255,255,0.07); border-radius:100px; height:5px; margin-bottom:18px; }
+#prog-fill { height:100%; border-radius:100px; background:linear-gradient(90deg,#06b6d4,#3b82f6); transition:width .3s; }
+
+/* 단원 카드 */
+#unit-label {
+  font-size:0.68rem; font-weight:800; letter-spacing:2px; text-transform:uppercase;
+  color:#06b6d4; margin-bottom:6px;
+}
+#grade-pill {
+  display:inline-block; padding:3px 10px; border-radius:100px;
+  background:rgba(6,182,212,0.15); color:#67e8f9; font-size:0.7rem; font-weight:700;
+  margin-bottom:12px; border:1px solid rgba(6,182,212,0.3);
+}
+
+/* 문제 박스 */
+#q-box {
+  background:rgba(255,255,255,0.04); border:1.5px solid rgba(6,182,212,0.25);
+  border-radius:18px; padding:20px; margin-bottom:16px;
+  font-size:1.1rem; font-weight:800; line-height:1.6; color:#fff;
+}
+
+/* 선택지 */
+#choices { display:flex; flex-direction:column; gap:9px; margin-bottom:14px; }
+.choice {
+  padding:14px 16px; border-radius:12px; text-align:left; font-family:inherit;
+  background:rgba(255,255,255,0.05); border:2px solid rgba(255,255,255,0.09);
+  color:#c4cde0; font-size:0.92rem; font-weight:700; cursor:pointer; transition:.12s;
+  line-height:1.4;
+}
+.choice:hover:not(:disabled) { border-color:#06b6d4; color:#fff; background:rgba(6,182,212,0.1); }
+.choice.correct { background:rgba(34,197,94,0.12); border-color:#22c55e; color:#4ade80; }
+.choice.wrong   { background:rgba(239,68,68,0.12); border-color:#ef4444; color:#f87171; }
+
+/* 피드백 + 해설 */
+#feedback {
+  padding:12px 16px; border-radius:12px; font-size:0.88rem; font-weight:700;
+  margin-bottom:12px; display:none; line-height:1.5;
+}
+#feedback.correct { background:rgba(34,197,94,0.1); color:#4ade80; border:1px solid rgba(34,197,94,0.2); }
+#feedback.wrong   { background:rgba(239,68,68,0.1);  color:#f87171; border:1px solid rgba(239,68,68,0.2); }
+
+#next-btn {
+  width:100%; padding:15px; border-radius:13px;
+  background:linear-gradient(135deg,#06b6d4,#3b82f6); border:none;
+  color:#fff; font-size:1rem; font-weight:900; cursor:pointer; display:none; font-family:inherit;
+}
+
+/* 결과 */
+#result { display:none; text-align:center; padding:32px 16px; }
+#result h2 { font-size:1.8rem; margin-bottom:8px; }
+.r-grade {
+  font-size:4rem; font-weight:900; margin:12px 0;
+  background:linear-gradient(135deg,#06b6d4,#3b82f6);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.r-stat { color:#8892a4; font-size:0.88rem; margin-bottom:5px; }
+.r-btn {
+  margin-top:18px; padding:13px 28px; border-radius:100px; border:none;
+  background:linear-gradient(135deg,#06b6d4,#3b82f6); color:#fff;
+  font-size:0.95rem; font-weight:900; cursor:pointer; font-family:inherit; margin-right:8px;
+}
+.r-btn.sec { background:rgba(255,255,255,0.08); color:#c4cde0; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="hud">
+    <div class="hud-box"><div class="v" id="h-q">0</div><div class="l">문제</div></div>
+    <div class="hud-box"><div class="v" id="h-ok">0</div><div class="l">정답</div></div>
+    <div class="hud-box"><div class="v" id="h-streak">0</div><div class="l">연속</div></div>
+    <div class="hud-box"><div class="v" id="h-grade">중1</div><div class="l">학년</div></div>
+  </div>
+  <div id="prog-wrap"><div id="prog-fill" style="width:0%"></div></div>
+
+  <div id="game">
+    <div id="grade-pill">중1</div>
+    <div id="unit-label">문법</div>
+    <div id="q-box">문제 로딩 중...</div>
+    <div id="choices">
+      <button class="choice" onclick="choose(0)"></button>
+      <button class="choice" onclick="choose(1)"></button>
+      <button class="choice" onclick="choose(2)"></button>
+      <button class="choice" onclick="choose(3)"></button>
+    </div>
+    <div id="feedback"></div>
+    <button id="next-btn" onclick="next()">다음 →</button>
+  </div>
+
+  <div id="result">
+    <h2 id="r-emoji">🎓</h2>
+    <div class="r-grade" id="r-grade">A</div>
+    <div class="r-stat" id="r-s1"></div>
+    <div class="r-stat" id="r-s2"></div>
+    <div class="r-stat" id="r-s3"></div>
+    <button class="r-btn" onclick="restart()">다시 도전</button>
+    <button class="r-btn sec" onclick="location.href='index.html'">허브로</button>
+  </div>
+</div>
+
+<script>
+const GAME_ID = '영문법마스터';
+const TOTAL = 20;
+let allQ = [], queue = [], idx = 0;
+let ok = 0, bad = 0, streak = 0, bestStreak = 0;
+let curGrade = 7, answered = false;
+
+function gl(g) { return g <= 9 ? `중${g-6}` : `고${g-9}`; }
+
+async function load() {
+  const res = await fetch('data/question_bank.json');
+  const bank = await res.json();
+  allQ = (bank['영어'] || []).filter(q => q.grade >= 7 && q.grade <= 9);
+  allQ.sort(() => Math.random() - 0.5);
+}
+
+function pick() {
+  const pool = allQ.filter(q => Math.abs(q.grade - curGrade) <= 1);
+  return [...pool].sort(() => Math.random() - 0.5).slice(0, TOTAL);
+}
+
+function show() {
+  answered = false;
+  if (idx >= queue.length) { endGame(); return; }
+  const q = queue[idx];
+
+  document.getElementById('grade-pill').textContent = gl(q.grade) + '학년';
+  document.getElementById('unit-label').textContent = q.unit || '영어';
+  document.getElementById('q-box').textContent = q.q;
+
+  document.querySelectorAll('.choice').forEach((b, i) => {
+    b.textContent = q.choices[i] || '';
+    b.className = 'choice'; b.disabled = false;
+  });
+  document.getElementById('feedback').style.display = 'none';
+  document.getElementById('next-btn').style.display = 'none';
+  document.getElementById('prog-fill').style.width = (idx / TOTAL * 100) + '%';
+  document.getElementById('h-q').textContent = idx + 1;
+  document.getElementById('h-grade').textContent = gl(curGrade);
+}
+
+function choose(i) {
+  if (answered) return;
+  answered = true;
+  const q = queue[idx];
+  const isOk = i === q.answer;
+
+  document.querySelectorAll('.choice').forEach((b, j) => {
+    b.disabled = true;
+    if (j === q.answer) b.classList.add('correct');
+    else if (j === i && !isOk) b.classList.add('wrong');
+  });
+
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    LearningHub.recordAnswer({
+      gameId: GAME_ID, subject: '영어', qKey: q.q.slice(0, 40),
+      data: { q: q.q, choices: q.choices, answer: q.answer, unit: q.unit, grade: q.grade },
+      correct: isOk,
+    });
+  }
+
+  if (isOk) {
+    ok++; streak++; bestStreak = Math.max(bestStreak, streak);
+    setFeedback(true, '✅ 정답!' + (streak >= 3 ? ` 🔥 ${streak}연속!` : ''));
+  } else {
+    bad++; streak = 0;
+    setFeedback(false, `❌ 오답! 정답: ${q.choices[q.answer]}`);
+  }
+
+  document.getElementById('h-ok').textContent = ok;
+  document.getElementById('h-streak').textContent = streak;
+  document.getElementById('next-btn').style.display = 'block';
+  idx++;
+
+  if (idx % 5 === 0 && typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    const acc = ok / idx;
+    const r = LearningHub.evaluateLevel('영어', acc, { minGrade: 7, maxGrade: 9 });
+    curGrade = LearningHub.getGrade('영어');
+    if (r.changed) LearningHub.showToast(r.direction === 'up' ? '⬆️ 레벨업! 더 어려워져요' : '⬇️ 난이도 조정');
+  }
+}
+
+function setFeedback(ok, msg) {
+  const el = document.getElementById('feedback');
+  el.textContent = msg; el.className = ok ? 'correct' : 'wrong'; el.style.display = 'block';
+}
+
+function next() { show(); }
+
+function endGame() {
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('result').style.display = 'block';
+  const total = ok + bad, acc = total ? ok / total : 0;
+  const g = acc >= 0.9 ? 'S' : acc >= 0.75 ? 'A' : acc >= 0.6 ? 'B' : acc >= 0.4 ? 'C' : 'D';
+  const em = { S:'🏆', A:'🎓', B:'📚', C:'✏️', D:'😅' };
+  document.getElementById('r-emoji').textContent = em[g];
+  document.getElementById('r-grade').textContent = g;
+  document.getElementById('r-s1').textContent = `정답 ${ok}/${total} (${Math.round(acc*100)}%)`;
+  document.getElementById('r-s2').textContent = `최대 연속: ${bestStreak}`;
+  document.getElementById('r-s3').textContent = `현재 학년: ${gl(curGrade)}`;
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    GameInit.finish(GAME_ID, ok * 8 + (bestStreak >= 5 ? 30 : 0), '영문법마스터');
+    LearningHub.evaluateLevel('영어', acc, { minGrade: 7, maxGrade: 9 });
+  }
+}
+
+function restart() {
+  ok = 0; bad = 0; streak = 0; bestStreak = 0; idx = 0;
+  queue = pick();
+  document.getElementById('game').style.display = 'block';
+  document.getElementById('result').style.display = 'none';
+  show();
+}
+
+GameInit.start(GAME_ID, async () => {
+  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
+    curGrade = Math.max(7, Math.min(9, LearningHub.getGrade('영어')));
+  }
+  await load();
+  queue = pick();
+  show();
+});
+</script>
+</body>
+</html>

@@ -112,6 +112,41 @@ const GAME_REGISTRY = [
     description: '빈 칸을 채워라! 맞춤법·스펠링 51문항',
     worldmap: { x: 680, y: 310, color: '#6c3483' },
   },
+
+  // ── 중등학교 ─────────────────────────────────────────────
+  {
+    id: '방정식배틀',
+    url: '방정식배틀.html',
+    icon: '⚡',
+    name: '방정식 배틀',
+    subjects: ['수학'],
+    tier: 'middle',
+    format: 'battle',
+    description: '중등 수학 방정식·함수·삼각비를 배틀로! 학년 자동 조절',
+    worldmap: { x: 160, y: 220, color: '#6366f1' },
+  },
+  {
+    id: '영문법마스터',
+    url: '영문법마스터.html',
+    icon: '🔤',
+    name: '영문법 마스터',
+    subjects: ['영어'],
+    tier: 'middle',
+    format: 'quiz',
+    description: '수동태·관계대명사·가정법 등 중등 영문법 집중 훈련',
+    worldmap: { x: 360, y: 160, color: '#06b6d4' },
+  },
+  {
+    id: '중등탐구왕',
+    url: '중등탐구왕.html',
+    icon: '🔭',
+    name: '중등 탐구왕',
+    subjects: ['과학', '사회', '국어'],
+    tier: 'middle',
+    format: 'quiz',
+    description: '과학·사회·국어 통합! 타이머 도전 퀴즈',
+    worldmap: { x: 280, y: 370, color: '#10b981' },
+  },
 ];
 
 // ── 유틸리티 ─────────────────────────────────────────────

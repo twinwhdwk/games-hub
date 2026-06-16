@@ -9,6 +9,25 @@
   const MIN_GRADE = 3;
   const MAX_GRADE = 6;
 
+  // 학교급별 학년 범위
+  const TIER_GRADES = {
+    elementary: { min: 3, max: 6 },
+    middle:     { min: 7, max: 9 },   // 중1=7, 중2=8, 중3=9
+    high:       { min: 10, max: 12 }, // 고1=10, 고2=11, 고3=12
+  };
+
+  function getTier(grade) {
+    if (grade <= 6)  return 'elementary';
+    if (grade <= 9)  return 'middle';
+    return 'high';
+  }
+
+  function gradeDisplayLabel(grade) {
+    if (grade <= 6)  return `초등 ${grade}학년`;
+    if (grade <= 9)  return `중등 ${grade - 6}학년`;
+    return `고등 ${grade - 9}학년`;
+  }
+
   // ── 외부 데이터 (비동기 로드) ─────────────────────────────
   let SPRITE_DATA = { bodies:{}, hair:{}, outfits:{}, hats:{}, weapons:{}, pets:{}, palette:{} };
   let ITEM_CATALOG = [];
@@ -184,27 +203,25 @@
    */
   function evaluateLevel(subject, accuracy, opts) {
     opts = opts || {};
-    const upTh = opts.upThreshold != null ? opts.upThreshold : 0.8;
-    const downTh = opts.downThreshold != null ? opts.downThreshold : 0.4;
+    const upTh   = opts.upThreshold  != null ? opts.upThreshold  : 0.8;
+    const downTh  = opts.downThreshold != null ? opts.downThreshold : 0.4;
     const cur = getGrade(subject);
-    let next = cur;
-    let direction = 'same';
-    if (accuracy >= upTh && cur < MAX_GRADE) {
-      next = cur + 1;
-      direction = 'up';
-    } else if (accuracy < downTh && cur > MIN_GRADE) {
-      next = cur - 1;
-      direction = 'down';
-    }
+    const tier = getTier(cur);
+    const tierRange = TIER_GRADES[tier] || TIER_GRADES.elementary;
+    // opts.tier 로 강제 지정 가능 (중등 게임이 7~9 범위만 쓸 때)
+    const minG = opts.minGrade != null ? opts.minGrade : tierRange.min;
+    const maxG = opts.maxGrade != null ? opts.maxGrade : tierRange.max;
+    let next = cur, direction = 'same';
+    if (accuracy >= upTh && cur < maxG) { next = cur + 1; direction = 'up'; }
+    else if (accuracy < downTh && cur > minG) { next = cur - 1; direction = 'down'; }
     if (next !== cur) setGrade(subject, next);
-    // grade_master 조건 해금 체크
     let newItems = [];
     if (next !== cur) {
       const db = loadDB();
       const u = db.currentUser && db.users[db.currentUser];
       if (u) { newItems = _checkUnlocks(db, u); saveDB(db); }
     }
-    return { changed: next !== cur, newGrade: next, oldGrade: cur, direction, newItems };
+    return { changed: next !== cur, newGrade: next, oldGrade: cur, direction, newItems, tier };
   }
 
   // ---------------------------------------------------------
@@ -944,7 +961,7 @@
   }
 
   global.LearningHub = {
-    SUBJECTS, MIN_GRADE, MAX_GRADE,
+    SUBJECTS, MIN_GRADE, MAX_GRADE, TIER_GRADES, getTier, gradeDisplayLabel,
     listUsers, getCurrentUser, getCurrentUserName,
     createOrSwitchUser, switchUser, deleteUser, logout,
     getGrade, setGrade, evaluateLevel, gradeToTier, gradeLabel,
