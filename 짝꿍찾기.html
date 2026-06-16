@@ -163,8 +163,7 @@ let timerInterval = null;
 
 async function loadBank() {
   if (MBANK) return MBANK;
-  const res = await fetch('data/matching_bank.json');
-  MBANK = await res.json();
+  MBANK = await DataLoader.get('matching_bank');
   return MBANK;
 }
 

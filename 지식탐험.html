@@ -149,26 +149,48 @@ a.back-link:hover { color:#fff; }
 
     <!-- 퀴즈 화면 -->
     <div id="quiz-screen">
+      <!-- 상단 HUD -->
       <div class="quiz-top">
-        <span id="quiz-progress">1 / 10</span>
-        <span id="quiz-score">점수: 0</span>
+        <span id="q-num">1 / 15</span>
+        <span id="q-timer" style="font-weight:900;font-size:1.2rem;color:#60a5fa;">30</span>
+        <span>✅<b id="q-correct">0</b> ❌<b id="q-wrong">0</b></span>
       </div>
-      <div class="timer-bar-wrap"><div class="timer-bar-fill" id="timer-bar" style="width:100%"></div></div>
-      <div id="unit-row"></div>
-      <div class="question-text" id="question-text"></div>
-      <div class="choices" id="choices"></div>
+      <!-- 진행바 + 타이머바 -->
+      <div class="timer-bar-wrap">
+        <div class="timer-bar-fill" id="timer-fill" style="width:100%;transition:width 1s linear;"></div>
+      </div>
+      <div style="height:4px;background:rgba(255,255,255,.06);border-radius:2px;margin-bottom:14px;">
+        <div id="q-progress-fill" style="height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:2px;width:0%;transition:width .3s;"></div>
+      </div>
+      <!-- 메타 -->
+      <div style="display:flex;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span class="q-badge" id="q-grade" style="padding:3px 10px;border-radius:100px;background:rgba(99,102,241,.15);color:#a5b4fc;font-size:.7rem;font-weight:800;"></span>
+        <span id="q-unit" style="font-size:.7rem;color:#64748b;align-self:center;"></span>
+      </div>
+      <!-- 문제 -->
+      <div class="question-text" id="q-text"></div>
+      <!-- 선택지 -->
+      <div class="choices" id="choices">
+        <button class="choice-btn" style="display:none"></button>
+        <button class="choice-btn" style="display:none"></button>
+        <button class="choice-btn" style="display:none"></button>
+        <button class="choice-btn" style="display:none"></button>
+      </div>
+      <!-- 피드백 -->
+      <div id="q-feedback" class="q-feedback" style="display:none;padding:12px;border-radius:10px;font-weight:700;margin-top:10px;"></div>
+      <button id="q-next-btn" class="start-btn" style="display:none;margin-top:10px;width:100%;">다음 문제 →</button>
     </div>
 
     <!-- 결과 화면 -->
     <div id="result-screen">
       <div class="result-emoji" id="result-emoji">🎉</div>
-      <div class="result-score" id="result-score">8 / 10</div>
-      <div class="result-sub" id="result-sub"></div>
-      <div class="level-msg" id="level-msg"></div>
-      <div class="wrong-review" id="wrong-review" style="display:none;"></div>
+      <div class="result-score" id="result-grade" style="font-size:4rem;font-weight:900;"></div>
+      <div class="result-sub" id="result-correct"></div>
+      <div class="result-sub" id="result-streak"></div>
+      <div class="result-sub" id="result-subject"></div>
+      <div class="level-msg"  id="result-newgrade"></div>
       <div class="btn-row">
-        <button class="secondary-btn" id="retry-btn">다시 도전</button>
-        <button class="start-btn" id="home-btn">과목 선택</button>
+        <button class="start-btn" onclick="goSelect()">과목 다시 선택</button>
       </div>
     </div>
 
@@ -177,6 +199,9 @@ a.back-link:hover { color:#fff; }
 </div>
 
 <script>
+'use strict';
+
+// ── 과목 메타 (GameRegistry와 동기화) ────────────────────────
 const SUBJECTS = [
   { key:'사회', icon:'🏛', desc:'국토, 역사, 정치, 경제, 세계 여러 나라' },
   { key:'과학', icon:'🔬', desc:'물질, 생물, 지구, 에너지, 실험' },
@@ -185,247 +210,194 @@ const SUBJECTS = [
   { key:'수학', icon:'📐', desc:'사칙연산, 분수, 소수, 비율, 도형' },
 ];
 
-let BANK = null;
-let session = null; // { subject, questions:[], idx, score, correct, wrong:[] }
-let timerInterval = null;
+let _quiz = null;     // 현재 QuizEngine 인스턴스
+let _timerInt = null;
+let _timeLeft = 30;
+const GAME_ID = '지식탐험';
 
-async function loadBank() {
-  if (BANK) return BANK;
-  const res = await fetch('data/question_bank.json');
-  BANK = await res.json();
-  return BANK;
-}
-
+// ── 프로필 배지 ──────────────────────────────────────────────
 function renderProfileBadge() {
-  const el = document.getElementById('profile-badge');
-  if (typeof LearningHub === 'undefined' || !LearningHub.getCurrentUser()) {
-    el.innerHTML = '';
-    return;
-  }
-  const u = LearningHub.getCurrentUser();
-  el.innerHTML = `👤 <b>${LearningHub.escapeHtml(u.name)}</b>님의 탐험 준비 완료!`;
+  const user = LearningHub.getCurrentUser();
+  SUBJECTS.forEach(s => {
+    const el = document.querySelector(`.grade-badge[data-subject="${s.key}"]`);
+    if (!el) return;
+    if (!user) { el.style.display = 'none'; return; }
+    el.style.display = 'inline-block';
+    el.textContent = s.key + ' ' + LearningHub.gradeLabel(user.grades[s.key]);
+  });
 }
 
+// ── 과목 선택 그리드 ─────────────────────────────────────────
 function renderSubjectGrid() {
   const grid = document.getElementById('subject-grid');
-  grid.innerHTML = '';
-  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
-  SUBJECTS.forEach(s => {
-    const grade = user ? LearningHub.getGrade(s.key) : 3;
-    const reviewN = user ? LearningHub.getReviewCount('지식탐험', s.key) : 0;
-    const btn = document.createElement('div');
-    btn.className = 'subject-btn';
-    btn.dataset.subject = s.key;
-    btn.innerHTML = `
-      <div class="subject-icon">${s.icon}</div>
-      <div class="subject-info">
-        <div class="subject-name">${s.key}</div>
-        <div class="subject-grade">${s.desc} · 현재 ${LearningHub ? LearningHub.gradeLabel(grade) : grade+'학년'}${reviewN>0?` <span class="review-tag">📝 복습 ${reviewN}개</span>`:''}</div>
-      </div>
-    `;
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.subject-btn').forEach(b => b.style.borderColor = 'rgba(255,255,255,0.08)');
-      btn.style.borderColor = '#00d4ff';
-      const startBtn = document.getElementById('start-btn');
-      startBtn.disabled = false;
-      startBtn.textContent = `${s.icon} ${s.key} 탐험 시작!`;
-      startBtn.dataset.subject = s.key;
-    });
-    grid.appendChild(btn);
+  if (!grid) return;
+  const user = LearningHub.getCurrentUser();
+  grid.innerHTML = SUBJECTS.map(s => {
+    const reviewN = user ? LearningHub.getReviewCount(GAME_ID, s.key) : 0;
+    const grade   = user ? (user.grades[s.key] || 3) : 3;
+    return `
+      <button class="subject-btn" onclick="startQuiz('${s.key}')">
+        <span class="subj-icon">${s.icon}</span>
+        <span class="subj-name">${s.key}</span>
+        <span class="subj-desc">${s.desc}</span>
+        <span class="subj-grade">${LearningHub.gradeLabel(grade)}학년</span>
+        ${reviewN > 0 ? `<span class="subj-review">📝 복습 ${reviewN}개</span>` : ''}
+      </button>`;
+  }).join('');
+}
+
+// ── 퀴즈 시작 (QuizEngine 사용) ─────────────────────────────
+async function startQuiz(subject) {
+  // 이전 타이머 정리
+  clearInterval(_timerInt);
+  // 이전 QuizEngine abort
+  if (_quiz) { _quiz.abort(); _quiz = null; }
+
+  showScreen('quiz-screen');
+
+  _quiz = new QuizEngine({
+    gameId:  GAME_ID,
+    subject: subject,
+    total:   15,
+
+    onQuestion(q, idx, total) {
+      // 진행바
+      document.getElementById('q-progress-fill').style.width = (idx / total * 100) + '%';
+      document.getElementById('q-num').textContent = `${idx + 1} / ${total}`;
+
+      // 학년 배지
+      const gradeEl = document.getElementById('q-grade');
+      if (gradeEl) gradeEl.textContent = LearningHub.gradeLabel(q.grade || 3) + '학년';
+
+      // 단원
+      const unitEl = document.getElementById('q-unit');
+      if (unitEl) unitEl.textContent = q.unit || '';
+
+      // 문제 텍스트
+      document.getElementById('q-text').textContent = q.q;
+
+      // 선택지
+      const btns = document.querySelectorAll('.choice-btn');
+      btns.forEach((btn, i) => {
+        btn.textContent = q.choices[i] || '';
+        btn.className = 'choice-btn';
+        btn.disabled = false;
+        btn.onclick = () => _quiz.answer(i);
+      });
+
+      // 피드백 숨김
+      document.getElementById('q-feedback').style.display = 'none';
+      document.getElementById('q-next-btn').style.display = 'none';
+
+      // 타이머
+      _startTimer();
+    },
+
+    onResult(isCorrect, q, stats) {
+      clearInterval(_timerInt);
+
+      // 선택지 색상
+      const btns = document.querySelectorAll('.choice-btn');
+      btns.forEach((b, i) => {
+        b.disabled = true;
+        if (i === q.answer) b.classList.add('correct');
+      });
+
+      // 피드백
+      const fb = document.getElementById('q-feedback');
+      fb.textContent = isCorrect
+        ? `✅ 정답! (${stats.streak > 1 ? stats.streak + '연속! 🔥' : ''})`
+        : `❌ 오답! 정답: ${q.choices[q.answer]}`;
+      fb.className = 'q-feedback ' + (isCorrect ? 'correct' : 'wrong');
+      fb.style.display = 'block';
+
+      // HUD
+      document.getElementById('q-correct').textContent = stats.correct;
+      document.getElementById('q-wrong').textContent   = stats.wrong;
+
+      // 다음 버튼
+      const nextBtn = document.getElementById('q-next-btn');
+      nextBtn.style.display = 'block';
+      nextBtn.onclick = () => _quiz.next();
+    },
+
+    onEnd(summary) {
+      clearInterval(_timerInt);
+      showResult(subject, summary);
+    },
+  });
+
+  await _quiz.init();
+  _quiz.start();
+}
+
+// ── 타이머 ───────────────────────────────────────────────────
+function _startTimer() {
+  _timeLeft = 30;
+  _updateTimer();
+  _timerInt = setInterval(() => {
+    _timeLeft--;
+    _updateTimer();
+    if (_timeLeft <= 0) {
+      clearInterval(_timerInt);
+      // 시간 초과 → 오답 처리
+      if (_quiz) _quiz.answer(-1);
+    }
+  }, 1000);
+}
+
+function _updateTimer() {
+  const el = document.getElementById('q-timer');
+  if (!el) return;
+  el.textContent = _timeLeft;
+  el.style.color = _timeLeft <= 5 ? '#ef4444' : _timeLeft <= 10 ? '#f59e0b' : '#60a5fa';
+  const fill = document.getElementById('timer-fill');
+  if (fill) fill.style.width = (_timeLeft / 30 * 100) + '%';
+}
+
+// ── 결과 화면 ────────────────────────────────────────────────
+function showResult(subject, summary) {
+  showScreen('result-screen');
+  const { correct, total, acc, grade, bestStreak } = summary;
+
+  document.getElementById('result-grade').textContent  = grade;
+  document.getElementById('result-emoji').textContent  = { S:'🏆', A:'🥇', B:'🥈', C:'🥉', D:'😅' }[grade] || '🎮';
+  document.getElementById('result-correct').textContent = `${correct} / ${total}문제 (${Math.round(acc*100)}%)`;
+  document.getElementById('result-streak').textContent  = `최대 연속: ${bestStreak}`;
+  document.getElementById('result-subject').textContent = `과목: ${subject}`;
+
+  const newGrade = LearningHub.getGrade(subject);
+  document.getElementById('result-newgrade').textContent = `현재 학년: ${LearningHub.gradeLabel(newGrade)}학년`;
+}
+
+// ── 화면 전환 ─────────────────────────────────────────────────
+function showScreen(id) {
+  ['select-screen','quiz-screen','result-screen'].forEach(s => {
+    const el = document.getElementById(s);
+    if (el) el.style.display = s === id ? 'block' : 'none';
   });
 }
 
-function buildQuestions(subject) {
-  const user = (typeof LearningHub !== 'undefined') ? LearningHub.getCurrentUser() : null;
-  const grade = user ? LearningHub.getGrade(subject) : 3;
-  const pool = BANK[subject].filter(q => q.grade <= grade);
-  // 만약 현재 학년 이하 문제가 너무 적으면 전체 풀에서 보충
-  const source = pool.length >= 6 ? pool : BANK[subject];
-  let shuffled = source.slice().sort(() => Math.random() - 0.5);
-  let questions = shuffled.slice(0, Math.min(10, shuffled.length));
-
-  // 오답노트 복습 문제 주입 (최대 3개)
-  if (user) {
-    const review = LearningHub.getReviewQueue('지식탐험', subject, 3);
-    review.forEach(rq => {
-      if (!rq || !rq.q) return;
-      const match = BANK[subject].find(item => item.q === rq.q);
-      if (match) {
-        questions = questions.filter(item => item.q !== match.q);
-        questions.splice(Math.min(1, questions.length), 0, Object.assign({}, match, { _review: true }));
-      }
-    });
-    questions = questions.slice(0, 10);
-  }
-  return questions;
-}
-
-function startQuiz(subject) {
-  const questions = buildQuestions(subject);
-  session = { subject, questions, idx: 0, score: 0, correct: 0, wrong: [] };
-  document.getElementById('start-screen').style.display = 'none';
-  document.getElementById('result-screen').style.display = 'none';
-  document.getElementById('quiz-screen').style.display = 'block';
-  showQuestion();
-}
-
-function showQuestion() {
-  clearInterval(timerInterval);
-  const q = session.questions[session.idx];
-  document.getElementById('quiz-progress').textContent = `${session.idx+1} / ${session.questions.length}`;
-  document.getElementById('quiz-score').textContent = `점수: ${session.score}`;
-
-  const unitRow = document.getElementById('unit-row');
-  unitRow.innerHTML = `<span class="unit-tag">${LearningHub.escapeHtml(session.subject)} · ${LearningHub.escapeHtml(q.unit)} · ${q.grade}학년</span>` +
-    (q._review ? '<span class="review-badge">📝 복습 문제</span>' : '');
-
-  document.getElementById('question-text').textContent = q.q;
-
-  const choicesEl = document.getElementById('choices');
-  choicesEl.innerHTML = '';
-  const order = q.choices.map((c,i) => i).sort(() => Math.random()-0.5);
-  order.forEach(origIdx => {
-    const btn = document.createElement('button');
-    btn.className = 'choice-btn';
-    btn.textContent = q.choices[origIdx];
-    btn.addEventListener('click', () => selectAnswer(origIdx, btn));
-    choicesEl.appendChild(btn);
-  });
-
-  // 타이머 (15초)
-  let timeLeft = 15000;
-  const maxTime = 15000;
-  const bar = document.getElementById('timer-bar');
-  bar.style.width = '100%';
-  const start = Date.now();
-  timerInterval = setInterval(() => {
-    const elapsed = Date.now() - start;
-    const pct = Math.max(0, 100 - (elapsed/maxTime)*100);
-    bar.style.width = pct + '%';
-    if (elapsed >= maxTime) {
-      clearInterval(timerInterval);
-      selectAnswer(-1, null); // 시간초과
-    }
-  }, 50);
-}
-
-function selectAnswer(chosenIdx, btnEl) {
-  clearInterval(timerInterval);
-  const q = session.questions[session.idx];
-  const correct = chosenIdx === q.answer;
-  const allBtns = document.querySelectorAll('.choice-btn');
-  allBtns.forEach(b => b.classList.add('disabled'));
-
-  allBtns.forEach((b, i) => {
-    // i는 DOM 순서(셔플된 순서)이므로 텍스트로 매칭
-    if (b.textContent === q.choices[q.answer]) b.classList.add('correct');
-  });
-  if (!correct && btnEl) btnEl.classList.add('wrong');
-
-  if (correct) {
-    session.score += 10;
-    session.correct += 1;
-  } else {
-    session.wrong.push(q);
-  }
-
-  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    LearningHub.recordAnswer({
-      gameId: '지식탐험', subject: session.subject, qKey: q.q,
-      data: { q: q.q, unit: q.unit, grade: q.grade, choices: q.choices, answer: q.answer },
-      correct: correct
-    });
-  }
-
-  setTimeout(() => {
-    session.idx += 1;
-    if (session.idx < session.questions.length) {
-      showQuestion();
-    } else {
-      finishQuiz();
-    }
-  }, 900);
-}
-
-function finishQuiz() {
-  document.getElementById('quiz-screen').style.display = 'none';
-  document.getElementById('result-screen').style.display = 'block';
-
-  const total = session.questions.length;
-  const accuracy = session.correct / total;
-
-  document.getElementById('result-emoji').textContent =
-    accuracy >= 0.9 ? '🏆' : accuracy >= 0.7 ? '🎉' : accuracy >= 0.4 ? '💪' : '📚';
-  document.getElementById('result-score').textContent = `${session.correct} / ${total}  (점수 ${session.score})`;
-  document.getElementById('result-sub').textContent =
-    accuracy >= 0.9 ? '완벽해요! 지식 탐험가 인증!' :
-    accuracy >= 0.7 ? '훌륭해요! 조금만 더 연습하면 만점!' :
-    accuracy >= 0.4 ? '좋아요! 틀린 문제는 곧 다시 만나게 될 거예요.' :
-    '괜찮아요, 천천히 다시 도전해봐요!';
-
-  const levelMsgEl = document.getElementById('level-msg');
-  levelMsgEl.textContent = '';
-  levelMsgEl.className = 'level-msg';
-
-  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    LearningHub.recordPlay('지식탐험', { score: session.score, correct: session.correct, total, grade: LearningHub.getGrade(session.subject) });
-    const li = (global.Grade || LearningHub).evaluate
-      ? (global.Grade || LearningHub).evaluate(session.subject, accuracy, { upThreshold:0.8, downThreshold:0.4 })
-      : LearningHub.evaluateLevel(session.subject, accuracy, { upThreshold:0.8, downThreshold:0.4 });
-    if (li.changed) {
-      if (li.direction === 'up') {
-        levelMsgEl.textContent = `⬆️ 레벨업! ${session.subject} ${li.newGrade}학년 난이도로 올라갑니다!`;
-        levelMsgEl.classList.add('up');
-      } else {
-        levelMsgEl.textContent = `⬇️ ${session.subject} ${li.newGrade}학년 난이도로 조정해서 다시 연습해봐요!`;
-        levelMsgEl.classList.add('down');
-      }
-    }
-    const expGain = session.correct * 4 + (accuracy === 1 ? 15 : 0);
-    const expResult = GameInit.finish('지식탐험', expGain);
-    if (accuracy === 1) LearningHub.unlockAchievement('지식탐험', 'perfect_' + session.subject);
-  }
-
-  const wrongEl = document.getElementById('wrong-review');
-  if (session.wrong.length > 0) {
-    wrongEl.style.display = 'block';
-    wrongEl.innerHTML = '<b>❌ 틀린 문제 복습</b><br>' + session.wrong.map(w =>
-      `· ${LearningHub.escapeHtml(w.q)}<br>&nbsp;&nbsp;→ 정답: <span style="color:#4ade80">${LearningHub.escapeHtml(w.choices[w.answer])}</span>`
-    ).join('<br>');
-  } else {
-    wrongEl.style.display = 'none';
-  }
-
-  renderProfileBadge();
-}
-
-document.getElementById('start-btn').addEventListener('click', (e) => {
-  const subject = e.target.dataset.subject;
-  if (!subject) return;
-  startQuiz(subject);
-});
-
-document.getElementById('retry-btn').addEventListener('click', () => {
-  startQuiz(session.subject);
-});
-
-document.getElementById('home-btn').addEventListener('click', () => {
-  document.getElementById('result-screen').style.display = 'none';
-  document.getElementById('start-screen').style.display = 'block';
+function goSelect() {
+  if (_quiz) { _quiz.abort(); _quiz = null; }
+  clearInterval(_timerInt);
+  showScreen('select-screen');
   renderSubjectGrid();
   renderProfileBadge();
-});
+}
 
-// ── 초기화 ──
-(async function init() {
-  await loadBank();
-  if (typeof LearningHub !== 'undefined') LearningHub.injectBackLink();
+// ── 초기화 ───────────────────────────────────────────────────
+GameInit.start(GAME_ID, () => {
   renderSubjectGrid();
   renderProfileBadge();
-  if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser()) {
-    LearningHub.injectLoginModal(() => { renderSubjectGrid(); renderProfileBadge(); });
+  showScreen('select-screen');
+
+  // EventBus 구독
+  if (typeof Bus !== 'undefined') {
+    Bus.on('grade:changed', () => { renderSubjectGrid(); renderProfileBadge(); });
+    Bus.on('user:login',    () => { renderSubjectGrid(); renderProfileBadge(); });
   }
-})();
+});
 </script>
 </body>
 </html>

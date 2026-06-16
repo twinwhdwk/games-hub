@@ -199,14 +199,23 @@ function renderSubjectGrades() {
   const wrap = document.getElementById('subject-grades');
   wrap.innerHTML = '';
   const u = LearningHub.getCurrentUser();
+  if (!u) return;
   const wrongSummary = LearningHub.getWrongBankSummary();
+  const TIER_RANGES = [
+    { label:'초등', min:3, max:6, color:'#2ecc71' },
+    { label:'중등', min:7, max:9, color:'#3498db' },
+    { label:'고등', min:10, max:12, color:'#9b59b6' },
+  ];
+
   LearningHub.SUBJECTS.forEach(subject => {
-    const grade = u.grades[subject];
-    const segs = [];
-    for (let g = LearningHub.MIN_GRADE; g <= LearningHub.MAX_GRADE; g++) {
-      segs.push(`<div class="grade-seg ${g <= grade ? 'filled' : ''}"></div>`);
-    }
-    const pendingReview = wrongSummary[subject] ? wrongSummary[subject].pending : 0;
+    const grade   = u.grades[subject] || 3;
+    const pending = (wrongSummary[subject] || {}).pending || 0;
+    const tier    = LearningHub.getTier(grade);
+
+    // 전체 진행도 (3~12 중 현재 위치)
+    const totalRange = 12 - 3;
+    const pct = Math.round(((grade - 3) / totalRange) * 100);
+
     const row = document.createElement('div');
     row.className = 'subject-row';
     row.innerHTML = `
@@ -214,13 +223,84 @@ function renderSubjectGrades() {
       <div class="subject-main">
         <div class="subject-name-row">
           <span>${subject}</span>
-          <span class="grade-val">${LearningHub.gradeLabel(grade)}${pendingReview>0?`<span class="review-pill">📝 복습 ${pendingReview}개</span>`:''}</span>
+          <span class="grade-val">${LearningHub.gradeLabel(grade)}학년 <span style="font-size:.65rem;color:${TIER_RANGES.find(t=>t.label===({elementary:'초등',middle:'중등',high:'고등'}[tier]))?.color || '#fff'};opacity:.8;">(${{elementary:'초등',middle:'중등',high:'고등'}[tier]})</span>${pending > 0 ? `<span class="review-pill">📝 ${pending}</span>` : ''}</span>
         </div>
-        <div class="grade-track">${segs.join('')}</div>
+        <div style="margin-top:6px;">
+          <div style="display:flex;gap:3px;margin-bottom:4px;">
+            ${TIER_RANGES.map(tr => {
+              const filled = grade >= tr.max ? tr.max - tr.min + 1 : grade >= tr.min ? grade - tr.min + 1 : 0;
+              const total  = tr.max - tr.min + 1;
+              return `<div style="flex:${total};display:flex;gap:2px;" title="${tr.label}">
+                ${Array.from({length:total}, (_,i) => `<div style="flex:1;height:6px;border-radius:3px;background:${i < filled ? tr.color : 'rgba(255,255,255,.08)'}"></div>`).join('')}
+              </div>`;
+            }).join('')}
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:.6rem;color:#475569;">
+            <span>초3</span><span>초6 │ 중1</span><span>중3 │ 고1</span><span>고3</span>
+          </div>
+        </div>
       </div>
     `;
     wrap.appendChild(row);
   });
+
+  // 학습 분석 추가
+  renderLearningAnalysis(u);
+}
+
+function renderLearningAnalysis(u) {
+  let section = document.getElementById('analysis-section');
+  if (!section) {
+    section = document.createElement('div');
+    section.id = 'analysis-section';
+    section.className = 'section';
+    section.style.marginTop = '14px';
+    document.getElementById('subject-grades').after(section);
+  }
+
+  const allStats = LearningHub.getAllStats();
+  const wrongSummary = LearningHub.getWrongBankSummary();
+
+  // 총 플레이 횟수, 총 정답 수
+  let totalPlays = 0, totalCorrect = 0, totalQ = 0;
+  Object.values(allStats).forEach(s => { totalPlays += s.plays || 0; totalCorrect += s.totalCorrect || 0; totalQ += s.totalQ || 0; });
+  const overallAcc = totalQ > 0 ? Math.round(totalCorrect / totalQ * 100) : 0;
+
+  // 강점/약점 과목
+  const subjAccs = LearningHub.SUBJECTS.map(s => {
+    const ws = wrongSummary[s] || { total:0, mastered:0, pending:0 };
+    const g = u.grades[s] || 3;
+    return { s, g, pending: ws.pending, mastered: ws.mastered };
+  });
+  const strongest = subjAccs.reduce((a,b) => b.g > a.g ? b : a, subjAccs[0]);
+  const weakest   = subjAccs.filter(x=>x.pending>0).reduce((a,b)=>b.pending>a.pending?b:a, { s:'없음', pending:0 });
+
+  section.innerHTML = `
+    <div class="section-title" style="margin-bottom:12px;">📊 학습 분석</div>
+    <div class="status-grid" style="grid-template-columns:repeat(3,1fr);">
+      <div class="status-card">
+        <div class="num">${totalPlays}</div><div class="label">총 플레이</div>
+      </div>
+      <div class="status-card">
+        <div class="num" style="color:#4ade80;">${overallAcc}%</div><div class="label">전체 정답률</div>
+      </div>
+      <div class="status-card">
+        <div class="num" style="color:#ffd700;">${totalCorrect}</div><div class="label">누적 정답</div>
+      </div>
+    </div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div style="background:rgba(74,222,128,.07);border:1px solid rgba(74,222,128,.15);border-radius:12px;padding:12px;text-align:center;">
+        <div style="font-size:.7rem;color:#4ade80;font-weight:700;margin-bottom:4px;">💪 가장 높은 학년</div>
+        <div style="font-weight:900;color:#fff;">${strongest.s}</div>
+        <div style="font-size:.75rem;color:#4ade80;">${LearningHub.gradeLabel(strongest.g)}학년</div>
+      </div>
+      <div style="background:rgba(248,113,113,.07);border:1px solid rgba(248,113,113,.15);border-radius:12px;padding:12px;text-align:center;">
+        <div style="font-size:.7rem;color:#f87171;font-weight:700;margin-bottom:4px;">📝 오답 가장 많은 과목</div>
+        <div style="font-weight:900;color:#fff;">${weakest.s}</div>
+        <div style="font-size:.75rem;color:#f87171;">${weakest.pending > 0 ? weakest.pending + '문제 대기중' : '모두 클리어!'}</div>
+      </div>
+    </div>
+  `;
 }
 
 function renderGameStats() {

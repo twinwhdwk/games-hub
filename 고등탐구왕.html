@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🌌 고등 탐구왕</title>
+<script src="js/core/event-bus.js"></script>
+<script src="js/core/container.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/user.js"></script>
+<script src="js/core/items.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/modal.js"></script>
+<script src="js/game/data-loader.js"></script>
+<script src="js/game/quiz-engine.js"></script>
+<script src="js/game-registry.js"></script>
+<script src="shared.js"></script>
+<script src="js/game-init.js"></script>
+<script src="js/battle-engine.js"></script>
+<style>
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:#08081a; color:#e0e6ff; min-height:100vh; }
+#wrap { max-width:640px; margin:0 auto; padding:14px 14px 80px; }
+
+/* 헤더 */
+.page-header { text-align:center; padding:20px 0 16px; }
+.page-header h1 {
+  font-size:clamp(1.4rem,5vw,2rem); font-weight:900;
+  background:linear-gradient(135deg,#c084fc,#818cf8,#38bdf8);
+  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
+}
+.page-header p { font-size:.78rem; color:#64748b; margin-top:4px; }
+
+/* 배틀 씬 */
+#battle-canvas {
+  width:100%; aspect-ratio:16/7; border-radius:16px;
+  border:1.5px solid rgba(155,89,182,.3); display:block; margin-bottom:12px;
+  box-shadow:0 0 40px rgba(155,89,182,.15);
+}
+
+/* HUD */
+#hud { display:grid; grid-template-columns:repeat(4,1fr); gap:8px; margin-bottom:12px; }
+.hb { background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08); border-radius:10px; padding:8px 4px; text-align:center; }
+.hb .v { font-size:1.1rem; font-weight:900; color:#fff; }
+.hb .l { font-size:.58rem; color:#666f8c; letter-spacing:1px; }
+
+/* 과목 선택 */
+#subject-select { margin-bottom:18px; }
+#subject-select h2 { font-size:1rem; font-weight:900; color:#d2a8ff; margin-bottom:12px; }
+.subj-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.subj-btn {
+  padding:16px 12px; border-radius:14px; border:1.5px solid rgba(155,89,182,.2);
+  background:rgba(155,89,182,.06); cursor:pointer; font-family:inherit;
+  color:#c4cde0; font-size:.88rem; font-weight:700; text-align:center; transition:.15s;
+}
+.subj-btn:hover { border-color:#9b59b6; background:rgba(155,89,182,.12); color:#fff; }
+.subj-btn .icon { font-size:1.8rem; display:block; margin-bottom:6px; }
+.subj-btn.all { grid-column:1/-1; }
+
+/* 퀴즈 화면 */
+#game { display:none; }
+#q-box { background:rgba(255,255,255,.04); border:1.5px solid rgba(155,89,182,.3); border-radius:16px; padding:20px; margin-bottom:12px; }
+#q-meta { display:flex; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+.q-tag { padding:3px 9px; border-radius:100px; font-size:.67rem; font-weight:700; border:1px solid; }
+#q-text { font-size:1.05rem; font-weight:800; line-height:1.6; color:#fff; }
+#choices { display:flex; flex-direction:column; gap:9px; margin-bottom:12px; }
+.choice {
+  padding:13px 14px; border-radius:12px; background:rgba(255,255,255,.05);
+  border:2px solid rgba(255,255,255,.09); color:#c4cde0;
+  font-size:.88rem; font-weight:700; cursor:pointer; font-family:inherit;
+  text-align:left; transition:.1s; word-break:keep-all; min-height:50px; line-height:1.4;
+}
+.choice:hover:not(:disabled) { border-color:#9b59b6; color:#fff; }
+.choice.correct { background:rgba(34,197,94,.12); border-color:#22c55e; color:#4ade80; }
+.choice.wrong   { background:rgba(239,68,68,.12);  border-color:#ef4444; color:#f87171; }
+#fb { padding:11px 14px; border-radius:11px; font-size:.85rem; font-weight:700; margin-bottom:12px; display:none; }
+#fb.ok { background:rgba(34,197,94,.1); color:#4ade80; }
+#fb.ng { background:rgba(239,68,68,.1);  color:#f87171; }
+#next-btn {
+  width:100%; padding:14px; border-radius:13px; border:none;
+  background:linear-gradient(135deg,#7c3aed,#9b59b6); color:#fff;
+  font-size:1rem; font-weight:900; cursor:pointer; display:none; font-family:inherit;
+}
+
+/* 결과 */
+#result { display:none; text-align:center; padding:28px 16px; background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.08); border-radius:20px; }
+.rg { font-size:3.5rem; font-weight:900; background:linear-gradient(135deg,#c084fc,#818cf8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; margin:10px 0; }
+.rs { color:#8892a4; font-size:.85rem; margin-bottom:5px; }
+.rb { margin-top:16px; padding:12px 26px; border-radius:100px; border:none; background:linear-gradient(135deg,#7c3aed,#9b59b6); color:#fff; font-size:.9rem; font-weight:900; cursor:pointer; font-family:inherit; margin:6px; }
+.rb.s { background:rgba(255,255,255,.08); color:#c4cde0; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div class="page-header">
+    <h1>🌌 고등 탐구왕</h1>
+    <p>고등학교 수준의 도전적인 문제들</p>
+  </div>
+
+  <canvas id="battle-canvas" width="640" height="280"></canvas>
+
+  <div id="hud">
+    <div class="hb"><div class="v" id="h-q">1</div><div class="l">문제</div></div>
+    <div class="hb"><div class="v" id="h-ok" style="color:#4ade80">0</div><div class="l">정답</div></div>
+    <div class="hb"><div class="v" id="h-sk" style="color:#ffd700">0</div><div class="l">연속</div></div>
+    <div class="hb"><div class="v" id="h-grade" style="color:#c084fc">고1</div><div class="l">학년</div></div>
+  </div>
+
+  <!-- 과목 선택 -->
+  <div id="subject-select">
+    <h2>🌌 과목 선택</h2>
+    <div class="subj-grid">
+      <button class="subj-btn" onclick="startGame('수학')"><span class="icon">📐</span>수학 (미적분·확통)</button>
+      <button class="subj-btn" onclick="startGame('영어')"><span class="icon">🔤</span>영어 (구문·독해)</button>
+      <button class="subj-btn" onclick="startGame('과학')"><span class="icon">🔬</span>과학 (물리·화학·생명)</button>
+      <button class="subj-btn" onclick="startGame('사회')"><span class="icon">🏛</span>사회 (역사·정치·윤리)</button>
+      <button class="subj-btn all" onclick="startGame('전체')"><span class="icon">🌐</span>전체 랜덤</button>
+    </div>
+  </div>
+
+  <!-- 게임 -->
+  <div id="game">
+    <div id="q-box">
+      <div id="q-meta">
+        <span class="q-tag" id="q-subj-tag" style="color:#c084fc;border-color:rgba(192,132,252,.4)"></span>
+        <span class="q-tag" id="q-grade-tag" style="color:#67e8f9;border-color:rgba(103,232,249,.3)"></span>
+        <span id="q-unit-tag" style="font-size:.65rem;color:#475569;"></span>
+      </div>
+      <div id="q-text"></div>
+    </div>
+    <div id="choices">
+      <button class="choice" onclick="choose(0)"></button>
+      <button class="choice" onclick="choose(1)"></button>
+      <button class="choice" onclick="choose(2)"></button>
+      <button class="choice" onclick="choose(3)"></button>
+    </div>
+    <div id="fb"></div>
+    <button id="next-btn" onclick="nextQ()">다음 →</button>
+  </div>
+
+  <!-- 결과 -->
+  <div id="result">
+    <div id="r-em" style="font-size:2.5rem;">🏆</div>
+    <div class="rg" id="r-g">A</div>
+    <div class="rs" id="r-s1"></div>
+    <div class="rs" id="r-s2"></div>
+    <div class="rs" id="r-s3"></div>
+    <button class="rb" onclick="backToSelect()">다른 과목</button>
+    <button class="rb s" onclick="location.href='index.html'">허브로</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const GAME_ID = '고등탐구왕';
+const SUBJ_META = { 수학:{icon:'📐',color:'#f59e0b'}, 영어:{icon:'🔤',color:'#e74c3c'}, 과학:{icon:'🔬',color:'#8b5cf6'}, 사회:{icon:'🏛',color:'#3b82f6'}, 국어:{icon:'📖',color:'#22c55e'} };
+const GL = g => g<=6?`초${g}`:g<=9?`중${g-6}`:g>=10?`고${g-9}`:'';
+
+let _quiz = null, _engine = null;
+let ok = 0, sk = 0, bestSk = 0, curSubj = '수학', curGrade = 10;
+
+function setupEngine() {
+  const canvas = document.getElementById('battle-canvas');
+  if (!canvas || !window.BattleEngine) return;
+  _engine = new BattleEngine(canvas, { bgColor:'#05051a', groundY:.76, heroX:.2, enemyX:.7, theme:'void' });
+  if (LearningHub.getCurrentUser()) {
+    const c = LearningHub.getCharacter();
+    if (c) _engine.setHero(c.equipped);
+  }
+  // 고등 몬스터는 드래곤
+  _engine.setMonster({ ...BattleEngine.MONSTERS[4], hpPct:1 });
+}
+
+async function startGame(subj) {
+  curSubj = subj;
+  ok = 0; sk = 0; bestSk = 0;
+  const user = LearningHub.getCurrentUser();
+  if (user && subj !== '전체') curGrade = Math.max(10, Math.min(12, user.grades[subj] || 10));
+
+  document.getElementById('subject-select').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('game').style.display = 'block';
+
+  if (!_engine) setupEngine();
+
+  _quiz = new QuizEngine({
+    gameId:  GAME_ID,
+    subject: subj === '전체' ? null : subj,
+    tier:    'high',
+    total:   15,
+
+    onQuestion(q, idx, total) {
+      const sm = SUBJ_META[q.subject || subj] || SUBJ_META['수학'];
+      document.getElementById('q-subj-tag').textContent  = sm.icon + ' ' + (q.subject || subj);
+      document.getElementById('q-subj-tag').style.color  = sm.color;
+      document.getElementById('q-grade-tag').textContent = GL(q.grade) + '학년';
+      document.getElementById('q-unit-tag').textContent  = q.unit || '';
+      document.getElementById('q-text').textContent      = q.q;
+      document.querySelectorAll('.choice').forEach((b, i) => {
+        b.textContent = q.choices[i] || ''; b.className = 'choice'; b.disabled = false;
+      });
+      document.getElementById('fb').style.display   = 'none';
+      document.getElementById('next-btn').style.display = 'none';
+      document.getElementById('h-q').textContent    = idx + 1;
+      document.getElementById('h-grade').textContent = curGrade >= 10 ? `고${curGrade-9}` : GL(curGrade);
+    },
+
+    onResult(isCorrect, q, stats) {
+      ok = stats.correct; sk = stats.streak; bestSk = stats.bestStreak;
+      document.getElementById('h-ok').textContent = ok;
+      document.getElementById('h-sk').textContent = sk;
+      document.querySelectorAll('.choice').forEach((b,i)=>{ b.disabled=true; if(i===q.answer)b.classList.add('correct'); });
+
+      const fb = document.getElementById('fb');
+      fb.textContent = isCorrect ? `✅ 정답!${sk>1?' 🔥'+sk+'연속!':''}` : `❌ 오답! 정답: ${q.choices[q.answer]}`;
+      fb.className = isCorrect ? 'ok' : 'ng';
+      fb.style.display = 'block';
+      document.getElementById('next-btn').style.display = 'block';
+
+      if (_engine) {
+        if (isCorrect) {
+          const useUlt = _engine.chargeLevel >= 1;
+          _engine.playHeroAttack(useUlt ? 'ultimate' : sk>=4?'magic':sk>=2?'slash':'arrow', { dmgText:`${sk>1?sk+'콤보!':'정답!'}` });
+        } else {
+          _engine.playMonsterAttack();
+          _engine.playHeroDamage(12);
+        }
+      }
+    },
+
+    onEnd(summary) {
+      document.getElementById('game').style.display = 'none';
+      document.getElementById('result').style.display = 'block';
+      const { acc, grade, correct, total, bestStreak } = summary;
+      const em = {S:'🏆',A:'🥇',B:'🥈',C:'🥉',D:'😅'};
+      document.getElementById('r-em').textContent = em[grade]||'🎮';
+      document.getElementById('r-g').textContent  = grade;
+      document.getElementById('r-s1').textContent = `정답 ${correct}/${total} (${Math.round(acc*100)}%)`;
+      document.getElementById('r-s2').textContent = `최대 연속: ${bestStreak}`;
+      document.getElementById('r-s3').textContent = `과목: ${curSubj}`;
+      if (_engine) _engine.playStageClear();
+    },
+  });
+
+  await _quiz.init();
+  _quiz.start();
+}
+
+function choose(i) { if (_quiz) _quiz.answer(i); }
+function nextQ()   { if (_quiz) _quiz.next(); }
+function backToSelect() {
+  if (_quiz) { _quiz.abort(); _quiz = null; }
+  document.getElementById('game').style.display = 'none';
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('subject-select').style.display = 'block';
+}
+
+GameInit.start(GAME_ID, () => {
+  setupEngine();
+  if (typeof Bus !== 'undefined') {
+    Bus.on('engine:refresh', () => {
+      if (_engine && LearningHub.getCurrentUser()) {
+        const c = LearningHub.getCharacter();
+        if (c) _engine.setHero(c.equipped);
+      }
+    });
+  }
+}, { checkStreak: true });
+</script>
+</body>
+</html>
