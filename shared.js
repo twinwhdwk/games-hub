@@ -213,6 +213,43 @@
     return u.wrongBank.filter(w => w.gameId === gameId && !w.mastered && (!subject || w.subject === subject)).length;
   }
 
+  /**
+   * 오답노트 전용 풀기 — 과목별 미숙달 문제 전체 반환 (data 포함)
+   * 오답노트 UI에서 독립적으로 풀 수 있도록 데이터+메타 모두 반환
+   */
+  function getWrongBankItems(subject) {
+    const u = getCurrentUser();
+    if (!u) return [];
+    let list = u.wrongBank.filter(w => !w.mastered);
+    if (subject) list = list.filter(w => w.subject === subject);
+    return list.slice().sort((a,b) => b.wrongCount - a.wrongCount || a.lastSeen - b.lastSeen)
+      .map(w => ({ qKey: w.qKey, gameId: w.gameId, subject: w.subject, wrongCount: w.wrongCount, correctStreak: w.correctStreak, data: w.data }));
+  }
+
+  /**
+   * 오답노트에서 직접 풀기 결과 기록
+   * 정답을 2번 연속 맞추면 mastered (게임 내 복습과 동일 기준)
+   */
+  function reviewAnswer(gameId, qKey, correct) {
+    const db = loadDB();
+    const u = db.users[db.currentUser];
+    if (!u) return null;
+    const w = u.wrongBank.find(x => x.gameId === gameId && x.qKey === qKey);
+    if (!w) return null;
+    if (correct) {
+      w.correctStreak = (w.correctStreak || 0) + 1;
+      w.lastSeen = Date.now();
+      if (w.correctStreak >= 2) { w.mastered = true; }
+    } else {
+      w.wrongCount += 1;
+      w.correctStreak = 0;
+      w.mastered = false;
+      w.lastSeen = Date.now();
+    }
+    saveDB(db);
+    return { mastered: w.mastered, correctStreak: w.correctStreak, wrongCount: w.wrongCount };
+  }
+
   // ---------------------------------------------------------
   // 게임 플레이 통계
   // ---------------------------------------------------------
@@ -890,7 +927,7 @@ const ROOM_ITEM_CATALOG = [
     listUsers, getCurrentUser, getCurrentUserName,
     createOrSwitchUser, switchUser, deleteUser, logout,
     getGrade, setGrade, evaluateLevel, gradeToTier, gradeLabel,
-    recordAnswer, getReviewQueue, getReviewCount,
+    recordAnswer, getReviewQueue, getReviewCount, getWrongBankItems, reviewAnswer,
     recordPlay, getStats, getAllStats, getWrongBankSummary,
     renderProfileBadge, injectLoginModal, escapeHtml,
     // 캐릭터/아이템/EXP

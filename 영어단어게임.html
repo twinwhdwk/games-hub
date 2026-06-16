@@ -426,7 +426,9 @@ var LEVELS = [
   {num:7,label:"종합 훈련",cats:["fruit","animal","color"],words:8,speed:1.7,enemyHP:2},
   {num:8,label:"최종 결전",cats:["fruit","animal","color","weather","verb","direction"],words:10,speed:2.0,enemyHP:3}
   ,{num:9,label:"신체 & 학교",cats:["body","school"],words:9,speed:2.1,enemyHP:3}
-  ,{num:10,label:"최후의 정복",cats:["body","school","number","verb"],words:12,speed:2.4,enemyHP:3}
+  ,{num:10,label:"구동사 전투",cats:["phrasal"],words:10,speed:2.2,enemyHP:3}
+  ,{num:11,label:"형용사 정벌",cats:["adjective"],words:10,speed:2.3,enemyHP:3}
+  ,{num:12,label:"최후의 대정복",cats:["body","school","number","verb","phrasal","adjective"],words:14,speed:2.5,enemyHP:4}
 ];
 var selectedDiff = 'normal';
 var DIFF_TIMER = {easy:15, normal:12, hard:8};
@@ -940,7 +942,7 @@ function levelComplete(){
     var maxStars=LEVELS.length*3;
     var rank=getStarRank(state.totalStars,maxStars);
     body=stars+'\n\n모든 단계를 정복했습니다!\n최종 점수: '+state.score+'점\n구출한 병사: '+state.soldiers+'명\n총 별점: '+state.totalStars+'/'+maxStars+'★\n정답률: '+acc+'% ('+state.totalCorrectAll+'/'+state.totalAnswered+')\n칭호: '+rank+'\n\n수양대군이 영어 왕국을 정복하였습니다!';
-    var CAT_KO2={fruit:'과일',animal:'동물',color:'색깔',weather:'날씨',verb:'동사',direction:'방향',body:'신체',school:'학교',number:'숫자',food:'음식'};
+    var CAT_KO2={fruit:'과일',animal:'동물',color:'색깔',weather:'날씨',verb:'동사',direction:'방향',body:'신체',school:'학교',number:'숫자',food:'음식',phrasal:'구동사',adjective:'형용사'};
     var cats2=Object.keys(state.catStats);
     if(cats2.length>0){
       body+='\n\n📊 카테고리별:';
@@ -970,7 +972,7 @@ function gameOver(){
   var rank=getStarRank(state.totalStars,LEVELS.length*3);
   var acc=state.totalAnswered>0?Math.round(state.totalCorrectAll/state.totalAnswered*100):0;
   var body='병사들이 모두 무너졌습니다.\n\n최종 점수: '+state.score+'점\n구출 병사: '+state.soldiers+'명\n최고 기록: '+state.hiscore+'점\n정답률: '+acc+'% ('+state.totalCorrectAll+'/'+state.totalAnswered+')\n칭호: '+rank+'\n\n다시 도전하세요!';
-  var CAT_KO={fruit:'과일',animal:'동물',color:'색깔',weather:'날씨',verb:'동사',direction:'방향',body:'신체',school:'학교',number:'숫자',food:'음식'};
+  var CAT_KO={fruit:'과일',animal:'동물',color:'색깔',weather:'날씨',verb:'동사',direction:'방향',body:'신체',school:'학교',number:'숫자',food:'음식',phrasal:'구동사',adjective:'형용사'};
   var cats=Object.keys(state.catStats);
   if(cats.length>0){
     body+='\n\n📊 카테고리별:';
