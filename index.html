@@ -1227,25 +1227,26 @@ document.querySelectorAll('.subject-pill').forEach(pill => {
   });
 });
 
-renderProfileBar();
-renderAll();
-if (!LearningHub.getCurrentUser()) {
-  LearningHub.injectLoginModal(() => {
-    renderProfileBar();
-    renderAll();
+// 데이터 로드 완료 후 렌더링
+LearningHub.onReady(function() {
+  renderProfileBar();
+  renderAll();
+  if (!LearningHub.getCurrentUser()) {
+    LearningHub.injectLoginModal(() => {
+      renderProfileBar();
+      renderAll();
+      _runStreak();
+    });
+  } else {
     _runStreak();
-  });
-} else {
-  _runStreak();
-}
+  }
+});
 
 function _runStreak() {
   const result = LearningHub.checkStreak();
   if (!result) return;
-  // 연속 출석 배지 업데이트
   const el = document.getElementById('streak-badge');
   if (el) el.textContent = `🔥 ${result.streak}일 연속`;
-  // 새 아이템 해금 알림
   if (result.isNew && result.newItems.length > 0) {
     setTimeout(() => {
       result.newItems.forEach(item => {

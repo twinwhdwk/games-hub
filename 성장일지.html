@@ -338,8 +338,10 @@ document.getElementById('login-btn').addEventListener('click', () => {
   LearningHub.injectLoginModal(() => renderAll());
 });
 
-if (typeof LearningHub !== 'undefined') LearningHub.injectBackLink();
-renderAll();
+LearningHub.onReady(() => {
+  LearningHub.injectBackLink();
+  renderAll();
+});
 </script>
 </body>
 </html>
