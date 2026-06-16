@@ -264,14 +264,17 @@ function choose(i) {
 
   if (isOk) {
     ok++; sk++; bestSk = Math.max(bestSk, sk);
-    if (_engine) _engine.playHeroAttack(sk >= 3 ? 'magic' : 'slash');
+    if (_engine) {
+      const useUlt = _engine.chargeLevel >= 1;
+      _engine.playHeroAttack(useUlt ? 'ultimate' : sk >= 4 ? 'magic' : sk >= 2 ? 'arrow' : 'slash');
+    }
     setFb(true, '✅ 정답!' + (sk>=3 ? ` 🔥 ${sk}연속!`:''));
   } else if (i === -1) {
     sk = 0;
-    if (_engine) _engine.playMonsterAttack(); setFb(false, `⏰ 시간 초과! 정답: ${q.choices[q.answer]}`);
+    if (_engine) { _engine.playMonsterAttack(); _engine.playHeroDamage(15); } setFb(false, `⏰ 시간 초과! 정답: ${q.choices[q.answer]}`);
   } else {
     sk = 0;
-    if (_engine) _engine.playMonsterAttack();
+    if (_engine) { _engine.playMonsterAttack(); _engine.playHeroDamage(10); }
     setFb(false, `❌ 오답! 정답: ${q.choices[q.answer]}`);
   }
   document.getElementById('h-ok').textContent = ok;

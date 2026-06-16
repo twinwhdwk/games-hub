@@ -186,13 +186,17 @@ function choose(i) {
   if (isOk) {
     ok++; streak++; bestStreak = Math.max(bestStreak, streak);
     if (_engine) {
-      const skill = streak >= 3 ? 'magic' : 'slash';
-      _engine.playHeroAttack(skill);
+      const useUlt = _engine.chargeLevel >= 1;
+      const skill = useUlt ? 'ultimate' : streak >= 4 ? 'magic' : streak >= 2 ? 'arrow' : 'slash';
+      _engine.playHeroAttack(skill, { dmgText: `+${streak>1?streak+'콤보':'정답'}!` });
     }
     setFeedback(true, '✅ 정답!' + (streak >= 3 ? ` 🔥 ${streak}연속!` : ''));
   } else {
     bad++; streak = 0;
-    if (_engine) _engine.playMonsterAttack();
+    if (_engine) {
+      _engine.playMonsterAttack();
+      _engine.playHeroDamage(10);
+    }
     setFeedback(false, `❌ 오답! 정답: ${q.choices[q.answer]}`);
   }
 

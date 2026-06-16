@@ -131,7 +131,16 @@ body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:
 
   <canvas id="battle-canvas" width="640" height="280"></canvas>
 
-  <div id="hp-bars">
+  <div id="charge-bar-wrap" style="margin-bottom:10px;">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+    <span style="font-size:0.65rem;color:#a855f7;font-weight:800;letter-spacing:1px;">⚡ ULTIMATE GAUGE</span>
+    <span id="charge-label" style="font-size:0.65rem;color:#6b7280;font-weight:700;">0%</span>
+  </div>
+  <div style="background:rgba(255,255,255,0.07);border-radius:100px;height:8px;overflow:hidden;">
+    <div id="charge-bar" style="height:100%;width:0%;border-radius:100px;background:linear-gradient(90deg,#7c3aed,#a855f7);transition:width .3s;box-shadow:0 0 8px #a855f744;"></div>
+  </div>
+</div>
+<div id="hp-bars">
     <div class="hp-side">
       <div class="hp-name" id="hero-name">탐험가</div>
       <div class="hp-bar-wrap"><div class="hp-bar" id="hero-bar" style="width:100%"></div></div>
@@ -239,6 +248,13 @@ function setupEngine() {
   });
 }
 
+function showStageIntro(idx) {
+  if (!engine) return;
+  const m = BattleEngine.MONSTERS[idx % BattleEngine.MONSTERS.length];
+  // 잠깐 STAGE IN 연출
+  setTimeout(()=>{}, 10); // 엔진 오버레이가 자동 처리
+}
+
 function spawnMonster(idx) {
   const m = BattleEngine.MONSTERS[idx % BattleEngine.MONSTERS.length];
   const stageBonus = Math.floor(idx / BattleEngine.MONSTERS.length);
@@ -246,6 +262,7 @@ function spawnMonster(idx) {
   enemyHP = enemyMaxHP;
   engine.setMonster({ ...m, hpPct: 1 });
   updateEnemy(m.name, enemyHP, enemyMaxHP);
+  showStageIntro(idx);
   document.getElementById('h-stage').textContent = idx + 1;
   document.getElementById('stage-label').textContent =
     `⚔️ 스테이지 ${idx+1} — ${STAGE_NAMES[idx % STAGE_NAMES.length]}`;
@@ -304,7 +321,9 @@ function choose(i) {
     enemyHP = Math.max(0, enemyHP - dmg);
 
     // 스킬 선택
-    const skill = streak >= 4 ? 'magic' : streak >= 2 ? 'slash' : 'punch';
+    // 필살기 게이지 가득 차면 ultimate
+    const useUltimate = engine && engine.chargeLevel >= 1;
+    const skill = useUltimate ? 'ultimate' : streak >= 5 ? 'magic' : streak >= 2 ? 'slash' : 'arrow';
     if (streak >= 3) showSkillPop(streak >= 5 ? '💥 SUPER COMBO!' : `🔥 ${streak} COMBO!`);
 
     setFeedback(true, `✅ 정답! ${dmg} 데미지 (${streak > 1 ? streak+'연속 콤보!' : ''})`);
@@ -312,7 +331,7 @@ function choose(i) {
     // 캐릭터 공격 → 애니 끝나면 next 버튼 (engine.on('attackEnd') 에서 처리)
     const monDef = BattleEngine.MONSTERS[stageIdx % BattleEngine.MONSTERS.length];
     engine.setMonster({ ...monDef, hpPct: enemyHP / enemyMaxHP });
-    engine.playHeroAttack(skill);
+    engine.playHeroAttack(skill, { dmgText: `${dmg}!` });
 
     updateEnemy(null, enemyHP, enemyMaxHP);
 
@@ -335,7 +354,28 @@ function choose(i) {
 
     setTimeout(() => { document.getElementById('next-btn').style.display = 'block'; }, 600);
 
-    if (heroHP <= 0) { setTimeout(endGame, 700); return; }
+    if (heroHP <= 0) {
+      if (engine) engine.playGameOver();
+      setTimeout(endGame, 1200);
+      return;
+    }
+  }
+
+  // 차지 게이지 UI 업데이트
+  if (engine) {
+    const pct = Math.round(engine.chargeLevel * 100);
+    const bar = document.getElementById('charge-bar');
+    const lbl = document.getElementById('charge-label');
+    if (bar) {
+      bar.style.width = pct + '%';
+      bar.style.background = pct >= 100 ? 'linear-gradient(90deg,#ffd700,#f59e0b)' : 'linear-gradient(90deg,#7c3aed,#a855f7)';
+      bar.style.boxShadow = pct >= 100 ? '0 0 16px rgba(255,215,0,.6)' : '0 0 8px rgba(168,85,247,.4)';
+    }
+    if (lbl) {
+      lbl.textContent = pct >= 100 ? '⚡ READY!' : pct + '%';
+      lbl.style.color = pct >= 100 ? '#ffd700' : '#6b7280';
+    }
+    if (pct >= 100 && isOk) engine.playUltimateCharge();
   }
 
   // 5문제마다 학년 조정
@@ -343,7 +383,10 @@ function choose(i) {
     const acc = ok / qIdx;
     const r = LearningHub.evaluateLevel('수학', acc, {minGrade:7, maxGrade:9});
     curGrade = LearningHub.getGrade('수학');
-    if (r.changed) LearningHub.showToast(r.direction==='up' ? '⬆️ 레벨업! 더 강한 문제!' : '⬇️ 난이도 조정');
+    if (r.changed) {
+      LearningHub.showToast(r.direction==='up' ? '⬆️ 레벨업! 더 강한 문제!' : '⬇️ 난이도 조정');
+      if (r.direction==='up' && engine) engine.playLevelUp();
+    }
   }
 }
 
@@ -398,7 +441,9 @@ function endGame() {
     GameInit.finish(GAME_ID, exp, '방정식배틀');
     LearningHub.evaluateLevel('수학', acc, {minGrade:7, maxGrade:9});
   }
-  if (engine) { engine.playStageClear(); }
+  if (engine) {
+    if (!defeated) engine.playStageClear();
+  }
 }
 
 function restart() {
