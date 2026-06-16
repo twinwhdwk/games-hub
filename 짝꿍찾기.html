@@ -373,7 +373,7 @@ function finishGame() {
       }
     }
     const expGain = session.pairs.length * 3 + (efficiency >= 0.95 ? 15 : 0);
-    const expResult = LearningHub.addExp(expGain, '짝꿍찾기');
+    const expResult = GameInit.finish('짝꿍찾기', expGain);
     if (efficiency >= 0.95) LearningHub.unlockAchievement('짝꿍찾기', 'perfect_' + session.subject);
     LearningHub.announceExpResult(expResult);
   }

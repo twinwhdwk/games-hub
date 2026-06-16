@@ -369,7 +369,9 @@ function finishQuiz() {
 
   if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
     LearningHub.recordPlay('지식탐험', { score: session.score, correct: session.correct, total, grade: LearningHub.getGrade(session.subject) });
-    const li = LearningHub.evaluateLevel(session.subject, accuracy, { upThreshold: 0.8, downThreshold: 0.4 });
+    const li = (global.Grade || LearningHub).evaluate
+      ? (global.Grade || LearningHub).evaluate(session.subject, accuracy, { upThreshold:0.8, downThreshold:0.4 })
+      : LearningHub.evaluateLevel(session.subject, accuracy, { upThreshold:0.8, downThreshold:0.4 });
     if (li.changed) {
       if (li.direction === 'up') {
         levelMsgEl.textContent = `⬆️ 레벨업! ${session.subject} ${li.newGrade}학년 난이도로 올라갑니다!`;

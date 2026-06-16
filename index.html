@@ -862,6 +862,12 @@
 
   </div>
 
+  <!-- 중등/고등 게임 섹션 (GameRegistry 기반 동적 렌더) -->
+  <div id="middle-section" style="display:none;">
+    <div class="section-title" style="padding:0 20px 12px;font-size:1rem;font-weight:900;color:#74b9ff;letter-spacing:1px;">🌊 중등 게임</div>
+    <div class="card-grid" id="middle-card-grid"></div>
+  </div>
+
   <footer>© 2026 학습 게임 허브 · twinwhdwk</footer>
 </div>
 
@@ -874,6 +880,7 @@
 <script src="js/ui/modal.js"></script>
 <script src="js/game/data-loader.js"></script>
 <script src="js/game/quiz-engine.js"></script>
+<script src="js/game-registry.js"></script>
 <script src="shared.js"></script>
 <script>
 const canvas = document.getElementById('stars-canvas');
@@ -983,6 +990,50 @@ function renderAll() {
     }
   });
   renderCharacterPanel();
+  renderMiddleSection();
+}
+
+// GameRegistry 기반 중등 게임 카드 동적 렌더링
+function renderMiddleSection() {
+  if (typeof GameRegistry === 'undefined') return;
+  const section = document.getElementById('middle-section');
+  const grid    = document.getElementById('middle-card-grid');
+  if (!section || !grid) return;
+
+  const midGames = GameRegistry.byTier('middle');
+  if (!midGames.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  grid.innerHTML = '';
+
+  midGames.forEach(game => {
+    const reviewN = LearningHub.getReviewCount(game.id);
+    const a = document.createElement('a');
+    a.className = 'game-card';
+    a.href = game.url;
+    a.dataset.subjects = game.subjects.join(',');
+    a.dataset.gameid = game.id;
+    a.style.cssText = `border-color:${game.worldmap?.color || '#3498db'}22;`;
+    a.innerHTML = `
+      <div class="card-bg" style="background:radial-gradient(ellipse at 30% 40%, ${game.worldmap?.color || '#3498db'}22 0%, transparent 70%);"></div>
+      <div class="card-border"></div>
+      <div class="card-inner">
+        <div class="card-icon">${game.icon}</div>
+        <div class="card-content">
+          <div class="card-tag-row">
+            ${game.subjects.map(s => `<span class="card-tag">${s}</span>`).join('')}
+            <span class="card-tag" style="color:#74b9ff;border-color:#74b9ff33;">중등</span>
+          </div>
+          <div class="card-title">${game.name}</div>
+          <div class="card-desc">${game.desc}</div>
+          ${reviewN > 0 ? `<div class="review-count" data-gameid="${game.id}" style="display:inline-block;">📝 복습 ${reviewN}개</div>` : ''}
+          <div class="card-play-btn">게임 시작 →</div>
+        </div>
+      </div>`;
+    grid.appendChild(a);
+  });
+
+  // 과목 필터 동기화
+  applySubjectFilter(currentSubjectFilter);
 }
 
 // ── 캐릭터 패널 ───────────────────────────────────

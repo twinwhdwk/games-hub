@@ -347,7 +347,7 @@ function finishQuiz() {
       }
     }
     const expGain = session.correct * 4 + (accuracy === 1 ? 15 : 0);
-    const expResult = LearningHub.addExp(expGain, '빈칸마법사');
+    const expResult = GameInit.finish('빈칸마법사', expGain);
     if (accuracy === 1) LearningHub.unlockAchievement('빈칸마법사', 'perfect_' + session.subject);
     LearningHub.announceExpResult(expResult);
   }

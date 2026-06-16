@@ -992,6 +992,9 @@ class BattleEngine {
     this._loop=this._loop.bind(this);
     this._raf=requestAnimationFrame(this._loop);
 
+    // EventBus 구독: 레벨업 시 영웅 캐시 갱신
+    this._busSub = global.Bus?.on?.('level:up', () => this._buildHeroCache());
+
     // 셀 사이즈 (몬스터 렌더 크기)
     this._cellSize=Math.max(3,Math.floor(Math.min(this.W,this.H*1.4)/28));
   }
@@ -1249,13 +1252,17 @@ class BattleEngine {
 
   get chargeLevel() { return this._chargeLevel; }
 
-  destroy() { cancelAnimationFrame(this._raf); }
+  destroy() {
+    cancelAnimationFrame(this._raf);
+    if (typeof this._busSub === 'function') this._busSub(); // Bus 구독 해제
+  }
 
   // ── 내부 메서드 ─────────────────────────────────────────
   _buildHeroCache() {
     const oc=this._heroOff; oc.width=128; oc.height=128;
-    if (this._equipped && window.LearningHub?.renderCharacter) {
-      window.LearningHub.renderCharacter(oc,this._equipped,8);
+    const renderer = global.Container?.get?.('Items') || global.Items || global.LearningHub;
+    if (this._equipped && renderer?.renderCharacter) {
+      renderer.renderCharacter(oc,this._equipped,8);
       this._heroCached=oc;
     }
   }
@@ -1270,8 +1277,9 @@ class BattleEngine {
       punch:  {color:'#f97316',type:'punch'},
     };
     if (type && EFFECTS[type]) return EFFECTS[type];
-    if (this._equipped?.weapon && window.LearningHub?.getItemById) {
-      const w=window.LearningHub.getItemById(this._equipped.weapon);
+    if (this._equipped?.weapon) {
+      const itemsOrLH = global.Container?.get?.('Items') || global.Items || global.LearningHub;
+      const w = itemsOrLH?.getItemById?.(this._equipped.weapon) || itemsOrLH?.getById?.(this._equipped.weapon);
       if (w) {
         const s=w.sprite||'';
         if(['검','창','성검','번개창'].some(x=>s.includes(x))) return EFFECTS.slash;
@@ -1482,5 +1490,13 @@ BattleEngine.MONSTERS=[
 ];
 BattleEngine.SFX=SFX;
 
+// Container 등록 + EventBus 'data:ready' 구독 (Items 로드 후 캐시 가능)
+if (global.Container) Container.register('BattleEngine', BattleEngine);
 global.BattleEngine=BattleEngine;
+
+// 이벤트: user:login 시 기존 엔진 인스턴스들에 heroCache 갱신 신호
+global.Bus?.on?.('user:login', () => {
+  // 각 게임이 engine.setHero()를 다시 호출하도록 이벤트 발행
+  global.Bus?.emit?.('engine:refresh', {});
+});
 })(window);

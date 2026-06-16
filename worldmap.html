@@ -13,6 +13,7 @@
 <script src="js/ui/modal.js"></script>
 <script src="js/game/data-loader.js"></script>
 <script src="js/game/quiz-engine.js"></script>
+<script src="js/game-registry.js"></script>
 <script src="shared.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
@@ -906,7 +907,22 @@ function updateHubData() {
   const el = document.getElementById('streak-hud');
   if (el) el.textContent = `🔥 ${streak}일 연속`;
 
-  // 오답 뱃지
+  // GameRegistry 기반 오답 뱃지 (자동으로 모든 게임 처리)
+  if (typeof GameRegistry !== 'undefined') {
+    GameRegistry.all().forEach(game => {
+      const rbId = 'rb-' + game.id;
+      const badge = document.getElementById(rbId);
+      if (badge) {
+        const n = LearningHub.getReviewCount(game.id);
+        badge.style.display = n > 0 ? 'flex' : 'none';
+        badge.textContent = n > 9 ? '9+' : String(n);
+      }
+    });
+    LearningHub.checkStreak();
+    return;
+  }
+
+  // 폴백: 하드코딩 목록
   const gameIds = {
     '구구단':'rb-구구단', '분수계단':'rb-분수계단', '영단어정벌':'rb-영단어정벌',
     '한국사탐험':'rb-한국사탐험', '총알피하기':'rb-총알피하기', '지식탐험':'rb-지식탐험',

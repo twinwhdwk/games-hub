@@ -350,6 +350,15 @@ document.getElementById('login-btn').addEventListener('click', () => {
 LearningHub.onReady(() => {
   LearningHub.injectBackLink();
   renderAll();
+
+  // EventBus 실시간 구독 — 레벨업·학년변경 시 자동 갱신
+  if (typeof Bus !== 'undefined') {
+    Bus.on('level:up',      () => { renderCharacter(); renderRecentItems(); });
+    Bus.on('grade:changed', () => { renderSubjectGrades(); renderStudyStatus(); });
+    Bus.on('streak:updated',() => renderStudyStatus());
+    Bus.on('item:unlocked', () => { renderCharacter(); renderRecentItems(); });
+    Bus.on('user:login',    () => renderAll());
+  }
 });
 </script>
 </body>
