@@ -446,6 +446,225 @@ function drawMonsterSprite(ctx, mKey, frameName, x, y, cellSize, alpha=1) {
   ctx.restore();
 }
 
+
+// ═══════════════════════════════════════════════════════
+// 카메라 시스템 (화면 흔들림 + 줌 + 팬)
+// ═══════════════════════════════════════════════════════
+class Camera {
+  constructor(W, H) {
+    this.W = W; this.H = H;
+    // 현재 상태
+    this.x = 0; this.y = 0;
+    this.zoom = 1;
+    this.rotation = 0;
+    // 흔들림
+    this._shakes = [];        // [{amp, freq, decay, t, dur, type}]
+    // 줌 트윈
+    this._zoomTarget = 1; this._zoomSpeed = 0;
+    this._zoomFrom = 1; this._zoomStart = 0; this._zoomDur = 0;
+    // 팬 트윈
+    this._panTargetX = 0; this._panTargetY = 0;
+    this._panFromX = 0; this._panFromY = 0;
+    this._panStart = 0; this._panDur = 0;
+    // chromatic aberration
+    this.chromatic = 0;
+    this._chromaticTarget = 0;
+    // vignette
+    this.vignette = 0;
+    this._vigTarget = 0;
+    // flash
+    this._flash = { alpha: 0, color: '#fff' };
+  }
+
+  // ── 화면 흔들림 ───────────────────────────────────────
+  /**
+   * type: 'impact'  — 강한 순간 충격 (피격)
+   *       'rumble'  — 지속 진동 (폭발)
+   *       'wave'    — 부드러운 파형 (마법)
+   *       'rotate'  — 회전 흔들림 (필살기)
+   */
+  shake(amp, dur, type = 'impact') {
+    this._shakes.push({
+      amp, dur, type,
+      t: 0,
+      freq: type === 'rumble' ? 0.8 : type === 'wave' ? 0.3 : 1.2,
+      decay: type === 'rumble' ? 0.85 : 0.92,
+    });
+  }
+
+  // ── 줌 ────────────────────────────────────────────────
+  zoomTo(target, dur = 300) {
+    this._zoomFrom = this.zoom;
+    this._zoomTarget = target;
+    this._zoomStart = performance.now();
+    this._zoomDur = dur;
+  }
+
+  zoomPunch(scale = 1.08, dur = 200) {
+    const prev = this.zoom;
+    this.zoomTo(scale, dur * 0.35);
+    setTimeout(() => this.zoomTo(prev, dur * 0.65), dur * 0.35);
+  }
+
+  // ── 패닝 ──────────────────────────────────────────────
+  panTo(tx, ty, dur = 300) {
+    this._panFromX = this.x; this._panFromY = this.y;
+    this._panTargetX = tx;   this._panTargetY = ty;
+    this._panStart = performance.now(); this._panDur = dur;
+  }
+
+  // ── 크로매틱 어버레이션 ───────────────────────────────
+  setChromaticAberration(val, dur = 200) {
+    this.chromatic = val;
+    setTimeout(() => { this._chromaticTarget = 0; }, dur);
+  }
+
+  // ── 화면 플래시 ───────────────────────────────────────
+  flash(color = '#fff', alpha = 0.35, dur = 120) {
+    this._flash = { alpha, color };
+    const step = alpha / (dur / 16);
+    const tick = () => {
+      this._flash.alpha = Math.max(0, this._flash.alpha - step);
+      if (this._flash.alpha > 0) requestAnimationFrame(tick);
+    };
+    requestAnimationFrame(tick);
+  }
+
+  // ── 비네트 ────────────────────────────────────────────
+  setVignette(val, dur = 300) {
+    this.vignette = val;
+    const step = val / (dur / 16);
+    const tick = () => {
+      this.vignette = Math.max(0, this.vignette - step);
+      if (this.vignette > 0) requestAnimationFrame(tick);
+    };
+    setTimeout(() => requestAnimationFrame(tick), dur * 0.5);
+  }
+
+  // ── 업데이트 ──────────────────────────────────────────
+  update() {
+    const now = performance.now();
+    let sx = 0, sy = 0, sr = 0;
+
+    // 흔들림 합산
+    this._shakes = this._shakes.filter(s => {
+      s.t++;
+      const decay = Math.pow(s.decay, s.t);
+      const tRatio = s.t / s.dur;
+      if (tRatio >= 1) return false;
+
+      if (s.type === 'impact') {
+        // 빠른 감쇠 + 방향 반전
+        const sign = s.t % 2 === 0 ? 1 : -1;
+        sx += sign * s.amp * decay * (1 - tRatio) * Math.cos(s.t * s.freq * Math.PI);
+        sy += s.amp * 0.4 * decay * (1 - tRatio) * Math.sin(s.t * s.freq * Math.PI);
+      } else if (s.type === 'rumble') {
+        // 지속 진동
+        sx += (Math.random() - 0.5) * s.amp * decay;
+        sy += (Math.random() - 0.5) * s.amp * decay * 0.5;
+      } else if (s.type === 'wave') {
+        // 부드러운 사인파
+        sx += Math.sin(s.t * s.freq) * s.amp * decay;
+        sy += Math.cos(s.t * s.freq * 0.7) * s.amp * decay * 0.3;
+      } else if (s.type === 'rotate') {
+        // 회전 성분 추가
+        sx += Math.sin(s.t * s.freq) * s.amp * decay;
+        sr += Math.sin(s.t * s.freq * 0.5) * 0.012 * decay;
+      }
+      return true;
+    });
+
+    this.x = sx;
+    this.y = sy;
+    this.rotation = sr;
+
+    // 줌 트윈
+    if (this._zoomDur > 0) {
+      const t = Math.min(1, (now - this._zoomStart) / this._zoomDur);
+      const e = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+      this.zoom = this._zoomFrom + (this._zoomTarget - this._zoomFrom) * e;
+      if (t >= 1) this._zoomDur = 0;
+    }
+
+    // 팬 트윈
+    if (this._panDur > 0) {
+      const t = Math.min(1, (now - this._panStart) / this._panDur);
+      const e = t < 0.5 ? 2*t*t : -1+(4-2*t)*t;
+      this.x += this._panFromX + (this._panTargetX - this._panFromX) * e;
+      this.y += this._panFromY + (this._panTargetY - this._panFromY) * e;
+      if (t >= 1) this._panDur = 0;
+    }
+
+    // 크로매틱 감쇠
+    this.chromatic = Math.max(0, this.chromatic - 0.3);
+  }
+
+  // ── 렌더링 컨텍스트 적용 ─────────────────────────────
+  begin(ctx) {
+    ctx.save();
+    // 캔버스 중심 기준으로 변환
+    ctx.translate(this.W / 2 + this.x, this.H / 2 + this.y);
+    ctx.rotate(this.rotation);
+    ctx.scale(this.zoom, this.zoom);
+    ctx.translate(-this.W / 2, -this.H / 2);
+  }
+
+  end(ctx) {
+    ctx.restore();
+  }
+
+  // ── 포스트 이펙트 (카메라 공간 밖에서 적용) ──────────
+  drawPostEffects(ctx) {
+    const W = this.W, H = this.H;
+
+    // 크로매틱 어버레이션 (색수차)
+    if (this.chromatic > 0.5) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+      ctx.globalAlpha = Math.min(0.12, this.chromatic * 0.04);
+      // 빨강 채널 왼쪽 오프셋
+      ctx.fillStyle = 'rgba(255,0,0,0.08)';
+      ctx.fillRect(-this.chromatic * 0.5, 0, W, H);
+      // 파랑 채널 오른쪽 오프셋
+      ctx.fillStyle = 'rgba(0,0,255,0.08)';
+      ctx.fillRect(this.chromatic * 0.5, 0, W, H);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
+    }
+
+    // 화면 플래시
+    if (this._flash.alpha > 0.005) {
+      ctx.save();
+      ctx.globalAlpha = this._flash.alpha;
+      ctx.fillStyle = this._flash.color;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // 비네트 (주변 어둡게)
+    if (this.vignette > 0) {
+      ctx.save();
+      const vig = ctx.createRadialGradient(W/2, H/2, H*0.2, W/2, H/2, H*0.75);
+      vig.addColorStop(0, `rgba(0,0,0,0)`);
+      vig.addColorStop(1, `rgba(0,0,0,${Math.min(0.85, this.vignette)})`);
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    }
+
+    // 스캔라인 (미묘한 레트로 느낌)
+    if (this._shakes.length > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.025;
+      ctx.fillStyle = '#000';
+      for (let y = 0; y < H; y += 3) {
+        ctx.fillRect(0, y, W, 1);
+      }
+      ctx.restore();
+    }
+  }
+}
+
 // ═══════════════════════════════════════════════════════
 // 배경 렌더러 (패럴랙스 레이어)
 // ═══════════════════════════════════════════════════════
@@ -760,6 +979,7 @@ class BattleEngine {
     this._cb={};
     this._busy=false;
 
+    this._cam=new Camera(this.W,this.H);
     this._bg=new Background(this.W,this.H,this.opts.theme);
     this._ps=new ParticleSystem();
     this._ov=new Overlay();
@@ -817,16 +1037,27 @@ class BattleEngine {
 
     if (resolved.type==='slash') {
       SFX.slash();
-      tl.at(0,   ()=>this._tweenX(hs,0,(enemyX-heroX)*0.65,160));
+      tl.at(0,   ()=>{
+        this._tweenX(hs,0,(enemyX-heroX)*0.65,160);
+        this._cam.panTo(-15, 0, 140);  // 돌격 방향으로 살짝 이동
+      });
       tl.at(170, ()=>{
         this._ps.slash(enemyX-18, gY-55, -0.5, resolved.color);
         this._ps.sparks(enemyX, gY-50, resolved.color, 14);
         this._ps.ring(enemyX, gY-50, resolved.color, 55);
         this._ps.text(opts.dmgText||'SLASH!', enemyX, gY-100, resolved.color, 16);
         this._shake(ms,20,220); this._mFrame='hurt'; SFX.hit();
+        // 카메라 타격감
+        this._cam.shake(8, 14, 'impact');
+        this._cam.flash('#fff', 0.22, 100);
+        this._cam.zoomPunch(1.06, 220);
+        this._cam.setChromaticAberration(6, 180);
         if(this._monster) this._monster.hpPct=Math.max(0,(this._monster.hpPct||1)-0.12);
       });
-      tl.at(280, ()=>this._tweenX(hs,(enemyX-heroX)*0.65,0,180));
+      tl.at(280, ()=>{
+        this._tweenX(hs,(enemyX-heroX)*0.65,0,180);
+        this._cam.panTo(0, 0, 200);  // 복귀
+      });
       tl.at(460, ()=>{ this._mFrame='idle'; this._busy=false; this._emit('attackEnd',resolved); });
 
     } else if (resolved.type==='magic') {
@@ -838,6 +1069,12 @@ class BattleEngine {
         this._ps.ring(enemyX,gY-55,resolved.color,70); this._ps.ring(enemyX,gY-55,'#fff',40);
         this._ps.text(opts.dmgText||'MAGIC!', enemyX, gY-105, resolved.color, 16);
         this._shake(ms,16,260); this._mFrame='hurt'; SFX.hit();
+        // 카메라 — 마법은 파동형
+        this._cam.shake(6, 18, 'wave');
+        this._cam.flash(resolved.color, 0.18, 150);
+        this._cam.zoomPunch(1.05, 280);
+        this._cam.setChromaticAberration(10, 250);
+        this._cam.setVignette(0.3, 300);
         if(this._monster) this._monster.hpPct=Math.max(0,(this._monster.hpPct||1)-0.14);
       });
       tl.at(380, ()=>{ hs.y=0; });
@@ -850,6 +1087,10 @@ class BattleEngine {
         this._ps.sparks(enemyX,gY-55,resolved.color,18);
         this._ps.text(opts.dmgText||'CRITICAL!', enemyX, gY-105, resolved.color, 14);
         this._shake(ms,14,240); this._mFrame='hurt'; SFX.hit();
+        this._cam.shake(5, 12, 'impact');
+        this._cam.flash('#ffff88', 0.15, 80);
+        this._cam.zoomPunch(1.04, 180);
+        this._cam.setChromaticAberration(4, 150);
         if(this._monster) this._monster.hpPct=Math.max(0,(this._monster.hpPct||1)-0.13);
       });
       tl.at(450, ()=>{ this._mFrame='idle'; this._busy=false; this._emit('attackEnd',resolved); });
@@ -861,6 +1102,9 @@ class BattleEngine {
         this._ps.shockwave(enemyX,gY-50,resolved.color,2);
         this._ps.text(opts.dmgText||'WISDOM!', enemyX, gY-105, resolved.color, 14);
         this._shake(ms,18,280); this._mFrame='hurt'; SFX.hit();
+        this._cam.shake(7, 16, 'rumble');
+        this._cam.flash(resolved.color, 0.2, 200);
+        this._cam.setChromaticAberration(8, 220);
         if(this._monster) this._monster.hpPct=Math.max(0,(this._monster.hpPct||1)-0.11);
       });
       tl.at(500, ()=>{ this._mFrame='idle'; this._busy=false; this._emit('attackEnd',resolved); });
@@ -884,15 +1128,29 @@ class BattleEngine {
     const heroX=this.W*this.opts.heroX, enemyX=this.W*this.opts.enemyX, gY=this.H*this.opts.groundY;
     const tl=this._timeline();
     SFX.hit();
-    tl.at(0,   ()=>{ this._mFrame='attack'; this._tweenX(ms,0,-(enemyX-heroX)*0.55,160); });
+    tl.at(0,   ()=>{
+      this._mFrame='attack';
+      this._tweenX(ms,0,-(enemyX-heroX)*0.55,160);
+      // wind-up: 카메라가 몬스터 쪽으로 살짝 이동
+      this._cam.panTo(20, 0, 120);
+    });
     tl.at(180, ()=>{
       this._shake(hs,20,260);
       this._ps.sparks(heroX+24,gY-45,'#ef4444',12);
       this._ps.ring(heroX+24,gY-45,'#f87171',50);
       this._ps.text('ATTACK!',heroX+24,gY-98,'#f87171',14);
       SFX.hurt();
+      // 카메라 — 피격은 충격적으로
+      this._cam.shake(12, 18, 'impact');
+      this._cam.flash('#ff0000', 0.28, 130);
+      this._cam.zoomPunch(0.96, 200);  // 줌 아웃으로 충격감
+      this._cam.setChromaticAberration(14, 220);
+      this._cam.setVignette(0.5, 400);
     });
-    tl.at(270, ()=>this._tweenX(ms,-(enemyX-heroX)*0.55,0,180));
+    tl.at(270, ()=>{
+      this._tweenX(ms,-(enemyX-heroX)*0.55,0,180);
+      this._cam.panTo(0, 0, 250);  // 복귀
+    });
     tl.at(460, ()=>{ this._mFrame='idle'; this._emit('monsterAttackEnd'); });
   }
 
@@ -901,10 +1159,16 @@ class BattleEngine {
     const enemyX=this.W*this.opts.enemyX, gY=this.H*this.opts.groundY;
     const tl=this._timeline();
     SFX.death();
-    tl.at(0,   ()=>{ this._mFrame='die'; this._shake(ms,22,120); });
+    tl.at(0,   ()=>{
+      this._mFrame='die'; this._shake(ms,22,120);
+      this._cam.shake(16, 22, 'rumble');
+      this._cam.flash('#fff', 0.4, 80);
+    });
     tl.at(120, ()=>{
       this._ps.explosion(enemyX,gY-50,['#ffd700','#ff6600','#ff3300','#fff']);
       this._ps.ring(enemyX,gY-50,'#ffd700',100);
+      this._cam.shake(10, 18, 'impact');
+      this._cam.setChromaticAberration(20, 300);
     });
     tl.at(200, ()=>this._tweenAlpha(ms,1,0,400));
     tl.at(260, ()=>{ SFX.item(); this._ps.text('⭐ CLEAR!',enemyX,gY-110,'#ffd700',18); });
@@ -921,6 +1185,9 @@ class BattleEngine {
     this._ps.text(`-${dmg}`, heroX+24, gY-90, '#f87171', 15);
     this._shake(this._heroState,14,200);
     this._ps.sparks(heroX+24,gY-40,'#ef4444',8);
+    this._cam.shake(9, 14, 'impact');
+    this._cam.flash('#ff2222', 0.25, 100);
+    this._cam.setChromaticAberration(10, 180);
   }
 
   playHeroHeal(hp) {
@@ -935,10 +1202,19 @@ class BattleEngine {
     const heroX=this.W*this.opts.heroX, gY=this.H*this.opts.groundY;
     this._ps.explosion(heroX+24,gY-50,['#ef4444','#c0392b','#922b21']);
     this._tweenAlpha(this._heroState,1,0,600);
+    // 카메라 — 게임오버는 느린 줌아웃
+    this._cam.shake(18, 25, 'rumble');
+    this._cam.flash('#ff0000', 0.5, 80);
+    this._cam.setChromaticAberration(30, 600);
+    this._cam.setVignette(0.85, 1000);
+    setTimeout(() => this._cam.zoomTo(0.92, 800), 200);
   }
 
   playStageClear() {
     SFX.clear();
+    this._cam.zoomTo(1.08, 300);
+    this._cam.flash('#ffd700', 0.3, 150);
+    setTimeout(() => this._cam.zoomTo(1.0, 500), 400);
     for(let i=0;i<25;i++) {
       const delay=i*40;
       setTimeout(()=>{
@@ -953,10 +1229,14 @@ class BattleEngine {
     SFX.levelup();
     const heroX=this.W*this.opts.heroX, gY=this.H*this.opts.groundY;
     this._ov.show('levelup','⬆️ LEVEL UP!','더 강해졌다!',70);
-    this._ps.emission=true;
     ['#ffd700','#4ade80','#60a5fa','#f472b6'].forEach((c,i)=>{
       setTimeout(()=>this._ps.ring(heroX+24,gY-50,c,60+i*15),i*50);
     });
+    // 카메라 — 영웅 줌인
+    this._cam.zoomTo(1.1, 250);
+    this._cam.flash('#ffd700', 0.3, 200);
+    this._cam.shake(4, 10, 'wave');
+    setTimeout(() => this._cam.zoomTo(1.0, 400), 350);
   }
 
   playUltimateCharge() {
@@ -1010,8 +1290,15 @@ class BattleEngine {
     SFX.ultimate();
     this._ov.show('ultimate','💥 ULTIMATE!!','필살기 발동!',70);
     const tl=this._timeline();
-    tl.at(0,   ()=>{ this._heroState.y=-15; });
-    tl.at(80,  ()=>{ this._ps.ring(heroX+24,gY-60,'#a855f7',80); this._ps.ring(heroX+24,gY-60,'#ffd700',50); });
+    tl.at(0,   ()=>{
+      this._heroState.y=-15;
+      this._cam.shake(4, 12, 'wave');
+      this._cam.setVignette(0.6, 600);
+    });
+    tl.at(80,  ()=>{
+      this._ps.ring(heroX+24,gY-60,'#a855f7',80); this._ps.ring(heroX+24,gY-60,'#ffd700',50);
+      this._cam.zoomTo(1.12, 200);
+    });
     tl.at(200, ()=>{
       this._tweenX(this._heroState,0,(enemyX-heroX)*0.7,120);
       ['#ffd700','#a855f7','#60a5fa','#f472b6'].forEach((c,i)=>{ setTimeout(()=>{ this._ps.ring(enemyX,gY-55,c,80+i*25); this._ps.slash(enemyX-10+i*8,gY-55+i*5,-0.4-i*0.15,c); },i*30); });
@@ -1023,9 +1310,17 @@ class BattleEngine {
       this._ps.text(opts.dmgText||'ULTIMATE!', enemyX, gY-110, '#ffd700', 20);
       this._shake(this._monState,30,400); this._mFrame='die';
       SFX.hit();
+      // 최대 카메라 연출
+      this._cam.shake(20, 30, 'rotate');
+      this._cam.flash('#fff', 0.55, 60);
+      this._cam.setChromaticAberration(25, 400);
+      this._cam.setVignette(0.7, 500);
       if(this._monster) this._monster.hpPct=Math.max(0,(this._monster.hpPct||1)-0.35);
     });
-    tl.at(450, ()=>{ this._tweenX(this._heroState,(enemyX-heroX)*0.7,0,200); this._heroState.y=0; });
+    tl.at(450, ()=>{
+      this._tweenX(this._heroState,(enemyX-heroX)*0.7,0,200); this._heroState.y=0;
+      this._cam.zoomTo(1.0, 300);
+    });
     tl.at(640, ()=>{ this._mFrame='idle'; this._busy=false; this._emit('attackEnd',{type:'ultimate',color:'#ffd700'}); this._emit('ultimate'); });
   }
 
@@ -1068,7 +1363,13 @@ class BattleEngine {
     const gY=H*this.opts.groundY;
     const heroX=W*this.opts.heroX, enemyX=W*this.opts.enemyX;
 
+    // 카메라 업데이트
+    this._cam.update();
+
     this._bg.update();
+
+    // ── 카메라 공간 시작 ──────────────────────────────
+    this._cam.begin(ctx);
     this._bg.draw(ctx);
     this._ps.update();
 
@@ -1092,10 +1393,17 @@ class BattleEngine {
       ctx.restore();
     }
 
-    // 몬스터
+    // 몬스터 아이들 보빙 (자연스러운 움직임)
+    if (!this._t) this._t = 0;
+    this._t++;
+    const idleBob = this._mFrame === 'idle' || this._mFrame === 'walk'
+      ? Math.sin(this._t * 0.04) * 2.5
+      : 0;
+    const idleBreath = Math.sin(this._t * 0.03) * 0.012 + 1;  // 숨쉬기 스케일
+
     const ms=this._monState;
     const mDrawX = enemyX+ms.x+ms.shakeX - this._cellSize*6;
-    const mDrawY = gY - this._cellSize*14 + ms.shakeY;
+    const mDrawY = gY - this._cellSize*14 + ms.shakeY + idleBob;
     const mDef = M[this._mKey];
     if (mDef) {
       // 피격 발광
@@ -1112,7 +1420,16 @@ class BattleEngine {
         ctx.beginPath(); ctx.ellipse(enemyX+ms.x, gY-this._cellSize*7, this._cellSize*8, this._cellSize*10, 0, 0, Math.PI*2); ctx.fill();
         ctx.restore();
       }
-      drawMonsterSprite(ctx, this._mKey, this._mFrame, mDrawX, mDrawY, this._cellSize, ms.alpha);
+      // 숨쉬기 스케일 변환
+      const cx = mDrawX + this._cellSize * 6;
+      const cy = mDrawY + this._cellSize * 7;
+      ctx.save();
+      ctx.globalAlpha = ms.alpha;
+      ctx.translate(cx, cy);
+      ctx.scale(idleBreath, idleBreath);
+      ctx.translate(-cx, -cy);
+      drawMonsterSprite(ctx, this._mKey, this._mFrame, mDrawX, mDrawY, this._cellSize, 1);
+      ctx.restore();
 
       // 몬스터 HP바
       if (this._monster?.hpPct !== undefined) {
@@ -1143,7 +1460,13 @@ class BattleEngine {
     // 파티클 (상단 레이어)
     this._ps.draw(ctx);
 
-    // 오버레이
+    // ── 카메라 공간 종료 ──────────────────────────────
+    this._cam.end(ctx);
+
+    // ── 포스트 이펙트 (카메라 밖) ──────────────────────
+    this._cam.drawPostEffects(ctx);
+
+    // 오버레이 (포스트 이펙트 위)
     this._ov.update();
     this._ov.draw(ctx, W, H);
   }
