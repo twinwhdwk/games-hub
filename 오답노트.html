@@ -261,6 +261,8 @@ function showQuestion() {
   let qText = d.q || d.sentence || null;
   if (!qText && d.term) qText = d.term + '의 뜻은?';
   if (!qText && d.word) qText = d.word + ' — 빈 칸을 채우세요';
+  if (!qText && d.a && d.b) qText = d.a + ' × ' + d.b + ' = ?';  // 구구단
+  if (!qText && d.hint) qText = d.hint + ' (분수 계산)';         // 분수계단
   if (!qText) qText = item.qKey;
   document.getElementById('q-text').textContent = qText;
 
@@ -271,10 +273,26 @@ function showQuestion() {
   if (d.choices) {
     choices = d.choices;
     answerIdx = d.answer ?? 0;
+  } else if (d.a && d.b) {
+    // 구구단: 정답 + 근사값 3개
+    const ans = d.a * d.b;
+    const wrongs = new Set();
+    while (wrongs.size < 3) {
+      const offset = (Math.floor(Math.random()*5)+1) * (Math.random()<0.5?1:-1);
+      const w = ans + offset;
+      if (w > 0 && w !== ans) wrongs.add(w);
+    }
+    choices = [ans, ...[...wrongs]].sort(() => Math.random()-0.5);
+    answerIdx = choices.indexOf(ans);
+    choices = choices.map(String);
+    answerIdx = choices.indexOf(String(ans));
   } else if (d.def) {
-    // 짝꿍찾기형: 정답 + 다른 항목에서 오답 3개 임시 생성
-    choices = [d.def, '?', '??', '???'];
+    choices = [d.def, '다른 뜻 1', '다른 뜻 2', '다른 뜻 3'];
     answerIdx = 0;
+  } else if (d.a) {
+    // 분수계단: O/X
+    choices = ['O (맞다)', 'X (틀리다)'];
+    answerIdx = d.correct ? 0 : 1;
   } else {
     choices = ['정답','오답1','오답2','오답3'];
     answerIdx = 0;

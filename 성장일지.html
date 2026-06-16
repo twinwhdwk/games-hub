@@ -65,6 +65,38 @@ body {
 
 .empty-msg { text-align:center; color:#5a6378; font-size:0.85rem; padding:20px 0; }
 
+/* 학습현황 */
+.status-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.status-card {
+  background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.09);
+  border-radius:12px; padding:14px; text-align:center;
+}
+.status-card .num { font-size:1.8rem; font-weight:900; color:#ffd32a; }
+.status-card .label { font-size:0.72rem; color:#8892a4; margin-top:2px; }
+.wrong-summary { margin-top:10px; }
+.wrong-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);
+  font-size:0.85rem;
+}
+.wrong-row:last-child { border-bottom:none; }
+.wrong-badge {
+  padding:2px 8px; border-radius:100px; font-size:0.7rem; font-weight:700;
+}
+.pending { background:rgba(255,107,107,0.15); color:#ff8a8a; }
+.mastered { background:rgba(74,222,128,0.15); color:#4ade80; }
+
+/* 최근 아이템 */
+.items-row { display:flex; gap:10px; flex-wrap:wrap; }
+.item-chip {
+  display:inline-flex; align-items:center; gap:6px;
+  background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.1);
+  border-radius:100px; padding:6px 12px; font-size:0.78rem; color:#c4cde0;
+}
+.item-chip.rarity-rare { border-color:#60a5fa44; }
+.item-chip.rarity-epic { border-color:#a855f744; }
+.item-chip.rarity-legendary { border-color:#fbbf2444; }
+
 a.back-link { display:block; text-align:center; margin-top:14px; color:#8892a4; font-size:0.8rem; text-decoration:none; }
 a.back-link:hover { color:#fff; }
 
@@ -92,14 +124,27 @@ a.back-link:hover { color:#fff; }
           <div class="char-level">Lv.<span class="lv-num" id="char-level">1</span> <span id="char-name"></span></div>
           <div class="exp-bar-wrap"><div class="exp-bar-fill" id="char-exp-fill" style="width:0%"></div></div>
           <div class="exp-label" id="char-exp-label">EXP 0 / 100</div>
+          <div id="streak-info" style="margin-top:8px;font-size:0.78rem;color:#ffd32a;font-weight:700;"></div>
         </div>
       </div>
+    </div>
+
+    <!-- 연속 출석 + 오답노트 요약 -->
+    <div class="section">
+      <div class="section-title">📊 학습 현황</div>
+      <div id="study-status"></div>
     </div>
 
     <!-- 과목별 학년 -->
     <div class="section">
       <div class="section-title">🎯 과목별 학습 레벨</div>
       <div id="subject-grades"></div>
+    </div>
+
+    <!-- 최근 해금 아이템 -->
+    <div class="section" id="recent-items-section">
+      <div class="section-title">🎁 최근 획득 아이템</div>
+      <div id="recent-items"></div>
     </div>
 
     <!-- 게임별 통계 -->
@@ -200,6 +245,80 @@ function renderGameStats() {
   }
 }
 
+function renderStudyStatus() {
+  const u = LearningHub.getCurrentUser();
+  const streak = u.streak || 1;
+  const wrongSummary = LearningHub.getWrongBankSummary();
+  let totalPending = 0, totalMastered = 0;
+  Object.values(wrongSummary).forEach(s => { totalPending += s.pending; totalMastered += s.mastered; });
+
+  // 스트릭 표시
+  const streakEl = document.getElementById('streak-info');
+  if (streakEl) {
+    const next = streak < 7 ? 7 : streak < 14 ? 14 : streak < 30 ? 30 : null;
+    streakEl.textContent = `🔥 ${streak}일 연속 접속${next ? ` (${next}일 달성 시 보상!)` : ' 🏆 최고 달성!'}`;
+  }
+
+  const wrap = document.getElementById('study-status');
+  wrap.innerHTML = `
+    <div class="status-grid">
+      <div class="status-card">
+        <div class="num">🔥 ${streak}</div>
+        <div class="label">연속 접속일</div>
+      </div>
+      <div class="status-card">
+        <div class="num" style="color:#ff8a8a;">${totalPending}</div>
+        <div class="label">남은 오답 문제</div>
+      </div>
+    </div>
+    ${totalPending > 0 ? `
+    <div class="wrong-summary">
+      ${LearningHub.SUBJECTS.map(s => {
+        const info = wrongSummary[s] || {pending:0, mastered:0};
+        if (info.pending === 0 && info.mastered === 0) return '';
+        return `<div class="wrong-row">
+          <span>${s}</span>
+          <span>
+            ${info.pending > 0 ? `<span class="wrong-badge pending">미숙달 ${info.pending}</span>` : ''}
+            ${info.mastered > 0 ? `<span class="wrong-badge mastered">숙달 ${info.mastered}</span>` : ''}
+          </span>
+        </div>`;
+      }).join('')}
+      <div style="text-align:right;margin-top:8px;">
+        <a href="오답노트.html" style="font-size:0.78rem;color:#7c7cff;font-weight:700;">📝 오답노트 풀기 →</a>
+      </div>
+    </div>` : '<div class="empty-msg">🎉 모든 오답을 마스터했어요!</div>'}
+  `;
+}
+
+function renderRecentItems() {
+  const c = LearningHub.getCharacter();
+  if (!c) return;
+  const section = document.getElementById('recent-items-section');
+  // 기본 아이템 제외, 보유 아이템 중 최근 8개
+  const nonDefault = LearningHub.ITEM_CATALOG.filter(it =>
+    it.unlock.type !== 'default' && c.inventory.includes(it.id)
+  ).slice(-8);
+
+  if (!nonDefault.length) {
+    section.style.display = 'none';
+    return;
+  }
+  section.style.display = 'block';
+  const wrap = document.getElementById('recent-items');
+  wrap.innerHTML = '';
+  const row = document.createElement('div');
+  row.className = 'items-row';
+  nonDefault.reverse().forEach(item => {
+    const rarityEmoji = {common:'⚪',rare:'🔵',epic:'🟣',legendary:'🟡'}[item.rarity] || '';
+    const chip = document.createElement('div');
+    chip.className = `item-chip rarity-${item.rarity}`;
+    chip.textContent = rarityEmoji + ' ' + item.name;
+    row.appendChild(chip);
+  });
+  wrap.appendChild(row);
+}
+
 function renderAll() {
   if (!LearningHub.getCurrentUser()) {
     document.getElementById('content').style.display = 'none';
@@ -209,7 +328,9 @@ function renderAll() {
   document.getElementById('content').style.display = 'block';
   document.getElementById('login-prompt').style.display = 'none';
   renderCharacter();
+  renderStudyStatus();
   renderSubjectGrades();
+  renderRecentItems();
   renderGameStats();
 }
 
