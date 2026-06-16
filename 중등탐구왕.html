@@ -169,8 +169,7 @@ let gradeMap = { 과학:7, 사회:7, 국어:7 };
 function gl(g) { return g <= 9 ? `중${g-6}학년` : `고${g-9}학년`; }
 
 async function load() {
-  const res = await fetch('data/question_bank.json');
-  const bank = await res.json();
+  const bank = await DataLoader.get('question_bank');
   ['과학','사회','국어'].forEach(s => {
     allQ[s] = (bank[s]||[]).filter(q => q.grade>=7 && q.grade<=9);
   });

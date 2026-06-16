@@ -56,11 +56,24 @@ const Store = {
     }
   },
 
+  /**
+   * 트랜잭션: fn(db)를 실행하고 db를 자동 저장.
+   * fn 반환값:
+   *   - false        → 저장 취소 (읽기 전용 tx)
+   *   - 그 외 모두   → db 저장 후 반환값 반환
+   * 예외는 전파되지 않고 null 반환.
+   */
   tx(fn) {
-    const db = this.load();
-    const result = fn(db);
-    if (result !== false) this.save(db);
-    return result;
+    try {
+      const db = this.load();
+      const result = fn(db);
+      if (result !== false) this.save(db);
+      return result;
+    } catch(e) {
+      console.error('[Store] tx 실패:', e);
+      global.Bus?.emit?.('error:module', { module:'Store', error:e.message });
+      return null;
+    }
   },
 
   currentUserRecord() {

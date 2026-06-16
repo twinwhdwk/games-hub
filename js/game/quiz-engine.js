@@ -81,6 +81,16 @@ class QuizEngine {
   restart() { this._buildQueue(); this.start(); }
   next()    { this._showCurrent(); }
 
+  /**
+   * 게임 중단 (뒤로가기, 타임아웃 등)
+   * 현재 진행 상황으로 _finish() 호출 보장
+   */
+  abort() {
+    if (this._finished) return;
+    this._finished = true;
+    this._finish();
+  }
+
   get current()  { return this._queue[this._idx]||null; }
   get index()    { return this._idx; }
   get length()   { return this._queue.length; }
@@ -137,6 +147,8 @@ class QuizEngine {
   }
 
   _finish() {
+    if (this._finished) return;
+    this._finished = true;
     const acc = this._idx>0 ? this._correct/this._idx : 0;
     this._adjustGrade();
     let expResult = null;

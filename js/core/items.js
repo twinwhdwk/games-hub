@@ -79,10 +79,13 @@ const Items = {
   _checkUnlocks,
 
   sync(sprites, catalog, roomCatalog) {
+    // 중복 호출 방지 — 이미 카탈로그가 있으면 덮어쓰지 않음
+    const isFirst = _data.catalog.length === 0;
     Object.assign(_data, { sprites, catalog: catalog||[], roomCatalog: roomCatalog||[] });
-    // 로드 후 즉시 해금 체크 (streak/level 기반 아이템)
-    _checkUnlocks();
-    Bus?.emit?.('data:ready', {});
+    if (isFirst) {
+      _checkUnlocks();
+      Bus?.emit?.('data:ready', {});
+    }
   },
 
   getCharacter() {

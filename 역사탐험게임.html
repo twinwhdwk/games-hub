@@ -479,9 +479,8 @@ function endGame() {
       }
     }
     const expGain = state.totalCorrect*3 + (state.lives===3?15:0);
-    const expResult = LearningHub.addExp(expGain,'한국사탐험');
+    const expResult = GameInit.finish('한국사탐험', expGain);
     if(state.era===-1 && state.lives>0) LearningHub.unlockAchievement('한국사탐험','all_eras_clear');
-    LearningHub.announceExpResult(expResult);
   }
 
   spawnParticles(window.innerWidth/2, window.innerHeight/2, '#ffe680', 40);

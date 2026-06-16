@@ -1665,9 +1665,8 @@ function endGame(){
     LearningHub.recordPlay('구구단',{score:G.score,correct:correctCount,total:30,grade:LearningHub.getGrade('수학')});
     levelInfo=LearningHub.evaluateLevel('수학',accuracy);
     const expGain = correctCount*2 + (win?20:0) + (G.wrongList.length===0?10:0);
-    const expResult = LearningHub.addExp(expGain,'구구단');
+    const expResult = GameInit.finish('구구단', expGain);
     if(G.battleWin) LearningHub.unlockAchievement('구구단','final_boss_win');
-    LearningHub.announceExpResult(expResult);
   }
 
   let wrongHtml='';

@@ -929,9 +929,8 @@ function applyLearningHubResult(isFinalVictory){
       : '\\n\\n⬇️ 영어 '+li.newGrade+'학년 난이도로 조정해서 다시 연습해봐요!';
   }
   var expGain=state.totalCorrectAll*2 + (isFinalVictory?30:0) + (state.wrongsThisLevel===0?5:0);
-  var expResult=LearningHub.addExp(expGain,'영단어정벌');
+  var expResult=GameInit.finish('영단어정벌', expGain);
   if(isFinalVictory) LearningHub.unlockAchievement('영단어정벌','perfect_stage');
-  LearningHub.announceExpResult(expResult);
   return msg;
 }
 function levelComplete(){

@@ -163,8 +163,7 @@ let session = null;
 
 async function loadBank() {
   if (BANK) return BANK;
-  const res = await fetch('data/blank_bank.json');
-  BANK = await res.json();
+  const _bd = await DataLoader.get('blank_bank'); blankBank = _bd;
   return BANK;
 }
 

@@ -223,7 +223,7 @@ async function init() {
 }
 
 async function loadQ() {
-  const res = await fetch('data/question_bank.json');
+  // DataLoader 캐시 사용 (아래 변수에 할당)
   const bank = await res.json();
   allQ = (bank['수학']||[]).filter(q => q.grade >= 7 && q.grade <= 9)
     .sort(() => Math.random() - 0.5);

@@ -382,9 +382,8 @@ function finishQuiz() {
       }
     }
     const expGain = session.correct * 4 + (accuracy === 1 ? 15 : 0);
-    const expResult = LearningHub.addExp(expGain, '지식탐험');
+    const expResult = GameInit.finish('지식탐험', expGain);
     if (accuracy === 1) LearningHub.unlockAchievement('지식탐험', 'perfect_' + session.subject);
-    LearningHub.announceExpResult(expResult);
   }
 
   const wrongEl = document.getElementById('wrong-review');

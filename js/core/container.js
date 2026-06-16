@@ -51,7 +51,10 @@ class Container {
     if (!entry) {
       // 폴백: global 직접 조회 (하위호환)
       if (typeof global[real] !== 'undefined') return global[real];
-      console.warn(`[Container] "${real}" 미등록`);
+      // 개발 환경에서만 경고 (prod에서는 조용히 null)
+      if (typeof location !== 'undefined' && location.hostname === 'localhost') {
+        console.warn(`[Container] "${real}" 미등록 — js/ 모듈 로드 순서를 확인하세요`);
+      }
       return null;
     }
     let instance = entry.value;

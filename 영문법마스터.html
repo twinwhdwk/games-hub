@@ -141,8 +141,7 @@ let curGrade = 7, answered = false;
 function gl(g) { return g <= 9 ? `중${g-6}` : `고${g-9}`; }
 
 async function load() {
-  const res = await fetch('data/question_bank.json');
-  const bank = await res.json();
+  const bank = await DataLoader.get('question_bank');
   allQ = (bank['영어'] || []).filter(q => q.grade >= 7 && q.grade <= 9);
   allQ.sort(() => Math.random() - 0.5);
 }
