@@ -289,10 +289,6 @@ function showQuestion() {
   } else if (d.def) {
     choices = [d.def, '다른 뜻 1', '다른 뜻 2', '다른 뜻 3'];
     answerIdx = 0;
-  } else if (d.a) {
-    // 분수계단: O/X
-    choices = ['O (맞다)', 'X (틀리다)'];
-    answerIdx = d.correct ? 0 : 1;
   } else {
     choices = ['정답','오답1','오답2','오답3'];
     answerIdx = 0;

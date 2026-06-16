@@ -34,21 +34,26 @@ canvas { display:block; max-width:100%; max-height:100vh; }
 /* 모바일 터치 버튼 */
 #mobile-btns {
   display:none;
-  position:fixed; bottom:80px; left:50%; transform:translateX(-50%);
-  gap:24px; z-index:90;
+  position:fixed; bottom:16px; left:50%; transform:translateX(-50%);
+  width: min(96vw, 560px);
+  display:none;
+  grid-template-columns:1fr 1fr;
+  gap:10px; z-index:90;
+  padding: 0 10px;
 }
-#mob-true, #mob-false {
-  width:min(140px,38vw); height:64px;
-  font-size:clamp(18px,5vw,26px); font-weight:900;
-  border:none; border-radius:18px; cursor:pointer;
-  box-shadow:0 4px 24px #0009;
+.mob-choice {
+  padding:14px 10px; border-radius:14px; border:none;
+  font-size:clamp(13px,3.5vw,16px); font-weight:800; cursor:pointer;
+  background:rgba(30,30,60,0.95); color:#fff; text-align:left;
+  min-height:58px; word-break:keep-all;
+  border:2px solid rgba(255,255,255,0.15);
+  box-shadow:0 4px 20px #0009;
   -webkit-tap-highlight-color:transparent;
-  touch-action:manipulation;
+  touch-action:manipulation; transition:.1s;
 }
-#mob-true  { background:linear-gradient(135deg,#1a7a2a,#2ecc40); color:#fff; }
-#mob-false { background:linear-gradient(135deg,#8a1a1a,#e74c3c); color:#fff; }
-#mob-true:active  { transform:scale(0.91); }
-#mob-false:active { transform:scale(0.91); }
+.mob-choice:active { transform:scale(0.94); }
+.mob-choice.correct { background:linear-gradient(135deg,#1a7a2a,#2ecc40); border-color:#2ecc40; }
+.mob-choice.wrong   { background:linear-gradient(135deg,#8a1a1a,#e74c3c); border-color:#e74c3c; }
 
 #fracvis { margin:0 auto 14px; text-align:center; }
 #stage-intro {
@@ -84,10 +89,15 @@ canvas { display:block; max-width:100%; max-height:100vh; }
   touch-action:manipulation;
 }
 .answer-btns button:active { transform:scale(0.94); }
-#btn-true  { background:linear-gradient(135deg,#1a7a2a,#2ecc40); color:#fff; text-shadow:0 2px 6px #00000066; }
-#btn-false { background:linear-gradient(135deg,#8a1a1a,#e74c3c); color:#fff; text-shadow:0 2px 6px #00000066; }
-#btn-true:hover  { box-shadow:0 0 24px #2ecc4066; }
-#btn-false:hover { box-shadow:0 0 24px #e74c3c66; }
+.choice-btn-frac {
+  flex:1; padding:12px 10px; border-radius:12px; border:2px solid rgba(255,255,255,0.15);
+  font-size:clamp(13px,2.5vw,16px); font-weight:800; cursor:pointer;
+  background:rgba(255,255,255,0.08); color:#fff; text-align:left;
+  min-height:54px; word-break:keep-all; transition:.12s;
+}
+.choice-btn-frac:hover { border-color:#7c7cff; background:rgba(124,124,255,0.15); }
+.choice-btn-frac.correct { background:linear-gradient(135deg,#1a7a2a,#2ecc40); border-color:#2ecc40; }
+.choice-btn-frac.wrong   { background:linear-gradient(135deg,#8a1a1a,#e74c3c); border-color:#e74c3c; }
 #flash {
   display:none; position:fixed; top:38%; left:50%; transform:translate(-50%,-50%);
   font-size:120px; z-index:300; pointer-events:none;
@@ -252,8 +262,10 @@ canvas { display:block; max-width:100%; max-height:100vh; }
 
 <!-- 모바일 터치 버튼 -->
 <div id="mobile-btns">
-  <button id="mob-true"  onclick="answer(true)">⭕ 맞아요</button>
-  <button id="mob-false" onclick="answer(false)">❌ 틀려요</button>
+  <button class="mob-choice" onclick="answer(0)"></button>
+  <button class="mob-choice" onclick="answer(1)"></button>
+  <button class="mob-choice" onclick="answer(2)"></button>
+  <button class="mob-choice" onclick="answer(3)"></button>
 </div>
 
 <div id="qbox">
@@ -262,10 +274,12 @@ canvas { display:block; max-width:100%; max-height:100vh; }
   <div id="qdots" style="display:none; font-size:22px; letter-spacing:8px; margin-bottom:10px;"></div>
   <div id="qtext"></div>
   <div id="fracvis"></div>
-  <div id="qkeys">키보드 <span>1</span> = ⭕ &nbsp;&nbsp; 키보드 <span>2</span> = ❌</div>
-  <div class="answer-btns">
-    <button id="btn-true"  onclick="answer(true)">⭕ 맞아요</button>
-    <button id="btn-false" onclick="answer(false)">❌ 틀려요</button>
+  <div id="qkeys">키보드 <span>1</span>/<span>2</span>/<span>3</span>/<span>4</span> 로 선택</div>
+  <div class="answer-btns" id="choice-btns">
+    <button class="choice-btn-frac" onclick="answer(0)"></button>
+    <button class="choice-btn-frac" onclick="answer(1)"></button>
+    <button class="choice-btn-frac" onclick="answer(2)"></button>
+    <button class="choice-btn-frac" onclick="answer(3)"></button>
   </div>
 </div>
 
@@ -944,74 +958,68 @@ let finalClearTimer = 0;
 const gatePools = [
   // 관문 1 — 분수의 기본 의미
   [
-    {q:'1/2 은 전체를 똑같이 2로 나눈 것 중 1개이다', a:true,  hint:'분수는 전체를 같은 크기로 나눈 것이에요. 1/2은 2조각 중 1조각!'},
-    {q:'1/4 은 전체를 4로 나눈 것 중 1개이다', a:true,  hint:'분모(4)는 전체를 몇 조각으로 나눴는지, 분자(1)는 그 중 몇 개인지 알려줘요.'},
-    {q:'3/5 은 전체를 5로 나눈 것 중 3개이다', a:true,  hint:'3/5 = 5조각 중 3조각. 분자가 3, 분모가 5랍니다.'},
-    {q:'2/2 는 전체(1)와 같다', a:true,  hint:'2조각으로 나눈 것 중 2조각 = 전체! 그래서 2/2 = 1이에요.'},
-    {q:'0/3 은 아무것도 없다는 뜻이다', a:true,  hint:'분자가 0이면 아무 조각도 없는 거예요. 0/3 = 0이랍니다.'},
-    {q:'4/4 는 1보다 크다', a:false, hint:'4조각으로 나눈 것 중 4조각 = 전체 = 1이에요. 1보다 크지 않아요.'},
-    {q:'분모는 전체를 몇 조각으로 나눴는지 나타낸다', a:true,  hint:'분수 a/b에서 b(아래)가 분모, a(위)가 분자예요. 분모 = 전체 나눈 수!'},
-    {q:'분자는 전체 조각 수를 나타낸다', a:false, hint:'분자는 내가 가진 조각 수예요. 전체 조각 수는 분모가 나타내요!'},
-    {q:'1/3 은 1/2 보다 크다', a:false, hint:'1/3은 전체를 3등분한 1조각, 1/2은 2등분한 1조각. 조각이 클수록 더 커요!'},
-    {q:'5/5 = 1', a:true,  hint:'5조각으로 나눈 것 중 5조각 = 전부 = 1이에요. 분자=분모이면 항상 1!'},
+    {q:'1/2 는 전체를 몇 조각으로 나눈 것 중 몇 개인가?', choices:['2조각 중 1개','4조각 중 2개','3조각 중 1개','2조각 중 2개'], answer:0, hint:'분모(2)는 전체 조각 수, 분자(1)는 내가 가진 조각 수예요!'},
+    {q:'3/5 에서 분모는 얼마인가?', choices:['5','3','8','2'], answer:0, hint:'분수 a/b에서 아래에 있는 숫자 b가 분모예요. 전체를 몇 조각으로 나눴는지 나타내요!'},
+    {q:'4/4 는 얼마와 같은가?', choices:['1','0','2','1/2'], answer:0, hint:'분모와 분자가 같으면 전체 조각을 다 가진 것! 4/4 = 1이에요.'},
+    {q:'피자를 8조각으로 잘랐을 때, 3조각을 먹으면?', choices:['3/8','8/3','3/5','1/3'], answer:0, hint:'전체 8조각 중 3조각 = 3/8이에요. 분자가 먹은 수, 분모가 전체 조각 수!'},
+    {q:'0/5 는 얼마인가?', choices:['0','1','5','1/5'], answer:0, hint:'분자가 0이면 아무 조각도 없는 거예요. 0/5 = 0!'},
+    {q:'다음 중 가장 큰 분수는?', choices:['3/4','3/8','3/6','3/12'], answer:0, hint:'분자가 같을 때는 분모가 작을수록 한 조각이 더 커요!'},
+    {q:'사과 12개 중 4개를 먹었다면 먹은 양은?', choices:['4/12 = 1/3','1/4','12/4','4/8'], answer:0, hint:'4/12를 약분하면 1/3이에요. 4÷4=1, 12÷4=3!'},
+    {q:'분수 2/6 과 크기가 같은 분수는?', choices:['1/3','1/6','2/3','3/6'], answer:0, hint:'2/6의 위아래를 2로 나누면 1/3이에요. 약분!'},
+    {q:'전체를 똑같이 4로 나눈 것 중 1개를 분수로 쓰면?', choices:['1/4','4/1','1/3','4/4'], answer:0, hint:'나눈 수(4)가 분모, 가진 조각(1)이 분자예요!'},
+    {q:'다음 중 전체(1)와 같은 분수는?', choices:['6/6','5/6','1/6','6/1'], answer:0, hint:'분자와 분모가 같으면 항상 1이에요!'},
   ],
   // 관문 2 — 분수 크기 비교
   [
-    {q:'분모가 같을 때, 분자가 클수록 분수가 크다', a:true,  hint:'1/5, 2/5, 3/5... 분모가 같으면 분자가 클수록 더 많은 조각이니까 커요!'},
-    {q:'분모가 클수록 한 조각의 크기가 작아진다', a:true,  hint:'피자를 8조각 자르면 4조각보다 더 작아지지요? 분모가 크면 조각이 작아요.'},
-    {q:'1/2 > 1/3', a:true,  hint:'1/2은 절반, 1/3은 세 번째 하나. 절반이 더 크죠!'},
-    {q:'1/4 > 1/3', a:false, hint:'1/4은 4등분 중 1개, 1/3은 3등분 중 1개. 3등분이 더 크니까 1/3이 더 커요.'},
-    {q:'2/5 > 1/5', a:true,  hint:'분모가 같으면 분자만 비교! 2 > 1이니까 2/5 > 1/5.'},
-    {q:'3/8 < 5/8', a:true,  hint:'분모가 8로 같으니 분자 비교: 3 < 5, 그러므로 3/8 < 5/8. 맞아요!'},
-    {q:'2/6 = 1/3', a:true,  hint:'2/6에서 위아래를 2로 나누면 1/3. 같은 크기의 분수랍니다!'},
-    {q:'1/2 = 2/4', a:true,  hint:'2/4에서 위아래를 2로 나누면 1/2. 모양은 달라도 크기는 같아요!'},
-    {q:'3/4 > 3/5', a:true,  hint:'분자가 3으로 같을 때: 분모가 작을수록 한 조각이 커요. 4 < 5이므로 3/4 > 3/5!'},
-    {q:'4/8 과 1/2 의 크기는 같다', a:true,  hint:'4/8 ÷ 4 = 1/2. 위아래를 같은 수로 나눠도 크기는 변하지 않아요!'},
+    {q:'1/2 과 1/3 중 더 큰 것은?', choices:['1/2','1/3','같다','알 수 없다'], answer:0, hint:'분자가 같을 때 분모가 작을수록 커요. 2 < 3이니까 1/2 > 1/3!'},
+    {q:'분모가 같을 때 더 큰 분수는?', choices:['분자가 큰 것','분자가 작은 것','항상 같다','분모만 봄'], answer:0, hint:'5/8 vs 3/8 → 분모(8)가 같으면 분자(5 vs 3)가 클수록 커요!'},
+    {q:'3/4 와 3/5 중 더 큰 것은?', choices:['3/4','3/5','같다','알 수 없다'], answer:0, hint:'분자가 같을 때는 분모가 작은 쪽이 더 커요. 4 < 5이니까 3/4 > 3/5!'},
+    {q:'4/8 과 같은 크기의 분수는?', choices:['1/2','2/8','3/6','4/6'], answer:0, hint:'4/8의 위아래를 4로 나누면 1/2. 약분하면 같은 크기!'},
+    {q:'2/5 와 3/5 중 더 작은 것은?', choices:['2/5','3/5','같다','알 수 없다'], answer:0, hint:'분모(5)가 같으면 분자가 작은 쪽이 더 작아요. 2 < 3!'},
+    {q:'다음 중 가장 작은 분수는?', choices:['1/6','1/4','1/3','1/2'], answer:0, hint:'분자가 1로 같을 때 분모가 클수록 한 조각이 작아요. 6이 제일 크니까!'},
+    {q:'6/8 을 약분하면?', choices:['3/4','2/4','6/4','1/4'], answer:0, hint:'6과 8의 공약수는 2. 위아래를 2로 나누면 3/4!'},
+    {q:'1/3 과 2/6 의 크기 관계는?', choices:['같다','1/3이 크다','2/6이 크다','알 수 없다'], answer:0, hint:'2/6의 위아래를 2로 나누면 1/3. 크기가 같아요!'},
+    {q:'다음 분수를 작은 것부터 순서대로 나열하면? (1/4, 1/2, 1/8)', choices:['1/8 < 1/4 < 1/2','1/2 < 1/4 < 1/8','1/4 < 1/8 < 1/2','1/8 < 1/2 < 1/4'], answer:0, hint:'분자가 1일 때 분모가 클수록 작아요!'},
+    {q:'5/6 과 4/6 중 더 작은 것은?', choices:['4/6','5/6','같다','알 수 없다'], answer:0, hint:'분모가 같으면 분자가 작을수록 작아요!'},
   ],
-  // 관문 3 — 실생활 문장제 + 기초 덧셈·뺄셈
+  // 관문 3 — 분수의 덧셈·뺄셈
   [
-    {q:'사과 8개 중 2개를 먹었다면, 먹은 양은 2/8이다', a:true,  hint:'먹은 것(2) ÷ 전체(8) = 2/8. 실생활에서도 이렇게 분수를 써요!'},
-    {q:'12칸짜리 초콜릿에서 4칸 먹으면, 먹은 양은 1/3이다', a:true,  hint:'4/12를 약분하면 1/3! 4÷4=1, 12÷4=3이에요.'},
-    {q:'피자를 6조각으로 잘랐다. 3조각 먹으면 피자의 1/2을 먹은 것이다', a:true,  hint:'3/6 = 1/2. 반을 먹은 거예요!'},
-    {q:'물 한 병의 3/5을 마셨다. 남은 양은 2/5이다', a:true,  hint:'전체(5/5) - 마신 것(3/5) = 남은 것(2/5). 맞아요!'},
-    {q:'하루(24시간) 중 6시간은 하루의 1/4이다', a:true,  hint:'6/24 = 1/4. 24÷6=4니까 6시간은 하루의 1/4이에요!'},
-    {q:'리본 1m를 4등분하면 한 조각은 1/4 m이다', a:true,  hint:'1 ÷ 4 = 1/4. 4등분하면 한 조각이 1/4이에요!'},
-    {q:'반 학생 30명 중 10명이 안경을 쓴다. 안경 쓴 학생은 전체의 1/3이다', a:true,  hint:'10/30 = 1/3. 위아래를 10으로 나누면 1/3이에요!'},
-    {q:'색종이를 8등분하여 3장을 사용했다. 사용한 양은 3/8이다', a:true,  hint:'사용한 것(3) ÷ 전체(8) = 3/8. 그대로 분수로 나타내면 돼요!'},
-    {q:'주스 1/4 컵을 마시고 또 1/4 컵을 마셨다. 합쳐서 1/2 컵을 마셨다', a:true,  hint:'1/4 + 1/4 = 2/4 = 1/2. 분모가 같으면 분자끼리 더해요!'},
-    {q:'케이크의 3/5 를 먹었다면 남은 양은 1/5 이다', a:false, hint:'5/5 - 3/5 = 2/5. 남은 양은 2/5예요! (1/5이 아니에요)'},
-    {q:'색칠한 부분이 5칸 중 2칸이면 2/5이다', a:true,  hint:'색칠한 것(2) ÷ 전체(5) = 2/5. 분수의 기본 뜻이에요!'},
-    {q:'1/3 + 1/3 = 2/6 이다', a:false, hint:'분모가 같으면 분자만 더해요! 1/3 + 1/3 = 2/3. (분모는 그대로!)'},
+    {q:'1/5 + 2/5 = ?', choices:['3/5','3/10','1/5','2/5'], answer:0, hint:'분모가 같을 때 분자끼리 더해요! 1+2=3, 분모는 그대로 5.'},
+    {q:'4/7 - 2/7 = ?', choices:['2/7','2/14','6/7','1/7'], answer:0, hint:'분모가 같을 때 분자끼리 빼요! 4-2=2, 분모는 그대로 7.'},
+    {q:'물 한 병의 2/6을 마셨다. 남은 양은?', choices:['4/6 = 2/3','1/6','3/6','5/6'], answer:0, hint:'전체 6/6에서 마신 2/6을 빼면 4/6 = 2/3!'},
+    {q:'1/4 + 1/4 + 1/4 = ?', choices:['3/4','3/12','1/4','3/3'], answer:0, hint:'분모가 같으면 분자끼리만 더해요. 1+1+1=3, 분모는 4 그대로!'},
+    {q:'7/9 - 4/9 = ?', choices:['3/9 = 1/3','3/18','11/9','4/9'], answer:0, hint:'7-4=3, 분모는 9 그대로. 3/9를 약분하면 1/3!'},
+    {q:'피자 6/8을 먹고 1/8을 더 먹었다면 총 먹은 양은?', choices:['7/8','7/16','5/8','6/8'], answer:0, hint:'6/8 + 1/8 = 7/8. 분모가 같으면 분자끼리!'},
+    {q:'3/10 + 4/10 = ?', choices:['7/10','7/20','1/10','3/4'], answer:0, hint:'3+4=7, 분모 10은 그대로. 7/10!'},
+    {q:'5/6 - 1/6 = ?', choices:['4/6 = 2/3','4/12','6/6','5/1'], answer:0, hint:'5-1=4, 분모 6은 그대로. 4/6을 약분하면 2/3!'},
+    {q:'테이프 1m를 3/8m 잘랐다. 남은 길이는?', choices:['5/8m','2/8m','4/8m','3/8m'], answer:0, hint:'8/8 - 3/8 = 5/8. 전체를 같은 분모로 나타내고 빼요!'},
+    {q:'2/5 + 2/5 + 1/5 = ?', choices:['5/5 = 1','5/15','3/5','2/5'], answer:0, hint:'2+2+1=5, 분모 5. 5/5는 전체(1)와 같아요!'},
   ],
-  // 관문 4 — 분수 계산 (같은 분모 덧셈·뺄셈·약분)
+  // 관문 4 — 대분수·가분수, 분수의 곱셈
   [
-    {q:'1/5 + 3/5 = 4/5', a:true,  hint:'분모가 5로 같으므로 분자끼리 더해요: 1+3=4, 그러므로 4/5!'},
-    {q:'4/7 - 2/7 = 2/7', a:true,  hint:'분모가 7로 같으므로 분자끼리 빼요: 4-2=2, 그러므로 2/7!'},
-    {q:'2/6 을 약분하면 1/3이다', a:true,  hint:'2/6에서 위아래를 최대공약수(2)로 나눠요: 2÷2=1, 6÷2=3 → 1/3!'},
-    {q:'4/8 을 약분하면 1/4이다', a:false, hint:'4/8에서 위아래를 4로 나눠요: 4÷4=1, 8÷4=2 → 1/2이에요!'},
-    {q:'3/4 - 1/4 = 2/4 이고, 약분하면 1/2이다', a:true,  hint:'3/4-1/4=2/4, 그리고 2/4=1/2(위아래를 2로 나눠요). 맞아요!'},
-    {q:'6/9 를 약분하면 2/3이다', a:true,  hint:'6/9에서 위아래를 3으로 나눠요: 6÷3=2, 9÷3=3 → 2/3!'},
-    {q:'1/3 + 1/3 + 1/3 = 1', a:true,  hint:'1+1+1=3, 분모는 3 → 3/3 = 1. 세 번 더하면 전체가 돼요!'},
-    {q:'5/6 - 1/6 = 4/6 이고, 약분하면 2/3이다', a:true,  hint:'5-1=4 → 4/6, 그리고 4÷2=2, 6÷2=3 → 2/3. 완벽해요!'},
-    {q:'분모가 같은 분수는 분자끼리 더하거나 뺄 수 있다', a:true,  hint:'분모가 같으면 조각 크기가 같아요. 그러니 개수(분자)만 계산하면 돼요!'},
-    {q:'1/4 + 2/4 = 3/8 이다', a:false, hint:'분모가 같을 때는 분모는 그대로! 1/4+2/4=3/4예요. 분모를 더하지 않아요!'},
-    {q:'7/8 - 3/8 = 4/8 = 1/2', a:true,  hint:'7-3=4 → 4/8, 그리고 4÷4=1, 8÷4=2 → 1/2. 맞아요!'},
-    {q:'2/3 + 2/3 = 4/3 이므로 1보다 크다', a:true,  hint:'2+2=4 → 4/3. 분자(4)가 분모(3)보다 크니까 1보다 크죠!'},
+    {q:'가분수 7/4를 대분수로 나타내면?', choices:['1과 3/4','1과 4/3','2와 1/4','3과 1/4'], answer:0, hint:'7÷4=1…3. 몫이 1, 나머지 3이니까 1과 3/4!'},
+    {q:'대분수 2와 1/3 을 가분수로 나타내면?', choices:['7/3','5/3','6/3','8/3'], answer:0, hint:'2×3+1=7. 분모는 3 그대로. 7/3!'},
+    {q:'1/2 × 4 = ?', choices:['2','1/8','4/2','1/2'], answer:0, hint:'1/2을 4번 더하면 4/2 = 2예요!'},
+    {q:'3/4 × 2 = ?', choices:['6/4 = 3/2 = 1과 1/2','5/4','3/8','6/8'], answer:0, hint:'3/4을 2번 더하면 6/4. 약분하면 3/2, 대분수로 1과 1/2!'},
+    {q:'가분수 9/3 의 값은?', choices:['3','2','1','4'], answer:0, hint:'9÷3=3. 9/3 = 3이에요!'},
+    {q:'다음 중 가분수가 아닌 것은?', choices:['3/5','7/4','9/3','5/2'], answer:0, hint:'가분수는 분자 ≥ 분모인 분수. 3/5는 분자(3) < 분모(5)라서 진분수!'},
+    {q:'1/3 × 6 = ?', choices:['2','6/3','1/18','3/6'], answer:0, hint:'1/3이 6개 = 6/3 = 2예요!'},
+    {q:'대분수 1과 2/5 = 가분수로?', choices:['7/5','6/5','8/5','5/5'], answer:0, hint:'1×5+2=7. 분모 5 그대로. 7/5!'},
+    {q:'2/3 × 3 = ?', choices:['2','1','6','2/9'], answer:0, hint:'2/3이 3개 = 6/3 = 2!'},
+    {q:'5/2 는 대분수로?', choices:['2와 1/2','1과 1/2','2와 2/5','1과 2/5'], answer:0, hint:'5÷2=2…1. 2와 1/2!'},
   ],
-  // 관문 5 — 심화 (다른 분모 덧셈·뺄셈·통분)
+  // 관문 5 — 실생활 응용·심화
   [
-    {q:'1/2 + 1/4 = 3/4', a:true,  hint:'통분: 1/2 = 2/4. 그러면 2/4+1/4=3/4. 분모를 4로 맞춰요!'},
-    {q:'2/3 + 1/6 = 5/6', a:true,  hint:'통분: 2/3 = 4/6. 그러면 4/6+1/6=5/6. 분모를 6으로 맞춰요!'},
-    {q:'3/4 - 1/2 = 1/4', a:true,  hint:'통분: 1/2 = 2/4. 그러면 3/4-2/4=1/4. 맞아요!'},
-    {q:'1/2 과 1/3 중 더 큰 것은 1/3이다', a:false, hint:'통분: 1/2=3/6, 1/3=2/6. 3/6 > 2/6이므로 1/2이 더 커요!'},
-    {q:'분모가 다른 분수를 더하려면 통분(분모를 같게)이 필요하다', a:true,  hint:'조각 크기가 다르면 바로 더할 수 없어요. 분모를 같게 만들고 더해야 해요!'},
-    {q:'1/2 + 1/3 = 2/5', a:false, hint:'분모가 다를 때 분모를 더하면 안 돼요! 통분하면: 3/6+2/6=5/6이에요.'},
-    {q:'3/4 는 3/8 의 두 배이다', a:true,  hint:'3/4 = 6/8. 6/8은 3/8의 두 배죠! 통분해서 비교해요.'},
-    {q:'1 - 2/5 = 3/5', a:true,  hint:'1 = 5/5. 그러면 5/5 - 2/5 = 3/5. 맞아요!'},
-    {q:'2/3 > 3/4', a:false, hint:'통분: 2/3=8/12, 3/4=9/12. 8/12 < 9/12이므로 2/3이 작아요!'},
-    {q:'1/4 + 1/2 = 3/4 이다', a:true,  hint:'통분: 1/2=2/4. 그러면 1/4+2/4=3/4. 맞아요!'},
-    {q:'5/6 - 1/3 = 1/2 이다', a:true,  hint:'통분: 1/3=2/6. 그러면 5/6-2/6=3/6=1/2. 맞아요!'},
-    {q:'2/5 + 1/10 = 1/2 이다', a:true,  hint:'통분: 2/5=4/10. 그러면 4/10+1/10=5/10=1/2. 맞아요!'},
+    {q:'전체 12개 중 3/4이면 몇 개인가?', choices:['9개','3개','4개','6개'], answer:0, hint:'12 × 3/4 = 36/4 = 9개!'},
+    {q:'반 학생 30명의 2/5는 몇 명인가?', choices:['12명','6명','15명','10명'], answer:0, hint:'30 × 2/5 = 60/5 = 12명!'},
+    {q:'1시간의 3/4은 몇 분인가?', choices:['45분','30분','40분','50분'], answer:0, hint:'60분 × 3/4 = 180/4 = 45분!'},
+    {q:'1m의 2/5는 몇 cm인가?', choices:['40cm','20cm','50cm','25cm'], answer:0, hint:'100cm × 2/5 = 200/5 = 40cm!'},
+    {q:'500원의 3/5은 얼마인가?', choices:['300원','250원','200원','150원'], answer:0, hint:'500 × 3/5 = 1500/5 = 300원!'},
+    {q:'가로 3/4m, 세로 1/2m인 직사각형의 넓이는?', choices:['3/8 m²','1/4 m²','3/4 m²','1/2 m²'], answer:0, hint:'3/4 × 1/2 = 3/8 m²!'},
+    {q:'하루(24시간)의 5/8은 몇 시간인가?', choices:['15시간','12시간','10시간','20시간'], answer:0, hint:'24 × 5/8 = 120/8 = 15시간!'},
+    {q:'색테이프 2/3m를 3등분하면 한 조각은?', choices:['2/9m','1/3m','2/3m','1/9m'], answer:0, hint:'2/3 ÷ 3 = 2/3 × 1/3 = 2/9m!'},
+    {q:'물 3/4L를 4명이 똑같이 나누면 한 명 몫은?', choices:['3/16L','1/4L','3/4L','1/16L'], answer:0, hint:'3/4 ÷ 4 = 3/4 × 1/4 = 3/16L!'},
+    {q:'1과 1/2 + 2와 1/4 = ?', choices:['3과 3/4','3과 1/2','4와 1/4','3과 1/4'], answer:0, hint:'1 + 2 = 3, 1/2 + 1/4 = 2/4 + 1/4 = 3/4. 합치면 3과 3/4!'},
   ],
 ];
 
@@ -1142,10 +1150,19 @@ function showNextQ() {
   }).join(' ');
   document.getElementById('qdots').style.display='block';
 
-  const labels = ['🌲 분수 문제','🏰 비교 문제','🌋 생활 문제','🌌 계산 문제','👑 심화 문제'];
+  const labels = ['🌲 분수 기본','🏰 크기 비교','🌋 덧셈·뺄셈','🌌 곱셈·대분수','👑 응용 심화'];
   document.getElementById('qtitle').textContent = labels[stage-1];
   document.getElementById('qtext').textContent = currentQ.q;
   renderFractionVisual(currentQ.q);
+
+  // 4지선다 선택지 업데이트
+  const choiceBtns = document.querySelectorAll('.choice-btn-frac');
+  const mobBtns = document.querySelectorAll('.mob-choice');
+  const prefix = ['① ','② ','③ ','④ '];
+  (currentQ.choices || ['①','②','③','④']).forEach((ch, i) => {
+    if (choiceBtns[i]) { choiceBtns[i].textContent = prefix[i] + ch; choiceBtns[i].className = 'choice-btn-frac'; }
+    if (mobBtns[i])    { mobBtns[i].textContent    = prefix[i] + ch; mobBtns[i].className    = 'mob-choice'; }
+  });
 
   const qbox = document.getElementById('qbox');
   qbox.classList.remove('qbox-enter');
@@ -1153,23 +1170,29 @@ function showNextQ() {
   qbox.style.display = 'block';
   qbox.classList.add('qbox-enter');
 
-  startQTimer();
-
+  // 모바일: 선택지 버튼 보이기
   if (isMobile()) {
-    document.getElementById('mobile-btns').style.display='none';
+    document.getElementById('mobile-btns').style.display = 'grid';
   }
+
+  startQTimer();
 }
 
 // ── 답변 ──
-function answer(userTrue) {
+function answer(choiceIdx) {
   if (gstate !== 'question') return;
   clearQTimer();
-  document.getElementById('qbox').style.display='none';
-  const correct = userTrue===currentQ.a;
+  const correct = choiceIdx === currentQ.answer;
+  // 선택지 색상 피드백
+  document.querySelectorAll('.choice-btn-frac,.mob-choice').forEach((btn, i) => {
+    if (i === currentQ.answer) btn.classList.add('correct');
+    else if (i === choiceIdx && !correct) btn.classList.add('wrong');
+  });
+  setTimeout(() => document.getElementById('qbox').style.display='none', correct ? 300 : 600);
   totalRunAnswered++;
   if(correct) totalRunCorrect++;
   if(typeof LearningHub!=='undefined' && LearningHub.getCurrentUser()){
-    LearningHub.recordAnswer({gameId:'분수계단', subject:'수학', qKey:currentQ.q, data:{q:currentQ.q, a:currentQ.a, hint:currentQ.hint, stage:stage}, correct:correct});
+    LearningHub.recordAnswer({gameId:'분수계단', subject:'수학', qKey:currentQ.q, data:{q:currentQ.q, choices:currentQ.choices, answer:currentQ.answer, hint:currentQ.hint, stage:stage}, correct:correct});
   }
   showFlash(correct ? '⭕' : '❌');
   if (correct) {
@@ -1240,9 +1263,9 @@ function doJump(correct) {
 }
 
 function showExplanation() {
-  const ans = currentQ.a ? '⭕ 맞아요!' : '❌ 틀려요!';
-  document.getElementById('exp-question').textContent = `"${currentQ.q}"`;
-  document.getElementById('exp-answer').textContent = `정답: ${ans}`;
+  const correctText = (currentQ.choices && currentQ.choices[currentQ.answer]) || '정답을 확인하세요';
+  document.getElementById('exp-question').textContent = currentQ.q;
+  document.getElementById('exp-answer').textContent = '정답: ' + correctText;
   document.getElementById('exp-hint').textContent = currentQ.hint || '다시 한번 생각해 보세요!';
   document.getElementById('explanation').style.display = 'block';
   gstate = 'explanation';
@@ -1265,8 +1288,10 @@ document.addEventListener('keydown', function startDismiss(e) {
 
 // ── 키 입력 ──
 document.addEventListener('keydown',e=>{
-  if(e.key==='1'){ e.preventDefault(); answer(true); }
-  else if(e.key==='2'){ e.preventDefault(); answer(false); }
+  if(e.key==='1'){ e.preventDefault(); answer(0); }
+  else if(e.key==='2'){ e.preventDefault(); answer(1); }
+  else if(e.key==='3'){ e.preventDefault(); answer(2); }
+  else if(e.key==='4'){ e.preventDefault(); answer(3); }
   else if(e.key==='Enter'||e.key===' '){
     if(gstate==='explanation') closeExplanation();
   }
