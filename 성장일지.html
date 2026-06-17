@@ -128,7 +128,13 @@ a.back-link:hover { color:#fff; }
   <div id="content" style="display:none;">
     <!-- 캐릭터 -->
     <div class="section">
-      <div class="section-title">🧙 내 캐릭터</div>
+      <div class="section-title" style="justify-content:space-between;">
+        <span>🧙 내 캐릭터</span>
+        <div style="display:flex;gap:8px;">
+          <a href="캐릭터.html" style="font-size:.72rem;padding:4px 12px;border-radius:100px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#a5b4fc;text-decoration:none;font-weight:700;">🎨 꾸미기</a>
+          <a href="베이스캠프.html" style="font-size:.72rem;padding:4px 12px;border-radius:100px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);color:#fbbf24;text-decoration:none;font-weight:700;">🏕️ 방</a>
+        </div>
+      </div>
       <div class="char-row">
         <canvas id="char-canvas" width="128" height="128"></canvas>
         <div class="char-info">
@@ -443,10 +449,9 @@ function renderRecentItems() {
   const c = LearningHub.getCharacter();
   if (!c) return;
   const section = document.getElementById('recent-items-section');
-  // 기본 아이템 제외, 보유 아이템 중 최근 8개
   const nonDefault = LearningHub.ITEM_CATALOG.filter(it =>
     it.unlock.type !== 'default' && c.inventory.includes(it.id)
-  ).slice(-8);
+  );
 
   if (!nonDefault.length) {
     section.style.display = 'none';
@@ -454,17 +459,41 @@ function renderRecentItems() {
   }
   section.style.display = 'block';
   const wrap = document.getElementById('recent-items');
-  wrap.innerHTML = '';
-  const row = document.createElement('div');
-  row.className = 'items-row';
-  nonDefault.reverse().forEach(item => {
-    const rarityEmoji = {common:'⚪',rare:'🔵',epic:'🟣',legendary:'🟡'}[item.rarity] || '';
-    const chip = document.createElement('div');
-    chip.className = `item-chip rarity-${item.rarity}`;
-    chip.textContent = rarityEmoji + ' ' + item.name;
-    row.appendChild(chip);
-  });
-  wrap.appendChild(row);
+  const RARITY_COLOR = { common:'#888', rare:'#60a5fa', epic:'#a855f7', legendary:'#fbbf24' };
+  wrap.innerHTML = nonDefault.slice(-8).reverse().map(item => {
+    const col = RARITY_COLOR[item.rarity] || '#888';
+    const RARITY_LABEL = { common:'일반', rare:'희귀', epic:'에픽', legendary:'전설' };
+    const unlockDesc = LearningHub.describeUnlock(item);
+    return `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 10px;
+        background:rgba(255,255,255,.04);border-radius:10px;border:1px solid rgba(255,255,255,.06);
+        margin-bottom:6px;">
+        <div style="width:8px;height:8px;border-radius:50%;background:${col};flex-shrink:0;box-shadow:0 0 6px ${col};"></div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:.82rem;font-weight:700;color:#fff;">${item.name}</div>
+          <div style="font-size:.65rem;color:#64748b;">${RARITY_LABEL[item.rarity]||''} · ${unlockDesc}</div>
+        </div>
+        <div style="font-size:.68rem;padding:2px 8px;border-radius:100px;
+          background:${col}18;color:${col};font-weight:700;border:1px solid ${col}33;">
+          ${item.slot === 'hair' ? '헤어' : item.slot === 'outfit' ? '의상' : item.slot === 'hat' ? '모자' :
+            item.slot === 'weapon' ? '무기' : item.slot === 'pet' ? '펫' : item.slot === 'body' ? '바디' : item.slot}
+        </div>
+      </div>`;
+  }).join('');
+
+  // 미해금 아이템 미리보기 (다음 해금 가능 아이템)
+  const nextItems = LearningHub.ITEM_CATALOG.filter(it =>
+    it.unlock.type !== 'default' && !c.inventory.includes(it.id) &&
+    (it.unlock.type === 'level' && it.unlock.value === c.level + 1)
+  ).slice(0, 2);
+
+  if (nextItems.length) {
+    wrap.innerHTML += `<div style="margin-top:10px;padding:10px 12px;background:rgba(99,102,241,.06);
+      border:1px solid rgba(99,102,241,.15);border-radius:10px;">
+      <div style="font-size:.72rem;color:#818cf8;font-weight:700;margin-bottom:6px;">✨ 다음 레벨업 시 해금</div>
+      ${nextItems.map(it => `<div style="font-size:.8rem;color:#c4cde0;font-weight:700;">🔒 ${it.name}</div>`).join('')}
+    </div>`;
+  }
 }
 
 function renderAll() {

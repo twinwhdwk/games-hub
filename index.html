@@ -660,6 +660,52 @@
     <a href="worldmap.html" style="display:inline-block;margin-top:10px;padding:8px 20px;border-radius:100px;background:linear-gradient(135deg,#0d2545,#1a3a5c);border:1.5px solid rgba(240,192,64,0.5);color:#f0c040;font-weight:900;font-size:0.82rem;text-decoration:none;letter-spacing:0.5px;">🗺️ 세계지도로 보기</a>
   </header>
 
+  <!-- 학습 루프 시각화 -->
+  <div id="loop-banner" style="margin:0 16px 16px;padding:14px 16px;
+    background:linear-gradient(135deg,rgba(99,102,241,.08),rgba(139,92,246,.06));
+    border:1px solid rgba(99,102,241,.18);border-radius:16px;">
+    <div style="font-size:.72rem;color:#818cf8;font-weight:700;margin-bottom:10px;letter-spacing:.5px;">✨ 성장 루프</div>
+    <div style="display:flex;align-items:center;gap:0;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+      <a href="지식탐험.html" style="flex-shrink:0;text-align:center;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.05);text-decoration:none;min-width:64px;">
+        <div style="font-size:1.4rem;">📚</div>
+        <div style="font-size:.62rem;color:#c4cde0;margin-top:3px;font-weight:700;">학습</div>
+      </a>
+      <div style="color:#6366f1;font-size:1rem;padding:0 4px;flex-shrink:0;">→</div>
+      <div style="flex-shrink:0;text-align:center;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.05);min-width:64px;">
+        <div style="font-size:1.4rem;">⭐</div>
+        <div style="font-size:.62rem;color:#c4cde0;margin-top:3px;font-weight:700;">EXP 획득</div>
+      </div>
+      <div style="color:#6366f1;font-size:1rem;padding:0 4px;flex-shrink:0;">→</div>
+      <div style="flex-shrink:0;text-align:center;padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.05);min-width:64px;">
+        <div style="font-size:1.4rem;">⬆️</div>
+        <div style="font-size:.62rem;color:#c4cde0;margin-top:3px;font-weight:700;">레벨업</div>
+      </div>
+      <div style="color:#6366f1;font-size:1rem;padding:0 4px;flex-shrink:0;">→</div>
+      <a href="캐릭터.html" style="flex-shrink:0;text-align:center;padding:8px 10px;border-radius:10px;background:rgba(99,102,241,.1);text-decoration:none;min-width:64px;border:1px solid rgba(99,102,241,.25);">
+        <div style="font-size:1.4rem;">🎁</div>
+        <div style="font-size:.62rem;color:#a5b4fc;margin-top:3px;font-weight:700;">아이템 해금</div>
+      </a>
+      <div style="color:#6366f1;font-size:1rem;padding:0 4px;flex-shrink:0;">→</div>
+      <a href="캐릭터.html" style="flex-shrink:0;text-align:center;padding:8px 10px;border-radius:10px;background:rgba(99,102,241,.1);text-decoration:none;min-width:64px;border:1px solid rgba(99,102,241,.25);">
+        <div style="font-size:1.4rem;">🎨</div>
+        <div style="font-size:.62rem;color:#a5b4fc;margin-top:3px;font-weight:700;">캐릭터 꾸미기</div>
+      </a>
+      <div style="color:#6366f1;font-size:1rem;padding:0 4px;flex-shrink:0;">→</div>
+      <a href="베이스캠프.html" style="flex-shrink:0;text-align:center;padding:8px 10px;border-radius:10px;background:rgba(245,158,11,.1);text-decoration:none;min-width:64px;border:1px solid rgba(245,158,11,.2);">
+        <div style="font-size:1.4rem;">🏕️</div>
+        <div style="font-size:.62rem;color:#fbbf24;margin-top:3px;font-weight:700;">베이스캠프</div>
+      </a>
+    </div>
+    <!-- 로그인 시 현재 레벨 표시 -->
+    <div id="loop-level-info" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06);">
+      <span id="loop-char-name" style="font-weight:700;color:#fff;font-size:.82rem;"></span>
+      <span id="loop-level" style="margin-left:8px;color:#a5b4fc;font-size:.78rem;"></span>
+      <div style="margin-top:6px;background:rgba(255,255,255,.08);border-radius:100px;height:5px;overflow:hidden;">
+        <div id="loop-exp-fill" style="height:100%;background:linear-gradient(90deg,#6366f1,#a855f7);border-radius:100px;width:0%;transition:width .5s;"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- 학교급 탭 -->
   <div id="tier-tabs" style="display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
     <button class="tier-tab active" data-tier="all"        onclick="switchTier('all')">📚 전체</button>
@@ -823,6 +869,24 @@ requestAnimationFrame(drawStars);
 function renderProfileBar() {
   const bar = document.getElementById('profile-bar');
   const user = LearningHub.getCurrentUser();
+
+  // 루프 배너 EXP 표시
+  const loopInfo = document.getElementById('loop-level-info');
+  if (loopInfo) {
+    if (user) {
+      const ch = LearningHub.getCharacter();
+      if (ch) {
+        loopInfo.style.display = 'block';
+        document.getElementById('loop-char-name').textContent = user.name;
+        document.getElementById('loop-level').textContent = 'Lv.' + ch.level + ' · EXP ' + ch.exp + '/' + LearningHub.LEVEL_EXP(ch.level);
+        const pct = Math.min(100, Math.round(ch.exp / LearningHub.LEVEL_EXP(ch.level) * 100));
+        document.getElementById('loop-exp-fill').style.width = pct + '%';
+      }
+    } else {
+      loopInfo.style.display = 'none';
+    }
+  }
+
   if (!user) {
     bar.innerHTML = `
       <div class="profile-info">
