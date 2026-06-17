@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎨 캐릭터 꾸미기</title>
+<link rel="stylesheet" href="js/ui/theme.css">
+<script src="js/core/event-bus.js"></script>
+<script src="js/core/container.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/user.js"></script>
+<script src="js/core/items.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/modal.js"></script>
+<script src="js/game/data-loader.js"></script>
+<script src="js/game/quiz-engine.js"></script>
+<script src="shared.js"></script>
+<script src="js/game-init.js"></script>
+<style>
+body { background:var(--bg-deep); min-height:100vh; overflow-x:hidden; }
+#wrap { max-width:700px; margin:0 auto; padding:14px 14px 80px; }
+
+/* 헤더 */
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.page-header h1 { font-size:1.3rem; font-weight:900; color:#fff; }
+.header-sub { font-size:.75rem; color:var(--text-mid); margin-top:2px; }
+
+/* 캐릭터 미리보기 */
+#preview-area {
+  display:flex; gap:16px; align-items:flex-start; margin-bottom:20px;
+}
+#char-frame {
+  flex-shrink:0; width:160px;
+  background:linear-gradient(145deg,rgba(99,102,241,.08),rgba(139,92,246,.06));
+  border:1.5px solid rgba(99,102,241,.25); border-radius:20px;
+  padding:20px; display:flex; flex-direction:column; align-items:center; gap:10px;
+}
+#char-canvas { image-rendering:pixelated; display:block; }
+.char-name { font-size:.9rem; font-weight:900; color:#fff; }
+.char-level {
+  font-size:.72rem; color:#a5b4fc; font-weight:700;
+  background:rgba(99,102,241,.15); padding:3px 10px; border-radius:100px;
+}
+.char-exp-bar { width:100%; background:rgba(255,255,255,.08); border-radius:100px; height:6px; }
+.char-exp-fill { height:100%; border-radius:100px; background:linear-gradient(90deg,#6366f1,#a855f7); transition:width .5s; }
+.char-exp-text { font-size:.62rem; color:var(--text-dim); }
+
+/* 장착 슬롯 요약 */
+#equipped-slots { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.slot-chip {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:10px; padding:8px 10px; cursor:pointer; transition:.15s;
+  display:flex; align-items:center; gap:8px;
+}
+.slot-chip:hover { border-color:#6366f1; background:rgba(99,102,241,.08); }
+.slot-chip.active { border-color:#6366f1; background:rgba(99,102,241,.12); }
+.slot-chip .slot-icon { font-size:1.2rem; flex-shrink:0; }
+.slot-chip .slot-info { min-width:0; }
+.slot-chip .slot-label { font-size:.62rem; color:var(--text-dim); font-weight:700; text-transform:uppercase; }
+.slot-chip .slot-item { font-size:.8rem; color:var(--text); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* 아이템 패널 */
+#item-panel {
+  background:var(--bg-card); border:1.5px solid var(--border-mid);
+  border-radius:16px; padding:16px; margin-bottom:14px;
+}
+.panel-title {
+  font-size:.8rem; font-weight:900; color:#a5b4fc; letter-spacing:1px;
+  text-transform:uppercase; margin-bottom:12px; display:flex; align-items:center; gap:8px;
+}
+.panel-title span { color:var(--text-dim); font-size:.7rem; font-weight:500; text-transform:none; letter-spacing:0; }
+
+/* 아이템 그리드 */
+#item-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(80px,1fr)); gap:8px; }
+.item-card {
+  background:rgba(255,255,255,.04); border:1.5px solid var(--border);
+  border-radius:12px; padding:8px 4px; text-align:center; cursor:pointer;
+  transition:.15s; position:relative; min-height:80px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+}
+.item-card:hover:not(.locked) { border-color:#6366f1; background:rgba(99,102,241,.1); }
+.item-card.equipped { border-color:#6366f1; background:rgba(99,102,241,.15); }
+.item-card.equipped::after {
+  content:'✓'; position:absolute; top:4px; right:6px;
+  font-size:.65rem; color:#818cf8; font-weight:900;
+}
+.item-card.locked { opacity:.45; cursor:default; filter:grayscale(.6); }
+.item-preview { width:48px; height:48px; image-rendering:pixelated; }
+.item-name { font-size:.65rem; color:var(--text-mid); font-weight:700; line-height:1.2; }
+.item-rarity-dot {
+  width:6px; height:6px; border-radius:50%; margin:0 auto;
+}
+.rarity-common    .item-rarity-dot { background:var(--rarity-common); }
+.rarity-rare      .item-rarity-dot { background:var(--rarity-rare); }
+.rarity-epic      .item-rarity-dot { background:var(--rarity-epic); }
+.rarity-legendary .item-rarity-dot { background:var(--rarity-legendary); }
+
+/* 잠긴 아이템 오버레이 */
+.lock-overlay {
+  position:absolute; inset:0; border-radius:10px;
+  background:rgba(0,0,0,.3); display:flex; align-items:center; justify-content:center;
+  font-size:1.2rem;
+}
+.lock-hint { font-size:.6rem; color:var(--text-dim); margin-top:2px; line-height:1.3; }
+
+/* 슬롯 탭 */
+#slot-tabs { display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap; }
+.slot-tab {
+  padding:5px 12px; border-radius:100px; border:1px solid var(--border);
+  background:var(--bg-card); color:var(--text-mid); font-size:.75rem;
+  font-weight:700; cursor:pointer; font-family:inherit; transition:.12s;
+}
+.slot-tab:hover { border-color:var(--border-strong); color:#fff; }
+.slot-tab.active { border-color:#6366f1; background:rgba(99,102,241,.12); color:#a5b4fc; }
+
+/* 통계 */
+#stats-row { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-bottom:14px; }
+.stat-card { background:var(--bg-card); border:1px solid var(--border); border-radius:10px; padding:10px; text-align:center; }
+.stat-card .sv { font-size:1.2rem; font-weight:900; color:#fff; }
+.stat-card .sl { font-size:.62rem; color:var(--text-dim); margin-top:2px; }
+
+/* 빈 상태 */
+.empty-slot { color:var(--text-dim); font-size:.78rem; text-align:center; padding:20px; }
+</style>
+</head>
+<body>
+<div id="wrap">
+
+  <div class="page-header">
+    <div>
+      <h1>🎨 캐릭터 꾸미기</h1>
+      <div class="header-sub">학습하면 EXP를 얻고 새 아이템을 해금해요</div>
+    </div>
+    <a href="index.html" class="lh-btn lh-btn-secondary" style="font-size:.78rem;padding:7px 14px;">← 허브</a>
+  </div>
+
+  <!-- 캐릭터 미리보기 + 슬롯 요약 -->
+  <div id="preview-area">
+    <div id="char-frame">
+      <canvas id="char-canvas" width="128" height="128"></canvas>
+      <div class="char-name" id="char-name">—</div>
+      <div class="char-level" id="char-level">Lv.1</div>
+      <div class="char-exp-bar">
+        <div class="char-exp-fill" id="exp-fill" style="width:0%"></div>
+      </div>
+      <div class="char-exp-text" id="exp-text">0 / 100 EXP</div>
+    </div>
+    <div id="equipped-slots"></div>
+  </div>
+
+  <!-- 통계 -->
+  <div id="stats-row">
+    <div class="stat-card"><div class="sv" id="stat-unlocked">0</div><div class="sl">해금 아이템</div></div>
+    <div class="stat-card"><div class="sv" id="stat-total">0</div><div class="sl">전체 아이템</div></div>
+    <div class="stat-card"><div class="sv" id="stat-pct">0%</div><div class="sl">수집률</div></div>
+  </div>
+
+  <!-- 슬롯 탭 + 아이템 패널 -->
+  <div id="slot-tabs"></div>
+  <div id="item-panel">
+    <div class="panel-title" id="panel-title">헤어 <span id="panel-count"></span></div>
+    <div id="item-grid"></div>
+  </div>
+
+</div>
+
+<script>
+'use strict';
+
+const SLOT_META = {
+  hair:   { label:'헤어',   icon:'💇', col:2 },
+  outfit: { label:'의상',   icon:'👕', col:2 },
+  hat:    { label:'모자',   icon:'🎩', col:2 },
+  weapon: { label:'무기',   icon:'⚔️', col:3 },
+  pet1:   { label:'펫 1',   icon:'🐾', col:1 },
+  pet2:   { label:'펫 2',   icon:'🐾', col:1 },
+  body:   { label:'바디',   icon:'👤', col:2 },
+};
+const RARITY_COLOR = { common:'#888', rare:'#60a5fa', epic:'#a855f7', legendary:'#fbbf24' };
+const RARITY_ORDER = { common:0, rare:1, epic:2, legendary:3 };
+
+let _char = null;
+let _activeSlot = 'hair';
+let _previewCanvas = null;
+
+// ── 초기화 ─────────────────────────────────────────────────
+function init() {
+  _previewCanvas = document.getElementById('char-canvas');
+  renderAll();
+
+  // EventBus
+  if (typeof Bus !== 'undefined') {
+    Bus.on('level:up',     () => { renderCharPreview(); renderStats(); });
+    Bus.on('item:unlocked',() => renderItemGrid());
+    Bus.on('user:login',   () => renderAll());
+  }
+}
+
+function renderAll() {
+  _char = LearningHub.getCharacter();
+  if (!_char) return;
+  renderCharPreview();
+  renderEquippedSlots();
+  renderSlotTabs();
+  renderItemGrid();
+  renderStats();
+}
+
+// ── 캐릭터 미리보기 ──────────────────────────────────────────
+function renderCharPreview() {
+  _char = LearningHub.getCharacter();
+  if (!_char) return;
+  LearningHub.renderCharacter(_previewCanvas, _char.equipped, 8);
+
+  const user = LearningHub.getCurrentUser();
+  document.getElementById('char-name').textContent  = user?.name || '탐험가';
+  document.getElementById('char-level').textContent = `Lv.${_char.level}`;
+
+  const toNext = LearningHub.LEVEL_EXP(_char.level);
+  const pct    = Math.min(100, Math.round(_char.exp / toNext * 100));
+  document.getElementById('exp-fill').style.width = pct + '%';
+  document.getElementById('exp-text').textContent  = `${_char.exp} / ${toNext} EXP`;
+}
+
+// ── 장착 슬롯 요약 ────────────────────────────────────────────
+function renderEquippedSlots() {
+  const wrap = document.getElementById('equipped-slots');
+  const slots = ['hair','outfit','hat','weapon','pet1','pet2'];
+  wrap.innerHTML = slots.map(slot => {
+    const itemId = _char?.equipped?.[slot];
+    const item   = itemId ? LearningHub.getItemById(itemId) : null;
+    const meta   = SLOT_META[slot] || { label:slot, icon:'📦' };
+    const name   = item && item.sprite !== '없음' ? item.name : '없음';
+    return `
+      <div class="slot-chip ${slot === _activeSlot ? 'active' : ''}" onclick="selectSlot('${slot}')">
+        <span class="slot-icon">${meta.icon}</span>
+        <div class="slot-info">
+          <div class="slot-label">${meta.label}</div>
+          <div class="slot-item">${name}</div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── 슬롯 탭 ──────────────────────────────────────────────────
+function renderSlotTabs() {
+  const tabs = document.getElementById('slot-tabs');
+  tabs.innerHTML = Object.entries(SLOT_META).map(([slot, meta]) => {
+    const all   = LearningHub.getAllItemsBySlot(slot);
+    const owned = all.filter(i => i.unlocked).length;
+    return `
+      <button class="slot-tab ${slot === _activeSlot ? 'active' : ''}" onclick="selectSlot('${slot}')">
+        ${meta.icon} ${meta.label}
+        <span style="color:${owned < all.length ? 'var(--text-dim)' : '#4ade80'};margin-left:3px;font-size:.65rem;">${owned}/${all.length}</span>
+      </button>`;
+  }).join('');
+}
+
+// ── 아이템 그리드 ─────────────────────────────────────────────
+function selectSlot(slot) {
+  _activeSlot = slot;
+  renderEquippedSlots();
+  renderSlotTabs();
+  renderItemGrid();
+}
+
+function renderItemGrid() {
+  _char = LearningHub.getCharacter();
+  const meta  = SLOT_META[_activeSlot] || { label: _activeSlot, icon:'📦' };
+  const items = LearningHub.getAllItemsBySlot(_activeSlot)
+    .sort((a,b) => (RARITY_ORDER[b.rarity]||0) - (RARITY_ORDER[a.rarity]||0));
+
+  const owned   = items.filter(i => i.unlocked).length;
+  const equippedId = _char?.equipped?.[_activeSlot];
+
+  document.getElementById('panel-title').innerHTML =
+    `${meta.icon} ${meta.label} <span style="color:var(--text-dim);margin-left:4px;">${owned}/${items.length} 해금</span>`;
+
+  const grid = document.getElementById('item-grid');
+  grid.innerHTML = '';
+
+  if (!items.length) {
+    grid.innerHTML = '<div class="empty-slot">아이템이 없습니다</div>';
+    return;
+  }
+
+  items.forEach(item => {
+    const isEquipped = item.id === equippedId;
+    const isLocked   = !item.unlocked;
+
+    const card = document.createElement('div');
+    card.className = `item-card rarity-${item.rarity} ${isEquipped ? 'equipped' : ''} ${isLocked ? 'locked' : ''}`;
+
+    // 미니 스프라이트 렌더
+    const miniCanvas = document.createElement('canvas');
+    miniCanvas.className = 'item-preview';
+    miniCanvas.width = 48; miniCanvas.height = 48;
+    miniCanvas.style.imageRendering = 'pixelated';
+    if (!isLocked && item.sprite && item.sprite !== '없음') {
+      _renderItemPreview(miniCanvas, item, _activeSlot);
+    } else if (isLocked) {
+      const ctx = miniCanvas.getContext('2d');
+      ctx.fillStyle = 'rgba(255,255,255,.06)';
+      ctx.fillRect(0, 0, 48, 48);
+    }
+
+    const hintText = isLocked ? (LearningHub.describeUnlock(item) || '잠김') : '';
+
+    card.innerHTML = `
+      <div class="item-rarity-dot" style="background:${RARITY_COLOR[item.rarity]||'#888'};"></div>
+      <div class="item-name">${item.name}</div>
+      ${isLocked ? `<div class="lock-overlay">🔒</div><div class="lock-hint">${hintText}</div>` : ''}
+    `;
+    card.insertBefore(miniCanvas, card.firstChild);
+
+    if (!isLocked) {
+      card.onclick = () => equipItem(_activeSlot, item.id);
+    }
+    grid.appendChild(card);
+  });
+}
+
+function _renderItemPreview(canvas, item, slot) {
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  ctx.clearRect(0, 0, 48, 48);
+
+  // 현재 장착 위에 해당 슬롯만 바꿔서 미리보기
+  if (!_char) return;
+  const previewEquipped = { ..._char.equipped, [slot]: item.id };
+  // pet1/pet2 처리
+  if (slot === 'pet1') previewEquipped.pet1 = item.id;
+  if (slot === 'pet2') previewEquipped.pet2 = item.id;
+
+  const offscreen = document.createElement('canvas');
+  offscreen.width = 128; offscreen.height = 128;
+  LearningHub.renderCharacter(offscreen, previewEquipped, 8);
+  ctx.drawImage(offscreen, 0, 0, 128, 128, 0, 0, 48, 48);
+}
+
+// ── 장착 ──────────────────────────────────────────────────────
+function equipItem(slot, itemId) {
+  const ok = LearningHub.equipItem(slot, itemId);
+  if (!ok) { Toast.show('장착할 수 없는 아이템입니다', { type:'error' }); return; }
+  _char = LearningHub.getCharacter();
+  renderCharPreview();
+  renderEquippedSlots();
+  renderItemGrid();
+  Toast.show('✨ 장착 완료!', { type:'success', duration:1500 });
+}
+
+// ── 통계 ──────────────────────────────────────────────────────
+function renderStats() {
+  const allItems = LearningHub.getAllItemsBySlot('hair')
+    .concat(LearningHub.getAllItemsBySlot('outfit'))
+    .concat(LearningHub.getAllItemsBySlot('hat'))
+    .concat(LearningHub.getAllItemsBySlot('weapon'))
+    .concat(LearningHub.getAllItemsBySlot('pet1'))
+    .concat(LearningHub.getAllItemsBySlot('body'));
+
+  // 중복 제거
+  const seen = new Set();
+  const unique = allItems.filter(i => { if (seen.has(i.id)) return false; seen.add(i.id); return true; });
+  const total   = unique.length;
+  const unlocked = unique.filter(i => i.unlocked).length;
+  const pct     = total > 0 ? Math.round(unlocked / total * 100) : 0;
+
+  document.getElementById('stat-unlocked').textContent = unlocked;
+  document.getElementById('stat-total').textContent    = total;
+  document.getElementById('stat-pct').textContent      = pct + '%';
+}
+
+// ── GameInit ─────────────────────────────────────────────────
+GameInit.start('캐릭터꾸미기', init, { backLink: false, checkStreak: true });
+</script>
+</body>
+</html>

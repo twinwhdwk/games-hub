@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🏕️ 베이스캠프</title>
+<link rel="stylesheet" href="js/ui/theme.css">
+<script src="js/core/event-bus.js"></script>
+<script src="js/core/container.js"></script>
+<script src="js/core/store.js"></script>
+<script src="js/core/user.js"></script>
+<script src="js/core/items.js"></script>
+<script src="js/ui/toast.js"></script>
+<script src="js/ui/modal.js"></script>
+<script src="js/game/data-loader.js"></script>
+<script src="js/game/quiz-engine.js"></script>
+<script src="shared.js"></script>
+<script src="js/game-init.js"></script>
+<style>
+body { background:var(--bg-deep); min-height:100vh; }
+#wrap { max-width:720px; margin:0 auto; padding:14px 14px 80px; }
+
+.page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
+.page-header h1 { font-size:1.3rem; font-weight:900; color:#fff; }
+.page-header p  { font-size:.75rem; color:var(--text-mid); margin-top:2px; }
+
+/* 방 미리보기 캔버스 */
+#room-canvas-wrap {
+  position:relative; border-radius:18px; overflow:hidden; margin-bottom:16px;
+  border:1.5px solid rgba(255,255,255,.08);
+  box-shadow:0 8px 32px rgba(0,0,0,.5);
+}
+#room-canvas { width:100%; display:block; image-rendering:pixelated; }
+#room-char {
+  position:absolute; bottom:18%; left:12%;
+  image-rendering:pixelated;
+}
+
+/* 탭 */
+#room-tabs { display:flex; gap:6px; margin-bottom:12px; }
+.room-tab {
+  flex:1; padding:8px 4px; border-radius:10px; border:1px solid var(--border);
+  background:var(--bg-card); color:var(--text-mid);
+  font-size:.78rem; font-weight:700; cursor:pointer; font-family:inherit;
+  text-align:center; transition:.12s;
+}
+.room-tab:hover { border-color:var(--border-strong); color:#fff; }
+.room-tab.active { border-color:#f59e0b; background:rgba(245,158,11,.1); color:#fbbf24; }
+
+/* 아이템 그리드 */
+.room-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(90px,1fr)); gap:10px; }
+.room-item {
+  background:var(--bg-card); border:1.5px solid var(--border);
+  border-radius:12px; padding:10px 6px; text-align:center;
+  cursor:pointer; transition:.15s; position:relative;
+}
+.room-item:hover:not(.locked) { border-color:#f59e0b; background:rgba(245,158,11,.08); }
+.room-item.selected { border-color:#f59e0b; background:rgba(245,158,11,.12); }
+.room-item.active-eq { border-color:#4ade80; background:rgba(74,222,128,.1); }
+.room-item.active-eq::after {
+  content:'✓'; position:absolute; top:4px; right:6px;
+  font-size:.65rem; color:#4ade80; font-weight:900;
+}
+.room-item.locked { opacity:.4; cursor:default; }
+.room-emoji { font-size:1.8rem; }
+.room-name  { font-size:.68rem; color:var(--text-mid); margin-top:4px; font-weight:700; line-height:1.2; }
+.room-hint  { font-size:.6rem; color:var(--text-dim); margin-top:2px; }
+.lock-icon  { font-size:1rem; color:var(--text-dim); margin-top:4px; }
+
+/* 가구 섹션 */
+.furn-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+.furn-header h3 { font-size:.85rem; font-weight:900; color:#fff; }
+.furn-hint { font-size:.72rem; color:var(--text-dim); }
+</style>
+</head>
+<body>
+<div id="wrap">
+
+  <div class="page-header">
+    <div>
+      <h1>🏕️ 베이스캠프</h1>
+      <p>탐험 기지를 나만의 스타일로 꾸며보세요</p>
+    </div>
+    <a href="index.html" class="lh-btn lh-btn-secondary" style="font-size:.78rem;padding:7px 14px;">← 허브</a>
+  </div>
+
+  <!-- 방 미리보기 -->
+  <div id="room-canvas-wrap">
+    <canvas id="room-canvas" width="640" height="320"></canvas>
+    <canvas id="room-char" width="80" height="80"></canvas>
+  </div>
+
+  <!-- 탭: 벽지 / 바닥 / 가구 -->
+  <div id="room-tabs">
+    <button class="room-tab active" data-cat="wallpaper" onclick="selectCat('wallpaper')">🖼️ 벽지</button>
+    <button class="room-tab" data-cat="floor"     onclick="selectCat('floor')">🪵 바닥</button>
+    <button class="room-tab" data-cat="furniture" onclick="selectCat('furniture')">🪑 가구</button>
+  </div>
+
+  <div id="room-panel"></div>
+
+</div>
+
+<script>
+'use strict';
+
+let _room = null;
+let _char = null;
+let _activeCat = 'wallpaper';
+let _roomCanvas, _charCanvas;
+
+// 방 테마 팔레트
+const ROOM_THEMES = {
+  wall_basic:   { bg:'#1b2e1b', accent:'#2d4a2d', name:'숲속 기지' },
+  wall_sky:     { bg:'#1a2a4a', accent:'#2a3d6a', name:'하늘 기지' },
+  wall_stone:   { bg:'#2a2a2a', accent:'#3a3a3a', name:'석조 성' },
+  wall_wood:    { bg:'#3d2510', accent:'#5a3820', name:'통나무집' },
+  floor_wood:   { color:'#5a3820' },
+  floor_stone:  { color:'#555566' },
+  floor_grass:  { color:'#2d5a1b' },
+  floor_tile:   { color:'#334466' },
+};
+
+function init() {
+  _roomCanvas = document.getElementById('room-canvas');
+  _charCanvas = document.getElementById('room-char');
+  _room = LearningHub.getRoom();
+  _char = LearningHub.getCharacter();
+  renderRoom();
+  renderPanel();
+
+  if (typeof Bus !== 'undefined') {
+    Bus.on('user:login', () => {
+      _room = LearningHub.getRoom();
+      _char = LearningHub.getCharacter();
+      renderRoom(); renderPanel();
+    });
+  }
+}
+
+// ── 방 캔버스 렌더 ───────────────────────────────────────────
+function renderRoom() {
+  _room = LearningHub.getRoom();
+  _char = LearningHub.getCharacter();
+  const ctx  = _roomCanvas.getContext('2d');
+  const W = 640, H = 320;
+  ctx.clearRect(0, 0, W, H);
+
+  const wallId  = _room?.wallpaper || 'wall_basic';
+  const floorId = _room?.floor     || 'floor_wood';
+  const theme   = ROOM_THEMES[wallId]  || ROOM_THEMES.wall_basic;
+  const fTheme  = ROOM_THEMES[floorId] || ROOM_THEMES.floor_wood;
+
+  // 벽
+  const wallG = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+  wallG.addColorStop(0, lighten(theme.bg, 10));
+  wallG.addColorStop(1, theme.bg);
+  ctx.fillStyle = wallG;
+  ctx.fillRect(0, 0, W, H * 0.65);
+
+  // 벽 패턴 (테마별)
+  ctx.globalAlpha = 0.07;
+  ctx.fillStyle = theme.accent;
+  for (let x = 0; x < W; x += 40) {
+    ctx.fillRect(x, 0, 1, H * 0.65);
+  }
+  for (let y = 0; y < H * 0.65; y += 40) {
+    ctx.fillRect(0, y, W, 1);
+  }
+  ctx.globalAlpha = 1;
+
+  // 바닥
+  const floorG = ctx.createLinearGradient(0, H * 0.65, 0, H);
+  floorG.addColorStop(0, lighten(fTheme.color || '#5a3820', 5));
+  floorG.addColorStop(1, darken(fTheme.color || '#5a3820', 10));
+  ctx.fillStyle = floorG;
+  ctx.fillRect(0, H * 0.65, W, H * 0.35);
+
+  // 바닥-벽 경계선
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.fillRect(0, H * 0.65 - 3, W, 6);
+
+  // 가구 이모지
+  const furniture = _room?.furniture || [];
+  const allFurn = LearningHub.getAllRoomItemsBySlot('furniture');
+  const placedItems = allFurn.filter(i => furniture.includes(i.id) && i.unlocked);
+  const positions = [
+    [W*0.12, H*0.42], [W*0.35, H*0.38], [W*0.62, H*0.40], [W*0.82, H*0.42],
+    [W*0.22, H*0.55], [W*0.50, H*0.52], [W*0.72, H*0.55],
+  ];
+  ctx.font = '32px serif';
+  ctx.textAlign = 'center';
+  placedItems.slice(0, positions.length).forEach((item, i) => {
+    const [px, py] = positions[i];
+    ctx.fillText(item.emoji || '📦', px, py);
+  });
+
+  // 캐릭터
+  if (_char) {
+    LearningHub.renderCharacter(_charCanvas, _char.equipped, 5);
+  }
+}
+
+function lighten(hex, amt) {
+  return adjustColor(hex, amt);
+}
+function darken(hex, amt) {
+  return adjustColor(hex, -amt);
+}
+function adjustColor(hex, amt) {
+  const n = parseInt(hex.replace('#',''), 16);
+  const r = Math.max(0, Math.min(255, (n>>16) + amt*2));
+  const g = Math.max(0, Math.min(255, ((n>>8)&0xff) + amt*2));
+  const b = Math.max(0, Math.min(255, (n&0xff) + amt*2));
+  return '#' + [r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
+}
+
+// ── 패널 렌더 ────────────────────────────────────────────────
+function selectCat(cat) {
+  _activeCat = cat;
+  document.querySelectorAll('.room-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.cat === cat);
+  });
+  renderPanel();
+}
+
+function renderPanel() {
+  const panel = document.getElementById('room-panel');
+  _room = LearningHub.getRoom();
+
+  if (_activeCat === 'furniture') {
+    renderFurniturePanel(panel);
+  } else {
+    renderChoicePanel(panel, _activeCat);
+  }
+}
+
+function renderChoicePanel(panel, slot) {
+  const items = LearningHub.getAllRoomItemsBySlot(slot);
+  const currentId = slot === 'wallpaper' ? _room?.wallpaper : _room?.floor;
+  panel.innerHTML = `<div class="room-grid">` +
+    items.map(item => {
+      const isActive = item.id === currentId;
+      const locked   = !item.unlocked;
+      const hint     = locked ? (LearningHub.describeUnlock(item) || '잠김') : '';
+      return `
+        <div class="room-item ${isActive?'active-eq':''} ${locked?'locked':''}"
+             onclick="${locked ? '' : `applyRoom('${slot}','${item.id}')`}">
+          <div class="room-emoji">${item.emoji || '🪵'}</div>
+          <div class="room-name">${item.name}</div>
+          ${locked ? `<div class="room-hint">${hint}</div><div class="lock-icon">🔒</div>` : ''}
+        </div>`;
+    }).join('') + `</div>`;
+}
+
+function renderFurniturePanel(panel) {
+  const items    = LearningHub.getAllRoomItemsBySlot('furniture');
+  const placed   = new Set(_room?.furniture || []);
+  const MAX_FURN = 7;
+
+  panel.innerHTML = `
+    <div class="furn-header">
+      <h3>🪑 가구 배치</h3>
+      <span class="furn-hint">${placed.size}/${MAX_FURN}개 배치됨 · 탭해서 토글</span>
+    </div>
+    <div class="room-grid">` +
+    items.map(item => {
+      const isPlaced = placed.has(item.id);
+      const locked   = !item.unlocked;
+      const hint     = locked ? (LearningHub.describeUnlock(item) || '잠김') : '';
+      return `
+        <div class="room-item ${isPlaced?'active-eq':''} ${locked?'locked':''}"
+             onclick="${locked ? '' : `toggleFurniture('${item.id}')`}">
+          <div class="room-emoji">${item.emoji || '📦'}</div>
+          <div class="room-name">${item.name}</div>
+          ${locked ? `<div class="room-hint">${hint}</div><div class="lock-icon">🔒</div>` : ''}
+          ${isPlaced ? '<div style="font-size:.65rem;color:#4ade80;margin-top:3px;">배치됨</div>' : ''}
+        </div>`;
+    }).join('') + `</div>`;
+}
+
+// ── 방 수정 ─────────────────────────────────────────────────
+function applyRoom(type, id) {
+  let ok = false;
+  if (type === 'wallpaper') ok = LearningHub.setWallpaper(id);
+  if (type === 'floor')     ok = LearningHub.setFloor(id);
+  if (!ok) { Toast.show('적용할 수 없습니다', { type:'error' }); return; }
+  _room = LearningHub.getRoom();
+  renderRoom();
+  renderPanel();
+  Toast.show('✨ 적용 완료!', { type:'success', duration:1500 });
+}
+
+function toggleFurniture(id) {
+  const result = LearningHub.toggleFurniture(id);
+  if (result === null) return;
+  _room = LearningHub.getRoom();
+  const msg = result ? '🪑 가구 배치!' : '가구 제거';
+  Toast.show(msg, { type:'info', duration:1200 });
+  renderRoom();
+  renderPanel();
+}
+
+GameInit.start('베이스캠프', init, { backLink: false, checkStreak: false });
+</script>
+</body>
+</html>

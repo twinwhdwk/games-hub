@@ -621,19 +621,10 @@
 
   <div class="profile-bar" id="profile-bar"></div>
 
-  <div class="character-panel" id="character-panel" style="display:none;">
-    <div class="character-sprite-wrap">
-      <canvas id="char-canvas" width="128" height="128"></canvas>
-    </div>
-    <div class="character-info">
-      <div class="character-level">Lv.<span class="lv-num" id="char-level">1</span> <span id="char-name"></span></div>
-      <div class="exp-bar-wrap"><div class="exp-bar-fill" id="char-exp-fill" style="width:0%"></div></div>
-      <div class="exp-label" id="char-exp-label">EXP 0 / 100</div>
-      <div id="streak-badge" style="font-size:0.75rem;color:#ffd32a;margin-top:4px;font-weight:700;">🔥 1일 연속</div>
-    </div>
+  
     <div class="character-actions">
-      <div class="profile-btn" id="open-inventory-btn">🎒 캐릭터 꾸미기</div>
-      <div class="profile-btn" id="open-room-btn">🏕️ 베이스캠프</div>
+      <a href="캐릭터.html" class="profile-btn" style="text-decoration:none;">🎨 캐릭터 꾸미기</a>
+      <a href="베이스캠프.html" class="profile-btn" style="text-decoration:none;">🏕️ 베이스캠프</a>
       <a class="profile-btn" href="성장일지.html" style="text-decoration:none;">📔 성장 일지</a>
       <a class="profile-btn" href="오답노트.html" style="text-decoration:none;">📝 오답노트</a>
     </div>
@@ -689,128 +680,10 @@
   <div class="games-grid" id="games-grid">
 
     <!-- 영어 게임 -->
-    <a class="game-card card-english" data-subjects="영어,사회" data-gameid="영단어정벌" href="영어단어게임.html">
-      <div class="card-bg"></div>
-      <div class="card-border"></div>
-      <div class="card-inner">
-        <div class="card-icon">⚔️</div>
-        <div class="card-content">
-          <div class="card-tag-row">
-            <div class="card-tag">영어 · 역사</div>
-            <div class="card-grade-badge grade-badge" data-subject="영어"></div>
-          </div>
-          <div class="card-title">수양대군의 영어 정벌</div>
-          <div class="card-desc">영어 단어를 맞춰 적군을 물리치세요! 시간 내에 정확한 뜻을 골라 성을 지키는 타워디펜스 학습 게임. 내 학년에 맞는 단어 난이도로 자동 조절돼요.</div>
-          <div class="card-features">
-            <span class="feature-chip">🏆 10단계</span>
-            <span class="feature-chip">⏱ 제한시간</span>
-            <span class="feature-chip">💡 힌트</span>
-            <span class="feature-chip">🔥 콤보</span>
-            <span class="feature-chip review-chip review-count" data-gameid="영단어정벌">복습 0개</span>
-          </div>
-          <div class="card-play-btn">게임 시작 →</div>
-        </div>
-      </div>
-    </a>
-
     <!-- 분수 게임 -->
-    <a class="game-card card-fraction" data-subjects="수학" data-gameid="분수계단" href="분수계단게임.html">
-      <div class="card-bg"></div>
-      <div class="card-border"></div>
-      <div class="card-inner">
-        <div class="card-icon">🧙</div>
-        <div class="card-content">
-          <div class="card-tag-row">
-            <div class="card-tag">수학 · 분수</div>
-            <div class="card-grade-badge grade-badge" data-subject="수학"></div>
-          </div>
-          <div class="card-title">분수 계단 탈출</div>
-          <div class="card-desc">마법사 아리아와 함께 어두운 지하 감옥을 탈출하세요! 분수 문제를 풀어 계단을 올라가는 판타지 어드벤처. 학년별 난이도가 자동으로 적용돼요.</div>
-          <div class="card-features">
-            <span class="feature-chip">🗺 5스테이지</span>
-            <span class="feature-chip">❤️ 3목숨</span>
-            <span class="feature-chip">⭐ 별점</span>
-            <span class="feature-chip">🎯 학년별 난이도</span>
-            <span class="feature-chip review-chip review-count" data-gameid="분수계단">복습 0개</span>
-          </div>
-          <div class="card-play-btn">게임 시작 →</div>
-        </div>
-      </div>
-    </a>
-
     <!-- 총알피하기 -->
-    <a class="game-card card-bullet" data-subjects="수학,과학,사회,국어" data-gameid="총알피하기" href="총알피하기.html">
-      <div class="card-bg"></div>
-      <div class="card-border"></div>
-      <div class="card-inner">
-        <div class="card-icon">🚀</div>
-        <div class="card-content">
-          <div class="card-tag-row">
-            <div class="card-tag">아케이드 · 종합퀴즈</div>
-          </div>
-          <div class="card-title">총알 피하기</div>
-          <div class="card-desc">쏟아지는 총알을 피하면서 퀴즈를 맞히세요! 틀리면 총알이 더 쏟아집니다. 과학, 역사, 수학, 상식 100문항.</div>
-          <div class="card-features">
-            <span class="feature-chip">💫 파워업</span>
-            <span class="feature-chip">📱 모바일 지원</span>
-            <span class="feature-chip">🌊 웨이브</span>
-            <span class="feature-chip">🏅 리더보드</span>
-            <span class="feature-chip review-chip review-count" data-gameid="총알피하기">복습 0개</span>
-          </div>
-          <div class="card-play-btn">게임 시작 →</div>
-        </div>
-      </div>
-    </a>
-
     <!-- 구구단 -->
-    <a class="game-card card-math" data-subjects="수학" data-gameid="구구단" href="구구단게임.html">
-      <div class="card-bg"></div>
-      <div class="card-border"></div>
-      <div class="card-inner">
-        <div class="card-icon">🤖</div>
-        <div class="card-content">
-          <div class="card-tag-row">
-            <div class="card-tag">수학 · 구구단</div>
-            <div class="card-grade-badge grade-badge" data-subject="수학"></div>
-          </div>
-          <div class="card-title">트랜스포머 구구단 대작전</div>
-          <div class="card-desc">구구단을 맞힐수록 강력한 로봇이 소환됩니다! 30문제를 풀고 최종 보스와 대결하는 우주 배틀. 내 수학 학년에 맞춰 자동으로 난이도가 조절돼요.</div>
-          <div class="card-features">
-            <span class="feature-chip">🤖 로봇 소환</span>
-            <span class="feature-chip">💥 최종 보스</span>
-            <span class="feature-chip">⭐ 5성 등급</span>
-            <span class="feature-chip">🎯 학년별 난이도</span>
-            <span class="feature-chip review-chip review-count" data-gameid="구구단">복습 0개</span>
-          </div>
-          <div class="card-play-btn">게임 시작 →</div>
-        </div>
-      </div>
-    </a>
-
     <!-- 역사 게임 -->
-    <a class="game-card card-history" data-subjects="사회" data-gameid="한국사탐험" href="역사탐험게임.html">
-      <div class="card-bg"></div>
-      <div class="card-border"></div>
-      <div class="card-inner">
-        <div class="card-icon">🏯</div>
-        <div class="card-content">
-          <div class="card-tag-row">
-            <div class="card-tag">사회 · 한국사</div>
-            <div class="card-grade-badge grade-badge" data-subject="사회"></div>
-          </div>
-          <div class="card-title">한국사 시간탐험대</div>
-          <div class="card-desc">고조선부터 광복까지! 시대별 퀴즈를 풀며 역사를 탐험하세요. 초등 한국사 전 범위를 게임으로 완전 정복.</div>
-          <div class="card-features">
-            <span class="feature-chip">🏺 6개 시대</span>
-            <span class="feature-chip">❓ 48문제</span>
-            <span class="feature-chip">⏱ 제한시간</span>
-            <span class="feature-chip review-chip review-count" data-gameid="한국사탐험">복습 0개</span>
-          </div>
-          <div class="card-play-btn">게임 시작 →</div>
-        </div>
-      </div>
-    </a>
-
     <!-- 지식탐험 게임 -->
     <a class="game-card card-knowledge" data-subjects="사회,과학,국어,영어,수학" data-gameid="지식탐험" href="지식탐험.html">
       <div class="card-bg"></div>
@@ -1007,8 +880,7 @@ function renderAll() {
       el.style.display = 'none';
     }
   });
-  renderCharacterPanel();
-  switchTier(currentTier || 'all');
+switchTier(currentTier || 'all');
 }
 
 // GameRegistry 기반 중등 게임 카드 동적 렌더링
@@ -1134,20 +1006,6 @@ function renderMiddleSection() {
   applySubjectFilter(currentSubjectFilter);
 }
 
-// ── 캐릭터 패널 ───────────────────────────────────
-function renderCharacterPanel() {
-  const panel = document.getElementById('character-panel');
-  const user = LearningHub.getCurrentUser();
-  if (!user) { panel.style.display = 'none'; return; }
-  panel.style.display = 'flex';
-  const c = LearningHub.getCharacter();
-  const need = LearningHub.LEVEL_EXP(c.level);
-  document.getElementById('char-level').textContent = c.level;
-  document.getElementById('char-name').textContent = user.name;
-  document.getElementById('char-exp-fill').style.width = Math.min(100, (c.exp / need) * 100) + '%';
-  document.getElementById('char-exp-label').textContent = `EXP ${c.exp} / ${need}`;
-  LearningHub.renderCurrentCharacter(document.getElementById('char-canvas'), 8);
-}
 
 // ── 인벤토리 / 꾸미기 모달 ──────────────────────────
 const SLOT_LABELS = { body:'피부', hair:'머리', outfit:'옷', hat:'모자', weapon:'무기/도구', pet1:'펫 1번', pet2:'펫 2번' };
@@ -1205,8 +1063,7 @@ function renderInventory() {
         div.onclick = () => {
           LearningHub.equipItem(slot, item.id);
           renderInventory();
-          renderCharacterPanel();
-        };
+};
       }
       row.appendChild(div);
     });
