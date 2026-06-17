@@ -302,31 +302,95 @@ function renderGameStats() {
   const wrap = document.getElementById('game-stats');
   wrap.innerHTML = '';
   const allStats = LearningHub.getAllStats();
-  const gameIds = Object.keys(GAME_META);
+  const games = typeof GameRegistry !== 'undefined' ? GameRegistry.all() : [];
   let hasAny = false;
 
-  gameIds.forEach(gameId => {
-    const s = allStats[gameId];
+  games.forEach(game => {
+    const s = allStats[game.id];
     if (!s || s.plays === 0) return;
     hasAny = true;
-    const meta = GAME_META[gameId];
     const accuracy = s.totalQ > 0 ? Math.round((s.totalCorrect / s.totalQ) * 100) : 0;
+    const barColor = accuracy >= 80 ? '#22c55e' : accuracy >= 60 ? '#f59e0b' : '#ef4444';
+    const tierColors = { elementary:'#2ecc71', middle:'#3498db', high:'#9b59b6' };
+    const tc = tierColors[game.tier] || '#888';
+
     const row = document.createElement('div');
     row.className = 'game-stat-row';
     row.innerHTML = `
-      <div class="game-stat-icon">${meta.icon}</div>
-      <div class="game-stat-info">
-        <div class="game-stat-name">${meta.name}</div>
-        <div class="game-stat-sub">${s.plays}회 플레이 · 정답 ${s.totalCorrect}/${s.totalQ}</div>
+      <div class="game-stat-icon">${game.icon}</div>
+      <div class="game-stat-info" style="flex:1;">
+        <div class="game-stat-name" style="display:flex;align-items:center;gap:6px;">
+          ${game.name}
+          <span style="font-size:.62rem;padding:2px 6px;border-radius:100px;background:${tc}18;color:${tc};font-weight:700;">${{elementary:'초등',middle:'중등',high:'고등'}[game.tier]||''}</span>
+        </div>
+        <div class="game-stat-sub">${s.plays}회 · 정답 ${s.totalCorrect}/${s.totalQ}</div>
+        <div style="margin-top:5px;background:rgba(255,255,255,.07);border-radius:100px;height:5px;overflow:hidden;">
+          <div style="width:${accuracy}%;height:100%;background:${barColor};border-radius:100px;transition:width .5s;"></div>
+        </div>
       </div>
-      <div class="game-stat-acc ${accuracy < 60 ? 'low' : ''}">${accuracy}%</div>
+      <div class="game-stat-acc ${accuracy < 60 ? 'low' : ''}" style="color:${barColor};">${accuracy}%</div>
     `;
     wrap.appendChild(row);
   });
 
   if (!hasAny) {
     wrap.innerHTML = '<div class="empty-msg">아직 플레이한 게임이 없어요. 게임을 시작해보세요! 🎮</div>';
+    return;
   }
+
+  // 과목별 정답률 바 차트 (Canvas)
+  renderAccuracyChart(allStats);
+}
+
+function renderAccuracyChart(allStats) {
+  let chartSection = document.getElementById('accuracy-chart-section');
+  if (!chartSection) {
+    chartSection = document.createElement('div');
+    chartSection.id = 'accuracy-chart-section';
+    chartSection.className = 'section';
+    chartSection.style.marginTop = '14px';
+    document.getElementById('game-stats').after(chartSection);
+  }
+
+  const SUBJECTS = ['수학','영어','국어','사회','과학'];
+  const COLORS   = { 수학:'#f39c12', 영어:'#e74c3c', 국어:'#27ae60', 사회:'#2980b9', 과학:'#8e44ad' };
+
+  // 과목별 정답률 계산 (오답노트 기반)
+  const wrongSummary = LearningHub.getWrongBankSummary();
+  const subjData = SUBJECTS.map(s => {
+    const ws = wrongSummary[s] || { total:0, mastered:0, pending:0 };
+    const total = ws.total || 0;
+    const acc = total > 0 ? Math.round((ws.mastered / total) * 100) : 0;
+    return { s, acc, color: COLORS[s], grade: LearningHub.getGrade(s) };
+  }).filter(d => d.acc > 0 || d.grade > 3);
+
+  if (!subjData.length) { chartSection.style.display = 'none'; return; }
+  chartSection.style.display = 'block';
+
+  chartSection.innerHTML = `
+    <div class="section-title" style="margin-bottom:12px;">📈 과목별 숙달도</div>
+    <div style="display:flex;flex-direction:column;gap:10px;">
+      ${SUBJECTS.map(subj => {
+        const ws = wrongSummary[subj] || { total:0, mastered:0, pending:0 };
+        const total = ws.total;
+        const acc = total > 0 ? Math.round(ws.mastered / total * 100) : 0;
+        const grade = LearningHub.getGrade(subj);
+        const tier = LearningHub.getTier(grade);
+        const tierLabel = {elementary:'초',middle:'중',high:'고'}[tier] || '';
+        const color = COLORS[subj];
+        return `
+          <div style="display:flex;align-items:center;gap:10px;">
+            <div style="width:32px;text-align:right;font-size:.8rem;color:#94a3b8;">${subj}</div>
+            <div style="flex:1;background:rgba(255,255,255,.07);border-radius:100px;height:10px;overflow:hidden;position:relative;">
+              <div style="width:${acc}%;height:100%;background:${color};border-radius:100px;transition:width .6s cubic-bezier(.34,1.56,.64,1);"></div>
+            </div>
+            <div style="width:36px;text-align:right;font-size:.75rem;font-weight:700;color:${color};">${acc}%</div>
+            <div style="font-size:.65rem;color:#64748b;white-space:nowrap;">${tierLabel}${grade<=6?grade:grade<=9?grade-6:grade-9}학년</div>
+          </div>`;
+      }).join('')}
+    </div>
+    <div style="font-size:.65rem;color:#475569;margin-top:8px;text-align:right;">오답 숙달 비율 기준</div>
+  `;
 }
 
 function renderStudyStatus() {

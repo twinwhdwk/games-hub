@@ -114,7 +114,20 @@
   }
 
   /* 과목 필터 */
-  .subject-filter {
+  .tier-tab {
+  padding: 7px 16px; border-radius: 100px; border: 1.5px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.05); color: rgba(255,255,255,.6);
+  font-size: .82rem; font-weight: 700; cursor: pointer; font-family: inherit;
+  white-space: nowrap; transition: .15s; flex-shrink: 0;
+}
+.tier-tab:hover { border-color: rgba(255,255,255,.3); color: #fff; }
+.tier-tab.active { color: #fff; }
+.tier-tab[data-tier="all"].active       { border-color: #fff;    background: rgba(255,255,255,.12); }
+.tier-tab[data-tier="elementary"].active{ border-color: #2ecc71; background: rgba(46,204,113,.12); color:#2ecc71; }
+.tier-tab[data-tier="middle"].active    { border-color: #3498db; background: rgba(52,152,219,.12); color:#3498db; }
+.tier-tab[data-tier="high"].active      { border-color: #9b59b6; background: rgba(155,89,182,.12); color:#9b59b6; }
+
+.subject-filter {
     display: flex;
     gap: 8px;
     justify-content: center;
@@ -656,6 +669,14 @@
     <a href="worldmap.html" style="display:inline-block;margin-top:10px;padding:8px 20px;border-radius:100px;background:linear-gradient(135deg,#0d2545,#1a3a5c);border:1.5px solid rgba(240,192,64,0.5);color:#f0c040;font-weight:900;font-size:0.82rem;text-decoration:none;letter-spacing:0.5px;">🗺️ 세계지도로 보기</a>
   </header>
 
+  <!-- 학교급 탭 -->
+  <div id="tier-tabs" style="display:flex;gap:8px;padding:0 16px 12px;overflow-x:auto;-webkit-overflow-scrolling:touch;">
+    <button class="tier-tab active" data-tier="all"        onclick="switchTier('all')">📚 전체</button>
+    <button class="tier-tab"       data-tier="elementary" onclick="switchTier('elementary')">🌿 초등</button>
+    <button class="tier-tab"       data-tier="middle"     onclick="switchTier('middle')">🌊 중등</button>
+    <button class="tier-tab"       data-tier="high"       onclick="switchTier('high')">🌌 고등</button>
+  </div>
+
   <div class="subject-filter" id="subject-filter">
     <div class="subject-pill active" data-subject="전체">전체</div>
     <div class="subject-pill" data-subject="수학">📐 수학</div>
@@ -863,11 +884,7 @@
 
   </div>
 
-  <!-- 중등/고등 게임 섹션 (GameRegistry 기반 동적 렌더) -->
-  <div id="middle-section" style="display:none;">
-    <div class="section-title" style="padding:0 20px 12px;font-size:1rem;font-weight:900;color:#74b9ff;letter-spacing:1px;">🌊 중등 게임</div>
-    <div class="card-grid" id="middle-card-grid"></div>
-  </div>
+
 
   <footer>© 2026 학습 게임 허브 · twinwhdwk</footer>
 </div>
@@ -991,10 +1008,90 @@ function renderAll() {
     }
   });
   renderCharacterPanel();
-  renderMiddleSection();
+  switchTier(currentTier || 'all');
 }
 
 // GameRegistry 기반 중등 게임 카드 동적 렌더링
+let currentTier = 'all';
+
+function switchTier(tier) {
+  currentTier = tier;
+  document.querySelectorAll('.tier-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.tier === tier);
+  });
+
+  if (typeof GameRegistry === 'undefined') { renderMiddleSection(); return; }
+
+  // 초등 카드 표시/숨김
+  const gamesGrid = document.getElementById('games-grid');
+  if (gamesGrid) {
+    gamesGrid.style.display = (tier === 'all' || tier === 'elementary') ? '' : 'none';
+  }
+
+  // 중등/고등 섹션 렌더
+  renderDynamicSections(tier);
+}
+
+function renderDynamicSections(tier) {
+  if (typeof GameRegistry === 'undefined') { renderMiddleSection(); return; }
+
+  // 기존 동적 섹션 제거
+  document.querySelectorAll('.dynamic-tier-section').forEach(el => el.remove());
+
+  const footer = document.querySelector('footer');
+  const TIER_META = {
+    middle: { label:'🌊 중등 게임', color:'#74b9ff' },
+    high:   { label:'🌌 고등 게임', color:'#d2a8ff' },
+  };
+
+  ['middle','high'].forEach(t => {
+    if (tier !== 'all' && tier !== t) return;
+    const games = GameRegistry.byTier(t);
+    if (!games.length) return;
+
+    const section = document.createElement('div');
+    section.className = 'dynamic-tier-section';
+    section.style.cssText = 'margin-bottom:24px;';
+    const meta = TIER_META[t];
+
+    section.innerHTML = `
+      <div style="padding:0 20px 12px;font-size:.95rem;font-weight:900;color:${meta.color};letter-spacing:.5px;">${meta.label}</div>
+      <div class="card-grid" id="tier-grid-${t}"></div>
+    `;
+    footer.before(section);
+
+    const grid = section.querySelector(`#tier-grid-${t}`);
+    games.forEach(game => {
+      const reviewN = LearningHub.getReviewCount(game.id);
+      const a = document.createElement('a');
+      a.className = 'game-card';
+      a.href = game.url;
+      a.dataset.subjects = game.subjects.join(',');
+      a.dataset.gameid = game.id;
+      a.innerHTML = `
+        <div class="card-bg" style="background:radial-gradient(ellipse at 30% 40%,${game.worldmap?.color||'#6366f1'}22 0%,transparent 70%);"></div>
+        <div class="card-border"></div>
+        <div class="card-inner">
+          <div class="card-icon">${game.icon}</div>
+          <div class="card-content">
+            <div class="card-tag-row">
+              ${game.subjects.map(s=>`<span class="card-tag">${s}</span>`).join('')}
+              <span class="card-tag" style="color:${meta.color};border-color:${meta.color}33;">${{middle:'중등',high:'고등'}[t]}</span>
+            </div>
+            <div class="card-title">${game.name}</div>
+            <div class="card-desc">${game.desc}</div>
+            ${reviewN>0?`<div class="review-count" style="display:inline-block;margin-top:4px;font-size:.72rem;color:#f87171;">📝 복습 ${reviewN}개</div>`:''}
+            <div class="card-play-btn">게임 시작 →</div>
+          </div>
+        </div>`;
+      grid.appendChild(a);
+    });
+  });
+
+  // 과목 필터 재적용
+  applySubjectFilter(currentSubjectFilter);
+}
+
 function renderMiddleSection() {
   if (typeof GameRegistry === 'undefined') return;
   const section = document.getElementById('middle-section');
