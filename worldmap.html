@@ -1015,7 +1015,7 @@ LearningHub.onReady(() => {
   updateHubData();
 
   if (!LearningHub.getCurrentUser()) {
-    LearningHub.injectLoginModal(() => updateHubData());
+    Modal.requireLogin(() => updateHubData());
   } else {
     LearningHub.checkStreak();
   }

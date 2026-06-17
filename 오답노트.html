@@ -226,12 +226,14 @@ function showList() {
     const qText = d.q || d.term || d.sentence || d.word || item.qKey;
     const div = document.createElement('div');
     div.className = 'wrong-item';
+    const gameLabel = item.gameId ? `<span style="font-size:.68rem;padding:2px 6px;border-radius:6px;background:rgba(255,255,255,.07);color:#94a3b8;">${item.gameId}</span>` : '';
     div.innerHTML = `
       <div class="wrong-item-q">${qText}</div>
       <div class="wrong-item-meta">
         <span class="q-badge badge-wrong">틀린 횟수 ${item.wrongCount}</span>
-        ${item.correctStreak > 0 ? `<span class="q-badge badge-streak">연속 정답 ${item.correctStreak}/2</span>` : ''}
-        <span style="color:#666f8c">${item.subject || ''} · ${item.gameId || ''}</span>
+        ${item.correctStreak > 0 ? `<span class="q-badge badge-streak">✅ ${item.correctStreak}/2</span>` : ''}
+        ${gameLabel}
+        <span style="color:#555f6c;">${item.subject || ''}</span>
       </div>`;
     listEl.appendChild(div);
   });
@@ -269,8 +271,7 @@ function showQuestion() {
   if (!qText && d.term) qText = d.term + '의 뜻은?';
   if (!qText && d.word) qText = d.word + ' — 빈 칸을 채우세요';
   if (!qText && d.a && d.b) qText = d.a + ' × ' + d.b + ' = ?';  // 구구단
-  if (!qText && d.hint) qText = d.hint + ' (분수 계산)';         // 분수계단
-  if (!qText) qText = item.qKey;
+  if (!qText) qText = item.qKey || '문제를 불러올 수 없습니다.';
   document.getElementById('q-text').textContent = qText;
 
   // 보기 생성
@@ -351,10 +352,14 @@ function handleAnswer(chosen, correct, choices) {
 
 document.getElementById('next-btn').onclick = () => {
   quizIdx++;
-  if (quizIdx < quizItems.length) {
+  // mastered된 문항은 목록에서 제거해서 재로드
+  const fresh = LearningHub.getWrongBankItems(currentSubject);
+  if (quizIdx < fresh.length) {
+    quizItems = fresh;  // 갱신
     showQuestion();
   } else {
     // 퀴즈 완료 → 목록 갱신
+    quizItems = [];
     renderTabs();
     showList();
   }
@@ -366,7 +371,8 @@ GameInit.start('오답노트', init, { checkStreak: false });
 
 // EventBus: 오답 마스터 시 목록 새로고침
 if (typeof Bus !== 'undefined') {
-  Bus.on('wrong:mastered', () => { if (typeof renderWrongList === 'function') renderWrongList(); });
+  Bus.on('wrong:mastered', () => { renderTabs(); showList(); });
+  Bus.on('user:login',     () => init());
 }
 </script>
 </body>

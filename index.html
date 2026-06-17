@@ -960,7 +960,7 @@ function renderProfileBar() {
       </div>
     `;
     document.getElementById('login-btn').onclick = () => {
-      LearningHub.injectLoginModal(() => { renderProfileBar(); renderAll(); });
+      Modal.requireLogin(() => { renderProfileBar(); renderAll(); });
     };
     return;
   }
@@ -979,7 +979,7 @@ function renderProfileBar() {
   `;
   document.getElementById('switch-btn').onclick = () => {
     LearningHub.logout();
-    LearningHub.injectLoginModal(() => { renderProfileBar(); renderAll(); });
+    Modal.requireLogin(() => { renderProfileBar(); renderAll(); });
   };
   document.getElementById('logout-btn').onclick = () => {
     LearningHub.logout();
@@ -1390,7 +1390,7 @@ LearningHub.onReady(function() {
   renderProfileBar();
   renderAll();
   if (!LearningHub.getCurrentUser()) {
-    LearningHub.injectLoginModal(() => {
+    Modal.requireLogin(() => {
       renderProfileBar();
       renderAll();
       _runStreak();

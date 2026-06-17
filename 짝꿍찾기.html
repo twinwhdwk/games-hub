@@ -402,7 +402,7 @@ document.getElementById('home-btn').addEventListener('click', () => {
   await loadBank();
   renderSubjectGrid();
   renderProfileBadge();
-  if (typeof LearningHub !== 'undefined' && !LearningHub.getCurrentUser())  GameInit.start('짝꿍찾기', function() {
+  GameInit.start('짝꿍찾기', function() {
     renderSubjectGrid();
     renderProfileBadge();
   });
