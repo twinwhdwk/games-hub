@@ -346,6 +346,7 @@ function renderGameStats() {
 
   // 과목별 정답률 바 차트 (Canvas)
   renderAccuracyChart(allStats);
+  renderExpHistoryChart(allStats);
 }
 
 function renderAccuracyChart(allStats) {
@@ -397,6 +398,107 @@ function renderAccuracyChart(allStats) {
     </div>
     <div style="font-size:.65rem;color:#475569;margin-top:8px;text-align:right;">오답 숙달 비율 기준</div>
   `;
+}
+
+function renderExpHistoryChart(allStats) {
+  const section = document.getElementById('exp-history-section');
+  const canvas  = document.getElementById('exp-chart');
+  if (!section || !canvas) return;
+
+  // 최근 게임 기록 수집 (최대 14개)
+  const history = [];
+  Object.entries(allStats).forEach(([gameId, s]) => {
+    (s.history || []).forEach(h => {
+      history.push({
+        gameId,
+        ts:      h.ts || 0,
+        correct: h.correct || 0,
+        total:   h.total   || 0,
+        score:   h.score   || 0,
+        acc:     h.total > 0 ? Math.round(h.correct / h.total * 100) : 0,
+      });
+    });
+  });
+
+  history.sort((a,b) => a.ts - b.ts);
+  const recent = history.slice(-14);
+
+  if (!recent.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const PAD = { top:16, right:16, bottom:28, left:32 };
+  const cW = W - PAD.left - PAD.right;
+  const cH = H - PAD.top  - PAD.bottom;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // 배경 그리드
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.lineWidth = 1;
+  [0, 25, 50, 75, 100].forEach(pct => {
+    const y = PAD.top + cH - (pct / 100 * cH);
+    ctx.beginPath(); ctx.moveTo(PAD.left, y); ctx.lineTo(PAD.left + cW, y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '9px sans-serif'; ctx.textAlign = 'right';
+    ctx.fillText(pct + '%', PAD.left - 4, y + 3);
+  });
+
+  if (recent.length < 2) {
+    ctx.fillStyle = 'rgba(255,255,255,0.3)';
+    ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('게임을 더 플레이하면 차트가 나타나요', W/2, H/2);
+    return;
+  }
+
+  // 영역 그라데이션
+  const grad = ctx.createLinearGradient(0, PAD.top, 0, PAD.top + cH);
+  grad.addColorStop(0, 'rgba(99,102,241,0.25)');
+  grad.addColorStop(1, 'rgba(99,102,241,0.02)');
+
+  // 라인 + 점 그리기
+  const xStep = cW / (recent.length - 1);
+  ctx.beginPath();
+  recent.forEach((d, i) => {
+    const x = PAD.left + i * xStep;
+    const y = PAD.top  + cH - (d.acc / 100 * cH);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#6366f1';
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.stroke();
+
+  // 영역 채우기
+  ctx.lineTo(PAD.left + (recent.length-1)*xStep, PAD.top + cH);
+  ctx.lineTo(PAD.left, PAD.top + cH);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // 데이터 점 + 라벨
+  const GAME_ICON = typeof GameRegistry !== 'undefined'
+    ? Object.fromEntries(GameRegistry.all().map(g=>[g.id,g.icon]))
+    : {};
+  recent.forEach((d, i) => {
+    const x = PAD.left + i * xStep;
+    const y = PAD.top  + cH - (d.acc / 100 * cH);
+    const col = d.acc >= 80 ? '#4ade80' : d.acc >= 60 ? '#f59e0b' : '#f87171';
+    ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI*2);
+    ctx.fillStyle = col; ctx.fill();
+    ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5; ctx.stroke();
+    // 게임 아이콘 (하단)
+    const icon = GAME_ICON[d.gameId] || '🎮';
+    ctx.font = '10px serif'; ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
+    ctx.fillText(icon, x, PAD.top + cH + 14);
+    // 정답률 (위)
+    if (i % 2 === 0 || recent.length <= 7) {
+      ctx.font = '9px sans-serif'; ctx.fillStyle = col;
+      ctx.fillText(d.acc + '%', x, y - 7);
+    }
+  });
 }
 
 function renderStudyStatus() {

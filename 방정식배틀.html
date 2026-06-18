@@ -197,275 +197,183 @@ body { font-family:'Malgun Gothic','Apple SD Gothic Neo',sans-serif; background:
 
 <script>
 'use strict';
-const GAME_ID = '방정식배틀';
-const TOTAL_Q = 20;
+const GAME_ID  = '방정식배틀';
+const TOTAL_Q  = 20;
 const STAGE_NAMES = ['고블린 소굴','해골 동굴','마법사 탑','슬라임 왕궁','드래곤 소굴'];
 
-let allQ = [], queue = [], qIdx = 0;
 let heroHP = 100, heroMaxHP = 100;
-let enemyHP = 0, enemyMaxHP = 0;
-let stageIdx = 0;
-let ok = 0, bad = 0, streak = 0, bestStreak = 0;
-let answered = false, curGrade = 7;
+let enemyHP = 0,  enemyMaxHP = 0;
+let stageIdx = 0, ok = 0, bad = 0, streak = 0, bestStreak = 0;
 let engine = null;
+let _quiz  = null;
 
-function gl(g) { return g<=9 ? `중${g-6}` : `고${g-9}`; }
+const gl = g => g<=9 ? `중${g-6}` : `고${g-9}`;
 
-// ── 초기화 ───────────────────────────────────────────────
-async function init() {
-  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    curGrade = Math.max(7, Math.min(9, LearningHub.getGrade('수학')));
-  }
-  await loadQ();
-  queue = pickQ();
-  setupEngine();
-  spawnMonster(0);
-  showQ();
-}
-
-async function loadQ() {
-  // DataLoader 캐시 사용 (아래 변수에 할당)
-  const bank = await res.json();
-  allQ = (bank['수학']||[]).filter(q => q.grade >= 7 && q.grade <= 9)
-    .sort(() => Math.random() - 0.5);
-}
-
-function pickQ() {
-  const pool = allQ.filter(q => Math.abs(q.grade - curGrade) <= 1);
-  return [...pool].sort(() => Math.random()-.5).slice(0, TOTAL_Q);
-}
-
-// ── Battle Engine 설정 ───────────────────────────────────
+// ── Battle Engine ─────────────────────────────────────────
 function setupEngine() {
   const canvas = document.getElementById('battle-canvas');
+  if (!canvas || !window.BattleEngine) return;
   engine = new BattleEngine(canvas, { bgColor:'#06061a', groundY:0.75, heroX:0.2, enemyX:0.72 });
-
-  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    const c = LearningHub.getCharacter();
-    if (c) engine.setHero(c.equipped);
-  }
-
-  engine.on('attackEnd', () => {
-    // 공격 완료 → 다음 버튼 표시
-    document.getElementById('next-btn').style.display = 'block';
-  });
-  engine.on('monsterDead', () => {
-    // 다음 스테이지
+  const user = LearningHub.getCurrentUser();
+  if (user) { const c = LearningHub.getCharacter(); if (c) engine.setHero(c.equipped); }
+  engine.on('attackEnd',  () => { document.getElementById('next-btn').style.display = 'block'; });
+  engine.on('monsterDead',() => {
     stageIdx++;
-    if (stageIdx < BattleEngine.MONSTERS.length && qIdx < queue.length) {
-      setTimeout(() => spawnMonster(stageIdx), 800);
-    }
+    if (stageIdx < BattleEngine.MONSTERS.length) setTimeout(() => spawnMonster(stageIdx), 800);
   });
-}
-
-function showStageIntro(idx) {
-  if (!engine) return;
-  const m = BattleEngine.MONSTERS[idx % BattleEngine.MONSTERS.length];
-  // 잠깐 STAGE IN 연출
-  setTimeout(()=>{}, 10); // 엔진 오버레이가 자동 처리
+  if (typeof Bus !== 'undefined') {
+    Bus.on('engine:refresh', () => {
+      const ch = LearningHub.getCharacter();
+      if (ch && engine) engine.setHero(ch.equipped);
+    });
+  }
 }
 
 function spawnMonster(idx) {
   const m = BattleEngine.MONSTERS[idx % BattleEngine.MONSTERS.length];
-  const stageBonus = Math.floor(idx / BattleEngine.MONSTERS.length);
-  enemyMaxHP = m.hp + stageBonus * 30;
-  enemyHP = enemyMaxHP;
-  engine.setMonster({ ...m, hpPct: 1 });
+  const bonus = Math.floor(idx / BattleEngine.MONSTERS.length);
+  enemyMaxHP = m.hp + bonus * 30;
+  enemyHP    = enemyMaxHP;
+  engine.setMonster({ ...m, hpPct:1 });
   updateEnemy(m.name, enemyHP, enemyMaxHP);
-  showStageIntro(idx);
   document.getElementById('h-stage').textContent = idx + 1;
   document.getElementById('stage-label').textContent =
     `⚔️ 스테이지 ${idx+1} — ${STAGE_NAMES[idx % STAGE_NAMES.length]}`;
 }
 
-// ── 문제 표시 ────────────────────────────────────────────
-function showQ() {
-  answered = false;
-  if (qIdx >= queue.length) { endGame(); return; }
-  const q = queue[qIdx];
-  document.getElementById('q-grade-badge').textContent = gl(q.grade) + '학년';
-  document.getElementById('q-text').textContent = q.q;
-  const btns = document.querySelectorAll('.choice');
-  btns.forEach((b,i) => {
-    b.textContent = (q.choices[i]||'');
-    b.className = 'choice'; b.disabled = false;
+// ── QuizEngine ───────────────────────────────────────────
+async function init() {
+  setupEngine();
+
+  _quiz = new QuizEngine({
+    gameId:  GAME_ID,
+    subject: '수학',
+    tier:    'middle',
+    total:   TOTAL_Q,
+
+    onQuestion(q, idx, total) {
+      document.querySelectorAll('.choice').forEach((b,i) => {
+        b.textContent = q.choices[i] || '';
+        b.className = 'choice'; b.disabled = false;
+      });
+      document.getElementById('q-grade-badge').textContent = gl(q.grade) + '학년';
+      document.getElementById('q-text').textContent = q.q;
+      document.getElementById('q-card').className = 'q-card';
+      document.getElementById('feedback').style.display = 'none';
+      document.getElementById('next-btn').style.display  = 'none';
+      document.getElementById('h-q').textContent = idx + 1;
+    },
+
+    onResult(isCorrect, q, stats) {
+      ok = stats.correct; bad = stats.wrong;
+      streak = stats.streak; bestStreak = stats.bestStreak;
+      document.getElementById('h-ok').textContent = ok;
+      document.getElementById('h-sk').textContent = streak;
+
+      document.querySelectorAll('.choice').forEach((b,i) => {
+        b.disabled = true;
+        if (i === q.answer) b.classList.add('correct');
+        else if (!isCorrect && i === [...document.querySelectorAll('.choice')].indexOf(
+          document.querySelector('.choice:disabled:not(.correct)') )) b.classList.add('wrong');
+      });
+
+      if (isCorrect) {
+        document.getElementById('q-card').className = 'q-card correct-border';
+        const dmg = Math.floor(12 + streak * 3 + Math.random() * 8);
+        enemyHP = Math.max(0, enemyHP - dmg);
+        const useUlt  = engine && engine.chargeLevel >= 1;
+        const skill   = useUlt ? 'ultimate' : streak >= 5 ? 'magic' : streak >= 2 ? 'slash' : 'arrow';
+        if (streak >= 3) showSkillPop(streak >= 5 ? '💥 SUPER COMBO!' : `🔥 ${streak} COMBO!`);
+        setFeedback(true, `✅ 정답! ${dmg} 데미지${streak > 1 ? ' (' + streak + '연속!)' : ''}`);
+        if (engine) {
+          engine.setMonster({ ...BattleEngine.MONSTERS[stageIdx % BattleEngine.MONSTERS.length], hpPct: enemyHP / enemyMaxHP });
+          engine.playHeroAttack(skill, { dmgText: dmg + '!' });
+        }
+        updateEnemy(null, enemyHP, enemyMaxHP);
+        if (enemyHP <= 0 && engine) engine.playMonsterDeath();
+
+        // 차지 게이지 UI
+        if (engine) {
+          const pct = Math.round(engine.chargeLevel * 100);
+          const bar = document.getElementById('charge-bar');
+          const lbl = document.getElementById('charge-label');
+          if (bar) { bar.style.width = pct + '%'; bar.style.background = pct >= 100 ? 'linear-gradient(90deg,#ffd700,#f59e0b)' : 'linear-gradient(90deg,#7c3aed,#a855f7)'; }
+          if (lbl) { lbl.textContent = pct >= 100 ? '⚡ READY!' : pct + '%'; lbl.style.color = pct >= 100 ? '#ffd700' : '#6b7280'; }
+          if (pct >= 100) engine.playUltimateCharge();
+        }
+      } else {
+        document.getElementById('q-card').className = 'q-card wrong-border';
+        const heroDmg = 18;
+        heroHP = Math.max(0, heroHP - heroDmg);
+        updateHero(heroHP, heroMaxHP);
+        if (engine) { engine.playMonsterAttack(); engine.playHeroDamage(heroDmg); }
+        setFeedback(false, `❌ 오답! 적의 반격! (정답: ${q.choices[q.answer]})`);
+        setTimeout(() => { document.getElementById('next-btn').style.display = 'block'; }, 600);
+        if (heroHP <= 0) { if (engine) engine.playGameOver(); setTimeout(() => endGame(true), 1200); return; }
+      }
+    },
+
+    onEnd(summary) {
+      endGame(false, summary);
+    },
   });
-  document.getElementById('q-card').className = 'q-card';
-  document.getElementById('feedback').style.display = 'none';
-  document.getElementById('next-btn').style.display = 'none';
-  document.getElementById('h-q').textContent = qIdx + 1;
+
+  await _quiz.init();
+  spawnMonster(0);
+  _quiz.start();
 }
 
-// ── 선택 ─────────────────────────────────────────────────
-function choose(i) {
-  if (answered || !engine) return;
-  answered = true;
-  const q = queue[qIdx];
-  const isOk = i === q.answer;
+function nextQ() { if (_quiz) _quiz.next(); }
 
-  document.querySelectorAll('.choice').forEach((b,j) => {
-    b.disabled = true;
-    if (j === q.answer) b.classList.add('correct');
-    else if (j === i && !isOk) b.classList.add('wrong');
-  });
-
-  // 오답 기록
-  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    LearningHub.recordAnswer({
-      gameId:GAME_ID, subject:'수학', qKey:q.q.slice(0,40),
-      data:{ q:q.q, choices:q.choices, answer:q.answer, unit:q.unit, grade:q.grade },
-      correct:isOk,
-    });
-  }
-
-  qIdx++;
-
-  if (isOk) {
-    ok++; streak++; bestStreak = Math.max(bestStreak, streak);
-    document.getElementById('h-ok').textContent = ok;
-    document.getElementById('h-sk').textContent = streak;
-    document.getElementById('q-card').className = 'q-card correct-border';
-
-    // 데미지 계산
-    const dmg = Math.floor(12 + streak * 3 + Math.random() * 8);
-    enemyHP = Math.max(0, enemyHP - dmg);
-
-    // 스킬 선택
-    // 필살기 게이지 가득 차면 ultimate
-    const useUltimate = engine && engine.chargeLevel >= 1;
-    const skill = useUltimate ? 'ultimate' : streak >= 5 ? 'magic' : streak >= 2 ? 'slash' : 'arrow';
-    if (streak >= 3) showSkillPop(streak >= 5 ? '💥 SUPER COMBO!' : `🔥 ${streak} COMBO!`);
-
-    setFeedback(true, `✅ 정답! ${dmg} 데미지 (${streak > 1 ? streak+'연속 콤보!' : ''})`);
-
-    // 캐릭터 공격 → 애니 끝나면 next 버튼 (engine.on('attackEnd') 에서 처리)
-    const monDef = BattleEngine.MONSTERS[stageIdx % BattleEngine.MONSTERS.length];
-    engine.setMonster({ ...monDef, hpPct: enemyHP / enemyMaxHP });
-    engine.playHeroAttack(skill, { dmgText: `${dmg}!` });
-
-    updateEnemy(null, enemyHP, enemyMaxHP);
-
-    if (enemyHP <= 0) {
-      engine.playMonsterDeath();
-      setFeedback(true, `✅ 정답! 🎉 몬스터 처치! (${dmg} 데미지)`);
-    }
-
-  } else {
-    bad++; streak = 0;
-    document.getElementById('h-sk').textContent = 0;
-    document.getElementById('q-card').className = 'q-card wrong-border';
-
-    const heroDmg = 18;
-    heroHP = Math.max(0, heroHP - heroDmg);
-    updateHero(heroHP, heroMaxHP);
-    engine.playMonsterAttack();
-    engine.playHeroDamage(heroDmg);
-    setFeedback(false, `❌ 오답! 적의 반격! -${heroDmg} HP (정답: ${q.choices[q.answer]})`);
-
-    setTimeout(() => { document.getElementById('next-btn').style.display = 'block'; }, 600);
-
-    if (heroHP <= 0) {
-      if (engine) engine.playGameOver();
-      setTimeout(endGame, 1200);
-      return;
-    }
-  }
-
-  // 차지 게이지 UI 업데이트
-  if (engine) {
-    const pct = Math.round(engine.chargeLevel * 100);
-    const bar = document.getElementById('charge-bar');
-    const lbl = document.getElementById('charge-label');
-    if (bar) {
-      bar.style.width = pct + '%';
-      bar.style.background = pct >= 100 ? 'linear-gradient(90deg,#ffd700,#f59e0b)' : 'linear-gradient(90deg,#7c3aed,#a855f7)';
-      bar.style.boxShadow = pct >= 100 ? '0 0 16px rgba(255,215,0,.6)' : '0 0 8px rgba(168,85,247,.4)';
-    }
-    if (lbl) {
-      lbl.textContent = pct >= 100 ? '⚡ READY!' : pct + '%';
-      lbl.style.color = pct >= 100 ? '#ffd700' : '#6b7280';
-    }
-    if (pct >= 100 && isOk) engine.playUltimateCharge();
-  }
-
-  // 5문제마다 학년 조정
-  if (qIdx % 5 === 0 && typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    const acc = ok / qIdx;
-    const r = LearningHub.evaluateLevel('수학', acc, {minGrade:7, maxGrade:9});
-    curGrade = LearningHub.getGrade('수학');
-    if (r.changed) {
-      LearningHub.showToast(r.direction==='up' ? '⬆️ 레벨업! 더 강한 문제!' : '⬇️ 난이도 조정');
-      if (r.direction==='up' && engine) engine.playLevelUp();
-    }
-  }
-}
-
-function nextQ() { showQ(); }
+function choose(i) { if (_quiz) _quiz.answer(i); }
 
 function setFeedback(isOk, msg) {
   const el = document.getElementById('feedback');
   el.textContent = msg; el.className = isOk ? 'ok' : 'ng'; el.style.display = 'block';
 }
 
-// ── HP 업데이트 ──────────────────────────────────────────
 function updateHero(hp, max) {
-  document.getElementById('hero-bar').style.width = Math.max(0, hp/max*100) + '%';
+  document.getElementById('hero-bar').style.width  = Math.max(0, hp/max*100) + '%';
   document.getElementById('hero-hp-val').textContent = `${hp} / ${max}`;
 }
 function updateEnemy(name, hp, max) {
   if (name) document.getElementById('enemy-name-label').textContent = name;
-  document.getElementById('enemy-bar').style.width = Math.max(0, hp/max*100) + '%';
+  document.getElementById('enemy-bar').style.width  = Math.max(0, hp/max*100) + '%';
   document.getElementById('enemy-hp-val').textContent = `${hp} / ${max}`;
 }
-
-// ── 스킬 팝업 ────────────────────────────────────────────
 function showSkillPop(text) {
   const el = document.getElementById('skill-pop');
-  el.textContent = text;
-  el.style.opacity = '1';
+  el.textContent = text; el.style.opacity = '1';
   setTimeout(() => { el.style.opacity = '0'; }, 900);
 }
 
-// ── 게임 종료 ────────────────────────────────────────────
-function endGame() {
-  document.getElementById('q-card').style.display = 'none';
-  document.getElementById('choices').style.display = 'none';
-  document.getElementById('feedback').style.display = 'none';
-  document.getElementById('next-btn').style.display = 'none';
-  document.getElementById('hp-bars').style.display = 'none';
-  document.getElementById('stage-label').style.display = 'none';
+// ── 게임 종료 ─────────────────────────────────────────────
+function endGame(defeated, summary = {}) {
+  ['q-card','choices','feedback','next-btn','hp-bars','stage-label','charge-bar-wrap']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.style.display='none'; });
   document.getElementById('result').style.display = 'block';
 
-  const total = ok + bad, acc = total ? ok/total : 0;
-  const defeated = heroHP <= 0;
-  const g = defeated ? 'D' : acc>=.9?'S':acc>=.75?'A':acc>=.6?'B':acc>=.4?'C':'D';
+  const { acc = 0, grade = 'D' } = summary;
+  const isDefeated = defeated || heroHP <= 0;
+  const finalGrade = isDefeated ? 'D' : grade;
   const em = {S:'🏆',A:'🥇',B:'🥈',C:'🥉',D:'💀'};
-  document.getElementById('r-em').textContent = em[g] || '🎮';
-  document.getElementById('r-g').textContent = g;
-  document.getElementById('r-s1').textContent = `정답 ${ok}/${total} (${Math.round(acc*100)}%)`;
+  document.getElementById('r-em').textContent = em[finalGrade] || '🎮';
+  document.getElementById('r-g').textContent  = finalGrade;
+  document.getElementById('r-s1').textContent = `정답 ${ok}/${ok+bad} (${Math.round((ok/(ok+bad||1))*100)}%)`;
   document.getElementById('r-s2').textContent = `최대 연속 콤보: ${bestStreak}`;
   document.getElementById('r-s3').textContent = `클리어 스테이지: ${stageIdx}`;
-
-  if (typeof LearningHub !== 'undefined' && LearningHub.getCurrentUser()) {
-    const exp = ok*10 + stageIdx*15 + (bestStreak>=5?30:0);
-    GameInit.finish(GAME_ID, exp, '방정식배틀');
-    LearningHub.evaluateLevel('수학', acc, {minGrade:7, maxGrade:9});
-  }
-  if (engine) {
-    if (!defeated) engine.playStageClear();
-  }
+  if (!isDefeated && engine) engine.playStageClear();
 }
 
 function restart() {
-  heroHP = 100; ok = 0; bad = 0; streak = 0; bestStreak = 0; qIdx = 0; stageIdx = 0;
-  queue = pickQ();
-  document.getElementById('q-card').style.display = 'block';
+  heroHP=100; ok=0; bad=0; streak=0; bestStreak=0; stageIdx=0;
+  ['q-card','choices','hp-bars','stage-label','charge-bar-wrap']
+    .forEach(id => { const el=document.getElementById(id); if(el) el.style.display=''; });
   document.getElementById('choices').style.display = 'grid';
-  document.getElementById('hp-bars').style.display = 'flex';
-  document.getElementById('stage-label').style.display = 'block';
-  document.getElementById('result').style.display = 'none';
+  document.getElementById('result').style.display  = 'none';
   updateHero(heroHP, heroMaxHP);
-  spawnMonster(0); showQ();
+  if (_quiz) _quiz.restart();
+  spawnMonster(0);
 }
 
 GameInit.start(GAME_ID, init, { checkStreak:true });

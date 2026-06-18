@@ -110,16 +110,24 @@ let _activeCat = 'wallpaper';
 let _roomCanvas, _charCanvas;
 
 // 방 테마 팔레트
-const ROOM_THEMES = {
-  wall_basic:   { bg:'#1b2e1b', accent:'#2d4a2d', name:'숲속 기지' },
-  wall_sky:     { bg:'#1a2a4a', accent:'#2a3d6a', name:'하늘 기지' },
-  wall_stone:   { bg:'#2a2a2a', accent:'#3a3a3a', name:'석조 성' },
-  wall_wood:    { bg:'#3d2510', accent:'#5a3820', name:'통나무집' },
-  floor_wood:   { color:'#5a3820' },
-  floor_stone:  { color:'#555566' },
-  floor_grass:  { color:'#2d5a1b' },
-  floor_tile:   { color:'#334466' },
+const WALL_THEMES = {
+  wall_basic:   { bg:'#1a3020', stripe:'#243828', name:'숲속 기지',   star:false },
+  wall_sky:     { bg:'#1a2a50', stripe:'#1e3060', name:'하늘 기지',   star:false },
+  wall_night:   { bg:'#0a0a2a', stripe:'#10103a', name:'별밤 기지',   star:true  },
+  wall_volcano: { bg:'#2a1010', stripe:'#381818', name:'화산 기지',   star:false },
+  wall_starry:  { bg:'#05050f', stripe:'#0a0a1a', name:'우주 기지',   star:true  },
+  wall_forest:  { bg:'#143020', stripe:'#1e4028', name:'에메랄드 숲', star:false },
 };
+const FLOOR_THEMES = {
+  floor_wood:    { c1:'#5a3820', c2:'#6b4528', c3:'#4a2e18' },
+  floor_grass:   { c1:'#2d5a1b', c2:'#3a7024', c3:'#254d14' },
+  floor_snow:    { c1:'#c0d8e8', c2:'#d0e8f8', c3:'#b0c8d8' },
+  floor_lava:    { c1:'#8b1a00', c2:'#aa2200', c3:'#6b0a00' },
+  floor_crystal: { c1:'#1a3a6a', c2:'#2a4a8a', c3:'#0a2a5a' },
+  floor_blue:    { c1:'#1a3a5a', c2:'#2a4a7a', c3:'#0a2a4a' },
+};
+// 하위 호환
+const ROOM_THEMES = { ...WALL_THEMES, ...FLOOR_THEMES };
 
 function init() {
   _roomCanvas = document.getElementById('room-canvas');
